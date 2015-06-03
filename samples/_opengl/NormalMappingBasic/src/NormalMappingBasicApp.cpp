@@ -35,11 +35,8 @@ void NormalMappingBasicApp::setup()
 	mNormalTex = gl::Texture::create( loadImage( loadAsset( "normalMap.png" ) ), gl::Texture::Format().mipmap() );
 	mNormalTex->bind( 1 );
 
-#if defined( CINDER_GL_ES )
 	mGlsl = gl::GlslProg::create( loadAsset( "shader_es2.vert" ), loadAsset( "shader_es2.frag" ) );
-#else
-	mGlsl = gl::GlslProg::create( loadAsset( "shader.vert" ), loadAsset( "shader.frag" ) );
-#endif
+
 	mBatch = gl::Batch::create( geom::Cube() >> geom::Transform( scale( vec3( 1.5f ) ) ), mGlsl );
 	gl::ScopedGlslProg glslScp( mGlsl );
 	mGlsl->uniform( "uDiffuseMap", 0 );
