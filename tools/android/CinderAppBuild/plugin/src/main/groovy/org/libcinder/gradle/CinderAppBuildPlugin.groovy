@@ -64,6 +64,7 @@ class CinderAppBuildPluginExtension {
     def ldLibs           = [];
     def libCinder        = [];
     def staticLibs       = [];
+    def sharedLibs       = [];
     def stl              = "gnustl_static";
     def toolChainVersion = "4.9";
     def archs            = [];
@@ -129,9 +130,11 @@ class CinderAppBuildPlugin implements Plugin<Project> {
 
     def mSourceFiles  = [];
     def mIncludeDirs  = [];
+    def mLdLibs      = [];
     def mSharedLibs   = [];
     def mStaticLibs   = [];
     def mStaticBlocks = [];
+    def mSharedBlocks = [];
     def mArchs        = [];
 
     def mArchFlagsBlocks = [];
@@ -211,6 +214,8 @@ class CinderAppBuildPlugin implements Plugin<Project> {
         lines.add("LOCAL_PATH := \$(call my-dir)")
         lines.add("")           
         lines.add(this.mStaticBlocks.join("\n"))
+        lines.add("")           
+        lines.add(this.mSharedBlocks.join("\n"))
         lines.add("# ------------------------------------------------------------------------------")
         lines.add("")
         lines.add("include \$(CLEAR_VARS)")
@@ -229,7 +234,10 @@ class CinderAppBuildPlugin implements Plugin<Project> {
         lines.add("LOCAL_C_INCLUDES := " + this.mIncludeDirs.join("\n"))
         lines.add("")
         lines.add("# Shared Libraries" )
-        lines.add("LOCAL_LDLIBS := " + this.mSharedLibs.join("\n"))
+        lines.add("LOCAL_SHARED_LIBRARIES := " + this.mSharedLibs.join("\n"))
+        lines.add("")
+        lines.add("# LD Libraries" )
+        lines.add("LOCAL_LDLIBS := " + this.mLdLibs.join("\n"))
         lines.add("")
         lines.add("# Static Libraries" )
         lines.add("LOCAL_STATIC_LIBRARIES := " + this.mStaticLibs.join("\n"))
@@ -289,6 +297,12 @@ class CinderAppBuildPlugin implements Plugin<Project> {
             throw new GradleException("C/C++ Flags parse failed, e=" + e)            
         }
 
+        // ldlibs
+        try {
+            this.parseLdLibs(project)
+        } catch( e ) {
+            throw new GradleException("Ld libs parse failed, e=" + e)           
+        }
         // Shared libs
         try {
             this.parseSharedLibs(project)
@@ -540,17 +554,40 @@ class CinderAppBuildPlugin implements Plugin<Project> {
         this.mArchFlagsBlocks.add("endif");
     }
 
-
-    void parseSharedLibs(Project project) {
-        this.mSharedLibs = [];
+    void parseLdLibs(Project project) {
+        this.mLdLibs = [];
         if( ! project.cinder.ldLibs.empty ) { 
-            mSharedLibs.add("\\");
+            mLdLibs.add("\\");
             project.cinder.ldLibs.each {
                 def libName = it;
                 if(("GLESv3" == libName) && (true == project.cinder.gles2)) {
                     libName = "GLESv2";
                 }
-                mSharedLibs.add("\t" + "-l" + libName + "\\");
+                mLdLibs.add("\t" + "-l" + libName + "\\");
+            }
+        }
+    }
+
+    void parseSharedLibs(Project project) {
+        this.mSharedLibs = [];
+        this.mSharedBlocks = [];
+        if( ! project.cinder.sharedLibs.empty ) { 
+            this.mSharedLibs.add("\\");
+            project.cinder.sharedLibs.each {
+                def libName = it;
+                
+                String shortName = libName
+                def lastSlashPos = shortName.lastIndexOf( "/" )
+                if( -1 != lastSlashPos ) {
+                    shortName = shortName.substring(lastSlashPos + 1, shortName.length())
+                }
+                shortName = shortName.replace(".so", "")
+                this.mSharedLibs.add("\t" + shortName + " \\")
+                this.mSharedBlocks.add("include \$(CLEAR_VARS)")
+                this.mSharedBlocks.add("LOCAL_MODULE    := " + shortName)
+                this.mSharedBlocks.add("LOCAL_SRC_FILES := " + libName)
+                this.mSharedBlocks.add("include \$(PREBUILT_SHARED_LIBRARY)")
+                this.mSharedBlocks.add("")
             }
         }
     }
