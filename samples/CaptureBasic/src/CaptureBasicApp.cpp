@@ -1,5 +1,6 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
+#include "cinder/android/CinderAndroid.h"
 #include "cinder/gl/gl.h"
 #include "cinder/Capture.h"
 #include "cinder/Log.h"
@@ -14,9 +15,16 @@ using namespace std;
 
 class CaptureBasicApp : public App {
   public:
+  CaptureBasicApp();
+
 	void setup() override;
 	void update() override;
 	void draw() override;
+
+	void focusGained();
+	void focusLost();
+
+	void connectCamera();
 
   private:
 	void printDevices();
@@ -25,17 +33,49 @@ class CaptureBasicApp : public App {
 	gl::TextureRef		mTexture;
 };
 
+CaptureBasicApp::CaptureBasicApp()
+{
+	#if defined( CINDER_ANDROID )
+		ci::android::setActivityGainedFocusCallback( [this] { focusGained(); } );
+		ci::android::setActivityLostFocusCallback( [this] { focusLost(); } );
+	#endif
+}
+
+void CaptureBasicApp::focusGained()
+{
+	CI_LOG_I("Gained Focus");
+	connectCamera();
+}
+
+void CaptureBasicApp::focusLost()
+{
+	CI_LOG_I("Lost Focus");
+	if( mCapture ) {
+		CI_LOG_I("Stopping Camera");
+		mCapture->stop();
+		mCapture.reset();
+	}
+}
+
+void CaptureBasicApp::connectCamera()
+{
+	if( ! mCapture )
+	{
+		CI_LOG_I("Starting Camera");
+		try {
+			mCapture = Capture::create( 640, 480 );
+			mCapture->start();
+		}
+		catch( ci::Exception &exc ) {
+			CI_LOG_EXCEPTION( "Failed to init capture ", exc );
+		}
+  }
+}
+
 void CaptureBasicApp::setup()
 {
 	printDevices();
-
-	try {
-		mCapture = Capture::create( 640, 480 );
-		mCapture->start();
-	}
-	catch( ci::Exception &exc ) {
-		CI_LOG_EXCEPTION( "Failed to init capture ", exc );
-	}
+	connectCamera();
 }
 
 void CaptureBasicApp::update()
@@ -81,6 +121,12 @@ void CaptureBasicApp::draw()
 #endif
 	}
 
+#if DEBUG
+	auto err = gl::getError();
+	if( err ) {
+		CI_LOG_W( "GL Error: " << gl::getErrorString( err ) );
+	}
+#endif
 }
 
 void CaptureBasicApp::printDevices()
