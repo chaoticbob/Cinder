@@ -1,12 +1,10 @@
 
 list(APPEND CINDER_INCLUDE_DIRS ${CINDER_INC_DIR} 
-            ${CINDER_INC_DIR}/freetype
             ${CINDER_INC_DIR}/glfw
             ${CINDER_INC_DIR}/jsoncpp
             ${CINDER_SRC_DIR}/libtess2
             ${CINDER_SRC_DIR}/AntTweakBar
             ${CINDER_SRC_DIR}/linebreak
-            ${BOOST_INC_DIR}
             )
 
 list( APPEND CINDER_CXX_SRC_FILES 
@@ -178,59 +176,6 @@ set( CINDER_C_SRC_FILES
     ${CINDER_SRC_DIR}/libtess2/priorityq.c
     ${CINDER_SRC_DIR}/libtess2/sweep.c
     ${CINDER_SRC_DIR}/libtess2/tess.c
-
-    ${CINDER_SRC_DIR}/freetype/bdf/bdf.c
-    ${CINDER_SRC_DIR}/freetype/cff/cff.c
-    ${CINDER_SRC_DIR}/freetype/pcf/pcf.c
-    ${CINDER_SRC_DIR}/freetype/pfr/pfr.c
-    ${CINDER_SRC_DIR}/freetype/sfnt/sfnt.c
-    ${CINDER_SRC_DIR}/freetype/truetype/truetype.c
-    ${CINDER_SRC_DIR}/freetype/type1/type1.c
-    ${CINDER_SRC_DIR}/freetype/type42/type42.c
-    ${CINDER_SRC_DIR}/freetype/winfonts/winfnt.c
-    ${CINDER_SRC_DIR}/freetype/base/ftbase.c
-    ${CINDER_SRC_DIR}/freetype/base/ftbbox.c
-    ${CINDER_SRC_DIR}/freetype/base/ftbdf.c
-    ${CINDER_SRC_DIR}/freetype/base/ftbitmap.c
-    ${CINDER_SRC_DIR}/freetype/base/ftcid.c
-    ${CINDER_SRC_DIR}/freetype/base/ftdebug.c
-    ${CINDER_SRC_DIR}/freetype/base/ftfstype.c
-    ${CINDER_SRC_DIR}/freetype/base/ftgasp.c
-    ${CINDER_SRC_DIR}/freetype/base/ftglyph.c
-    ${CINDER_SRC_DIR}/freetype/base/ftgxval.c
-    ${CINDER_SRC_DIR}/freetype/base/ftinit.c
-    ${CINDER_SRC_DIR}/freetype/base/ftlcdfil.c
-    ${CINDER_SRC_DIR}/freetype/base/ftmm.c
-    ${CINDER_SRC_DIR}/freetype/base/ftotval.c
-    ${CINDER_SRC_DIR}/freetype/base/ftpatent.c
-    ${CINDER_SRC_DIR}/freetype/base/ftpfr.c
-    ${CINDER_SRC_DIR}/freetype/base/ftstroke.c
-    ${CINDER_SRC_DIR}/freetype/base/ftsynth.c
-    ${CINDER_SRC_DIR}/freetype/base/ftsystem.c
-    ${CINDER_SRC_DIR}/freetype/base/fttype1.c
-    ${CINDER_SRC_DIR}/freetype/base/ftwinfnt.c
-    ${CINDER_SRC_DIR}/freetype/raster/raster.c
-    ${CINDER_SRC_DIR}/freetype/smooth/smooth.c
-    ${CINDER_SRC_DIR}/freetype/autofit/autofit.c
-    ${CINDER_SRC_DIR}/freetype/bzip2/ftbzip2.c
-    ${CINDER_SRC_DIR}/freetype/cache/ftcache.c
-    ${CINDER_SRC_DIR}/freetype/gzip/ftgzip.c
-    ${CINDER_SRC_DIR}/freetype/lzw/ftlzw.c
-    ${CINDER_SRC_DIR}/freetype/gxvalid/gxvalid.c
-    ${CINDER_SRC_DIR}/freetype/otvalid/otvalid.c
-    ${CINDER_SRC_DIR}/freetype/psaux/psaux.c
-    ${CINDER_SRC_DIR}/freetype/pshinter/pshinter.c
-    ${CINDER_SRC_DIR}/freetype/psnames/psnames.c
-    ${CINDER_SRC_DIR}/freetype/cid/type1cid.c
-    ${CINDER_SRC_DIR}/freetype/bdf/bdflib.c
-
 )
 
-add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
 
-
-target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS}>")
-
-set_target_properties( cinder PROPERTIES LINKER_LANGUAGE CXX 
-                                DEBUG_POSTFIX "_d"
-                                )

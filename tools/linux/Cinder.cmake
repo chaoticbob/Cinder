@@ -23,7 +23,6 @@ execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH
 
 set( CINDER_INC_DIR ${CINDER_DIR}/include )
 set( CINDER_SRC_DIR ${CINDER_DIR}/src )
-set( BOOST_INC_DIR  ${CINDER_DIR}/boost )
 
 set( CINDER_LIB_DIR ${CINDER_DIR}/lib/linux/${CINDER_ARCH} )
 
@@ -31,24 +30,15 @@ set( CINDER_TOOLCHAIN_CLANG true )
 
 if( CINDER_TOOLCHAIN_CLANG )
     set(CMAKE_TOOLCHAIN_PREFIX 					"llvm-"		CACHE STRING "" FORCE ) 
-    set(CMAKE_C_COMPILER                      	"clang"		CACHE STRING "" FORCE )
-    set(CMAKE_CXX_COMPILER                    	"clang++"	CACHE STRING "" FORCE )
+    set( CMAKE_C_COMPILER      "clang"                 CACHE FILEPATH "" FORCE )
+    set( CMAKE_CXX_COMPILER    "clang++"               CACHE FILEPATH "" FORCE )
+    set( CMAKE_AR           "llvm-ar"          CACHE FILEPATH "" FORCE )
+    set( CMAKE_LINKER       "llvm-link"        CACHE FILEPATH "" FORCE )
+    set( CMAKE_NM           "llvm-nm "                 CACHE FILEPATH "" FORCE )
+    set( CMAKE_RANLIB       "llvm-ranlib"      CACHE FILEPATH "" FORCE )
 
-    set(CMAKE_C_FLAGS_INIT                    	"-Wall -std=c99"	CACHE STRING "" FORCE )
-    set(CMAKE_C_FLAGS_DEBUG_INIT              	"-g"				CACHE STRING "" FORCE )
-    set(CMAKE_C_FLAGS_MINSIZEREL_INIT         	"-Os -DNDEBUG"		CACHE STRING "" FORCE )
-    set(CMAKE_C_FLAGS_RELEASE_INIT            	"-O4 -DNDEBUG"		CACHE STRING "" FORCE )
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO_INIT     	"-O2 -g"			CACHE STRING "" FORCE )
-    set(CMAKE_C_FLAGS                         	"${CMAKE_C_FLAGS} -fmessage-length=0"	CACHE STRING "" FORCE )
-
-    set(CMAKE_CXX_FLAGS_INIT                  	"-Wall"			CACHE STRING "" FORCE )
-    set(CMAKE_CXX_FLAGS_DEBUG_INIT            	"-g"			CACHE STRING "" FORCE )
-    set(CMAKE_CXX_FLAGS_MINSIZEREL_INIT       	"-Os -DNDEBUG"	CACHE STRING "" FORCE )
-    set(CMAKE_CXX_FLAGS_RELEASE_INIT          	"-O4 -DNDEBUG"	CACHE STRING "" FORCE )
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT   	"-O2 -g"		CACHE STRING "" FORCE )
-    set(CMAKE_CCC_FLAGS                       	"${CMAKE_C_FLAGS} -fmessage-length=0"	CACHE STRING "" FORCE )
 endif()
 
-set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAFS} -stdlib=libstdc++ -std=c++11 -Wno-reorder -Wno-unused-private-field -Wno-unused-local-typedef" CACHE STRING "" FORCE )
+set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -std=c++11 -Wno-reorder -Wno-unused-private-field -Wno-unused-local-typedef" CACHE STRING "" FORCE )
 set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" 				CACHE STRING "" FORCE )
 set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" 	CACHE STRING "" FORCE )

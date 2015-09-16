@@ -30,39 +30,23 @@ endif()
 
 get_filename_component( CINDER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE )
 
-set( CINDER_INC_DIR ${CINDER_DIR}/include )
-set( CINDER_SRC_DIR ${CINDER_DIR}/src )
-set( BOOST_INC_DIR ${CINDER_DIR}/boost )
-
-set( CINDER_TOOLCHAIN_CLANG true )
-
-if( CINDER_TOOLCHAIN_CLANG )
-    set( CMAKE_C_COMPILER	"clang" 		CACHE FILEPATH "" FORCE )
-    set( CMAKE_CXX_COMPILER	"clang++" 		CACHE FILEPATH "" FORCE )
-    set( CMAKE_AR           "llvm-ar"		CACHE FILEPATH "" FORCE )
-    set( CMAKE_LINKER       "llvm-link" 	CACHE FILEPATH "" FORCE )
-    set( CMAKE_NM           "llvm-nm " 		CACHE FILEPATH "" FORCE )
-    set( CMAKE_RANLIB       "llvm-ranlib"	CACHE FILEPATH "" FORCE )
-endif()
-
 # Needs to come ater compilers are set
 project( cinder_linux )
 
-set(CINDER_ARCH i386)
-if(CMAKE_SIZEOF_VOID_P MATCHES 8)
-    set(CINDER_ARCH x86_64)
-endif()
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
+
+include( ${CINDER_DIR}/tools/linux/Cinder.cmake )
 
 # Output path
 set( LIBRARY_OUTPUT_PATH "${CINDER_DIR}/lib/linux/${CINDER_ARCH}" )
 
-message( "" )
 if( CINDER_LINUX_TARGET_RPI2 )
 	message( "${BoldGreen}CINDER_ARCH        : ${CINDER_ARCH}${ColorReset}" )
 	message( "${BoldGreen}CINDER_LINUX_TARGET: ${CINDER_LINUX_TARGET}${ColorReset}" )
 else()
 	message( "${BoldGreen}CINDER_ARCH: ${CINDER_ARCH}${ColorReset}" )
 endif()
+
 message( "" )
 message( "${BoldGreen}CINDER_INC_DIR: ${CINDER_INC_DIR}${ColorReset}" )
 message( "${BoldGreen}CINDER_SRC_DIR: ${CINDER_SRC_DIR}${ColorReset}" )
@@ -75,20 +59,36 @@ message( "${BoldGreen}CMAKE_AR          : ${CMAKE_AR}${ColorReset}" )
 message( "${BoldGreen}CMAKE_LINKER      : ${CMAKE_LINKER}${ColorReset}" ) 
 message( "${BoldGreen}CMAKE_NM          : ${CMAKE_NM}${ColorReset}" ) 
 message( "${BoldGreen}CMAKE_RANLIB      : ${CMAKE_RANLIB}${ColorReset}" ) 
-#message( "${BoldGreen}CMAKE_STRIP       : ${CMAKE_STRIP}${ColorReset}" ) 
-#message( "" )
-#message( "${BoldGreen}CMAKE_SYSROOT     : ${CMAKE_SYSROOT}${ColorReset}" ) 
 message( "" )
-
-set( C_FLAGS "-fvisibility=default -DFT2_BUILD_LIBRARY -DFT_DEBUG_LEVEL_TRACE -D_UNIX" )
-set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g" )
-set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -Os -ffast-math ${C_FLAGS}" )
-
-# Disable these warnings, many of which are coming from Boost
-set( CXX_DISABLE_WARNINGS "-Wno-reorder -Wno-unused-private-field -Wno-unused-local-typedef" )
-set( CXX_FLAGS "-stdlib=libstdc++ -std=c++11 -fvisibility=default -DFT2_BUILD_LIBRARY -DFT_DEBUG_LEVEL_TRACE -D_UNIX ${CXX_DISABLE_WARNINGS}" )
-set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" )
-set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" )
 
 include(CMakeModules/CinderSources.cmake)
 
+set( C_FLAGS "-fvisibility=default -D_UNIX" )
+set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g" )
+set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -Os -ffast-math ${C_FLAGS}" )
+  
+# Disable these warnings, many of which are coming from Boost
+set( CXX_DISABLE_WARNINGS "-Wno-reorder -Wno-unused-private-field -Wno-unused-local-typedef" )
+set( CXX_FLAGS "${CXX_FLAGS} -stdlib=libstdc++ -std=c++11 -fvisibility=default -D_UNIX ${CXX_DISABLE_WARNINGS}" )
+set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" )
+set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" )
+
+
+add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
+
+set(CINDER_INCLUDE_DEPENDS)
+set(CINDER_LIBS_DEPENDS)
+
+find_package( Freetype2 REQUIRED )
+list(APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
+list(APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
+
+find_package( FontConfig REQUIRED )
+list(APPEND CINDER_INCLUDE_DEPENDS ${FONTCONFIG_INCLUDE_DIRS} )
+list(APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
+
+target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>")
+
+set_target_properties( cinder PROPERTIES LINKER_LANGUAGE CXX 
+                                DEBUG_POSTFIX "_d"
+                                )
