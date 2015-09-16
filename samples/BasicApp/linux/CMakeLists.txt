@@ -36,7 +36,7 @@ find_package( FontConfig REQUIRED )
 if( FONTCONFIG_FOUND )
 include_directories( ${FONTCONFIG_INCLUDE_DIRS} )
 list( APPEND required_libs ${FONTCONFIG_LIBRARIES} )
-endif( FONTCONFIG )
+endif( FONTCONFIG_FOUND )
 
 set( CMAKE_DEBUG_POSTFIX "_d" )
 add_executable( "${CMAKE_PROJECT_NAME}" ${SRC_FILES} )
