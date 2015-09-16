@@ -95,6 +95,7 @@ add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
 set(CINDER_INCLUDE_DEPENDS)
 set(CINDER_LIBS_DEPENDS)
 
+list(APPEND CINDER_LIBS_DEPENDS dl pthread z GL X11 Xcursor Xinerama Xrandr Xi)
 find_package( Freetype2 REQUIRED )
 list(APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
 list(APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
@@ -105,6 +106,10 @@ list(APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
 
 target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>")
 
+target_link_libraries( cinder INTERFACE ${CINDER_LIBS_DEPENDS} libboost_system.a libboost_filesystem.a )
+
 set_target_properties( cinder PROPERTIES LINKER_LANGUAGE CXX 
                                 DEBUG_POSTFIX "_d"
                                 )
+
+add_subdirectory(${CINDER_DIR}/samples/BasicApp/linux ${CINDER_DIR}/samples/BasicApp/linux/Build) 
