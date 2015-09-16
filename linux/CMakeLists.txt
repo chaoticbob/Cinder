@@ -1,5 +1,17 @@
 cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
-set( CMAKE_VERBOSE_MAKEFILE ON )
+
+set( CINDER_TOOLCHAIN_CLANG false )
+
+if( CINDER_TOOLCHAIN_CLANG )
+    set(CMAKE_TOOLCHAIN_PREFIX "llvm-" CACHE STRING "" FORCE ) 
+    set( CMAKE_C_COMPILER "clang" CACHE FILEPATH "" FORCE )
+    set( CMAKE_CXX_COMPILER "clang++" CACHE FILEPATH "" FORCE )
+    set( CMAKE_AR "llvm-ar" CACHE FILEPATH "" FORCE )
+    set( CMAKE_LINKER "llvm-link" CACHE FILEPATH "" FORCE )
+    set( CMAKE_NM "llvm-nm" CACHE FILEPATH "" FORCE )
+    set( CMAKE_RANLIB "llvm-ranlib" CACHE FILEPATH "" FORCE )
+endif()
+
 
 if(NOT WIN32)
   string(ASCII 27 Esc)
@@ -21,6 +33,18 @@ if(NOT WIN32)
   set(BoldWhite     "${Esc}[1;37m" )
 endif()
 
+set( CMAKE_VERBOSE_MAKEFILE ON )
+
+project( cinder_linux )
+
+get_filename_component( CINDER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE )
+
+execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH )
+
+set( CINDER_INC_DIR ${CINDER_DIR}/include )
+set( CINDER_SRC_DIR ${CINDER_DIR}/src )
+set( CINDER_LIB_DIR ${CINDER_DIR}/lib/linux/${CINDER_ARCH} )
+
 if( "rpi2" STREQUAL "${CINDER_LINUX_TARGET}" )
 	if( NOT "arm7vl" STREQUAL "${CINDER_ARCH}" )
 		message( FATAL_ERROR "${BoldRed}Wrong architecture for Raspberry Pi 2: ${CINDER_ARCH}${ColorReset}" ) 
@@ -28,14 +52,8 @@ if( "rpi2" STREQUAL "${CINDER_LINUX_TARGET}" )
 	set( CINDER_LINUX_TARGET_RPI2 true )
 endif()
 
-get_filename_component( CINDER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE )
-
-# Needs to come ater compilers are set
-project( cinder_linux )
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
-
-include( ${CINDER_DIR}/tools/linux/Cinder.cmake )
 
 # Output path
 set( LIBRARY_OUTPUT_PATH "${CINDER_DIR}/lib/linux/${CINDER_ARCH}" )
@@ -67,9 +85,7 @@ set( C_FLAGS "-fvisibility=default -D_UNIX" )
 set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g" )
 set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -Os -ffast-math ${C_FLAGS}" )
   
-# Disable these warnings, many of which are coming from Boost
-set( CXX_DISABLE_WARNINGS "-Wno-reorder -Wno-unused-private-field -Wno-unused-local-typedef" )
-set( CXX_FLAGS "${CXX_FLAGS} -stdlib=libstdc++ -std=c++11 -fvisibility=default -D_UNIX ${CXX_DISABLE_WARNINGS}" )
+set( CXX_FLAGS "${CXX_FLAGS} -std=c++11 -fvisibility=default -D_UNIX" )
 set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" )
 set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" )
 
