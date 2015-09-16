@@ -87,7 +87,7 @@ done
 
 for build in ${BUILDTYPES[@]}; do
 	build_type=${build}
-	build_dir=$(pwd)/${build}
+	build_dir=$SCRIPT_DIR/../../linux/${build}
 
 	if [ -n "${CLEAN}" ]; then
 		echo "Cleaning ${build_type} ..."
@@ -96,8 +96,8 @@ for build in ${BUILDTYPES[@]}; do
 			echo "...deleted dir: ${build_dir}"
 		fi
 	else
-		if [ ! -f "${SCRIPT_DIR}/CMakeLists.txt" ]; then
-			echo "ERROR: Couldn't find CMakeLists.txt in ${SCRIPT_DIR}"
+		if [ ! -f "${SCRIPT_DIR}/../../linux/CMakeLists.txt" ]; then
+			echo "ERROR: Couldn't find CMakeLists.txt in ${SCRIPT_DIR}/../../linux"
 			exit
 		fi
 
@@ -110,7 +110,7 @@ for build in ${BUILDTYPES[@]}; do
 		fi
 
 		cd ${build_dir}
-		cmake ${SCRIPT_DIR} -DCMAKE_BUILD_TYPE=${build_type}
+		cmake .. -DCMAKE_BUILD_TYPE=${build_type}
 		make -j ${NUMPROCS} VERBOSE=1
 
 		echo -e ""
