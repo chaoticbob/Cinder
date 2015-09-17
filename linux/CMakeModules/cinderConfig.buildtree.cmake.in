@@ -1,0 +1,10 @@
+if( NOT TARGET cinder )
+    include( ${PROJECT_BINARY_DIR}/cinderTargets.cmake )
+endif()
+
+get_target_property( cinder_includes cinder INTERFACE_INCLUDE_DIRECTORIES )
+get_target_property( cinder_libs cinder INTERFACE_LINK_LIBRARIES )
+
+set( CINDER_INCLUDE_DIRS ${cinder_includes}  )
+set( CINDER_LIBS ${cinder_libs} )
+set( CINDER_FOUND TRUE )

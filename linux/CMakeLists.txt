@@ -53,7 +53,7 @@ if( "rpi2" STREQUAL "${CINDER_LINUX_TARGET}" )
 endif()
 
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
+set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules )
 
 # Output path
 set( LIBRARY_OUTPUT_PATH "${CINDER_DIR}/lib/linux/${CINDER_ARCH}" )
@@ -79,7 +79,7 @@ message( "${BoldGreen}CMAKE_NM          : ${CMAKE_NM}${ColorReset}" )
 message( "${BoldGreen}CMAKE_RANLIB      : ${CMAKE_RANLIB}${ColorReset}" ) 
 message( "" )
 
-include(CMakeModules/CinderSources.cmake)
+include( CMakeModules/CinderSources.cmake )
 
 set( C_FLAGS "-fvisibility=default -D_UNIX" )
 set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g" )
@@ -89,27 +89,42 @@ set( CXX_FLAGS "${CXX_FLAGS} -std=c++11 -fvisibility=default -D_UNIX" )
 set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" )
 set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" )
 
-
 add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
 
-set(CINDER_INCLUDE_DEPENDS)
-set(CINDER_LIBS_DEPENDS)
+set( CINDER_INCLUDE_DEPENDS )
+set( CINDER_LIBS_DEPENDS )
 
-list(APPEND CINDER_LIBS_DEPENDS dl pthread z GL X11 Xcursor Xinerama Xrandr Xi)
+list( APPEND CINDER_LIBS_DEPENDS dl pthread z GL X11 Xcursor Xinerama Xrandr Xi )
+
+#minimum 1.54 for Boost
+find_package( Boost 1.54 REQUIRED COMPONENTS system filesystem )
+list( APPEND CINDER_INCLUDE_DEPENDS ${BOOST_INCLUDE_DIRS} )
+list( APPEND CINDER_LIBS_DEPENDS ${BOOST_LIBRARIES} )
+
 find_package( Freetype2 REQUIRED )
-list(APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
-list(APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
+list( APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
+list( APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
 
 find_package( FontConfig REQUIRED )
-list(APPEND CINDER_INCLUDE_DEPENDS ${FONTCONFIG_INCLUDE_DIRS} )
-list(APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
+list( APPEND CINDER_INCLUDE_DEPENDS ${FONTCONFIG_INCLUDE_DIRS} )
+list( APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
 
+# Propagates include dirs through the INTERFACE_INCLUDE_DIRECTORIES property to targets linking with cinder.
 target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>")
 
-target_link_libraries( cinder INTERFACE ${CINDER_LIBS_DEPENDS} libboost_system.a libboost_filesystem.a )
+# Same idea as above but for library dependencies.
+target_link_libraries( cinder INTERFACE ${CINDER_LIBS_DEPENDS} )
 
 set_target_properties( cinder PROPERTIES LINKER_LANGUAGE CXX 
-                                DEBUG_POSTFIX "_d"
-                                )
+                                DEBUG_POSTFIX "_d" )
 
-add_subdirectory(${CINDER_DIR}/samples/BasicApp/linux ${CINDER_DIR}/samples/BasicApp/linux/Build) 
+# Export cinder for use through the cinderConfig.cmake file.
+export( TARGETS cinder FILE "${PROJECT_BINARY_DIR}/cinderTargets.cmake" )
+
+# Create the config file which can be used by find_package.a
+# It will be placed under the build directory of cinder.
+configure_file( "${PROJECT_SOURCE_DIR}/CMakeModules/cinderConfig.buildtree.cmake.in"
+                "${PROJECT_BINARY_DIR}/cinderConfig.cmake" )
+
+# Compile examples.
+add_subdirectory( ${CINDER_DIR}/samples/BasicApp/linux ${CINDER_DIR}/samples/BasicApp/linux/Build ) 
