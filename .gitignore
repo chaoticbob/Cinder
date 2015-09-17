@@ -30,11 +30,6 @@ Debug_ANGLE/
 Release_ANGLE/
 ipch/
 
-# doxygen generated files
-docs/html
-docs/doxygen/cinder.tag
-
-<<<<<<< HEAD
 # Android cruft
 *.swp
 .idea
@@ -50,14 +45,21 @@ lib/android/android-21/mips64/libcinder*.a
 lib/android/android-21/x86/libcinder*.a
 lib/android/android-21/x86_64/libcinder*.a
 
-*.iml
 local.properties
 proguard-rules.pro
 .gradle/
 jniLibs/
-=======
+
+# Jetbrains IDEs
+*.iml
+/.idea/workspace.xml
+/.idea/libraries
+
+# doxygen generated files
+docs/html
+docs/doxygen/cinder.tag
+
 # CinderBlocks
 blocks/
 !blocks/[__AppTemplates,Box2D,Cairo,FMOD,LocationManager,MotionManager,OSC,QuickTime,TUIO]
 
->>>>>>> upstream/master
