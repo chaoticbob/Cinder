@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
 
-set( CINDER_TOOLCHAIN_CLANG false )
+set( CINDER_TOOLCHAIN_CLANG true )
 
 if( CINDER_TOOLCHAIN_CLANG )
     set(CMAKE_TOOLCHAIN_PREFIX "llvm-" CACHE STRING "" FORCE ) 
@@ -79,7 +79,7 @@ message( "${BoldGreen}CMAKE_NM          : ${CMAKE_NM}${ColorReset}" )
 message( "${BoldGreen}CMAKE_RANLIB      : ${CMAKE_RANLIB}${ColorReset}" ) 
 message( "" )
 
-include( CMakeModules/CinderSources.cmake )
+include( ${CMAKE_MODULE_PATH}/CinderSources.cmake )
 
 set( C_FLAGS "-fvisibility=default -D_UNIX" )
 set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g" )
@@ -95,19 +95,40 @@ set( CINDER_INCLUDE_DEPENDS )
 set( CINDER_LIBS_DEPENDS )
 
 list( APPEND CINDER_LIBS_DEPENDS dl pthread z GL X11 Xcursor Xinerama Xrandr Xi )
+set( CINDER_USE_SYSTEM_INSTALLED_LIBS True )
 
-#minimum 1.54 for Boost
-find_package( Boost 1.54 REQUIRED COMPONENTS system filesystem )
-list( APPEND CINDER_INCLUDE_DEPENDS ${BOOST_INCLUDE_DIRS} )
-list( APPEND CINDER_LIBS_DEPENDS ${BOOST_LIBRARIES} )
+if( CINDER_USE_SYSTEM_INSTALLED_LIBS )
 
-find_package( Freetype2 REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
-list( APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
+    #minimum 1.54 for Boost
+    find_package( Boost 1.54 REQUIRED COMPONENTS system filesystem )
+    list( APPEND CINDER_INCLUDE_DEPENDS ${Boost_INCLUDE_DIRS} )
+    list( APPEND CINDER_LIBS_DEPENDS ${Boost_LIBRARIES} )
 
-find_package( FontConfig REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS ${FONTCONFIG_INCLUDE_DIRS} )
-list( APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
+    find_package( Freetype2 REQUIRED )
+    message(STATUS ${FREETYPE2_INCLUDE_DIRS})
+    list( APPEND CINDER_INCLUDE_DEPENDS ${FREETYPE2_INCLUDE_DIRS} )
+    list( APPEND CINDER_LIBS_DEPENDS ${FREETYPE2_LIBRARIES} )
+
+    find_package( FontConfig REQUIRED )
+    list( APPEND CINDER_INCLUDE_DEPENDS ${FONTCONFIG_INCLUDE_DIRS} )
+    list( APPEND CINDER_LIBS_DEPENDS ${FONTCONFIG_LIBRARIES} )
+else()
+    include(${CMAKE_MODULE_PATH}/FreetypeSources.cmake)
+
+    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -DFT2_BUILD_LIBRARY -DFT_DEBUG_LEVEL_TRACE -D_UNIX" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFT2_BUILD_LIBRARY -DFT_DEBUG_LEVEL_TRACE -D_UNIX" )
+
+    list( APPEND CINDER_C_SRC_FILES  
+            ${FREETYPE_SOURCES}
+        )
+
+    list( APPEND CINDER_INCLUDE_DEPENDS "${CINDER_INC_DIR}/freetype" )
+    list( APPEND CINDER_INCLUDE_DEPENDS ${CINDER_INC_DIR}/boost
+        )
+    list( APPEND CINDER_LIBS_DEPENDS ${CINDER_LIB_DIR}/libboost_system.a ${CINDER_LIB_DIR}/libboost_filesystem.a
+        )
+
+endif()
 
 # Propagates include dirs through the INTERFACE_INCLUDE_DIRECTORIES property to targets linking with cinder.
 target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>")
