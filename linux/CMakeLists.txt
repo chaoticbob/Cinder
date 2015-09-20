@@ -89,12 +89,35 @@ set( CXX_FLAGS "${CXX_FLAGS} -std=c++11 -fvisibility=default -D_UNIX" )
 set( CMAKE_CXX_FLAGS_DEBUG    "${CXX_FLAGS} -g -fexceptions -frtti" )
 set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -Os -fexceptions -frtti -ffast-math" )
 
-add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
 
 set( CINDER_INCLUDE_DEPENDS )
 set( CINDER_LIBS_DEPENDS )
 
-list( APPEND CINDER_LIBS_DEPENDS dl pthread z GL X11 Xcursor Xinerama Xrandr Xi )
+# Find OpenGL.
+find_package( OpenGL REQUIRED )
+list( APPEND CINDER_INCLUDE_DEPENDS ${OPENGL_INCLUDE_DIR} )
+list( APPEND CINDER_LIBS_DEPENDS ${OPENGL_LIBRARIES} )
+
+set( CINDER_USE_X11 True )
+# Find X11 if we are using X11.
+if( CINDER_USE_X11 )
+    find_package( X11 REQUIRED )
+    list( APPEND CINDER_INCLUDE_DEPENDS ${X11_INCLUDE_DIR} )
+    list( APPEND CINDER_LIBS_DEPENDS ${X11_LIBRARIES} Xcursor Xinerama Xrandr Xi )
+endif()
+
+# Find pthreads.
+find_package( Threads REQUIRED )
+list( APPEND CINDER_LIBS_DEPENDS ${CMAKE_THREAD_LIBS_INIT} )
+
+# Find ZLib
+find_package( ZLIB REQUIRED )
+list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
+list( APPEND CINDER_LIBS_DEPENDS ${ZLIB_LIBRARIES} )
+
+# Add dl ( TODO : Replace with find_package )
+list( APPEND CINDER_LIBS_DEPENDS dl )
+
 set( CINDER_USE_SYSTEM_INSTALLED_LIBS True )
 
 if( CINDER_USE_SYSTEM_INSTALLED_LIBS )
@@ -122,13 +145,16 @@ else()
             ${FREETYPE_SOURCES}
         )
 
-    list( APPEND CINDER_INCLUDE_DEPENDS "${CINDER_INC_DIR}/freetype" )
-    list( APPEND CINDER_INCLUDE_DEPENDS ${CINDER_INC_DIR}/boost
-        )
+    list( APPEND CINDER_INCLUDE_DEPENDS ${CINDER_INC_DIR}/freetype 
+                                ${CINDER_INC_DIR}/boost
+                                )
+
     list( APPEND CINDER_LIBS_DEPENDS ${CINDER_LIB_DIR}/libboost_system.a ${CINDER_LIB_DIR}/libboost_filesystem.a
         )
 
 endif()
+
+add_library( cinder STATIC ${CINDER_C_SRC_FILES} ${CINDER_CXX_SRC_FILES} )
 
 # Propagates include dirs through the INTERFACE_INCLUDE_DIRECTORIES property to targets linking with cinder.
 target_include_directories( cinder PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>")
