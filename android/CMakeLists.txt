@@ -500,13 +500,13 @@ set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -Os -ffast-math ${C_FLAGS}" )
 
 # CXX_FLAGS
 if( NDK_TOOLCHAIN_CLANG )
-    set( CXX_FLAGS "-gcc-toolchain ${NDK_ROOT}/toolchains/arm-linux-androideabi-4.9/prebuilt/${NDK_TOOLCHAIN_HOST} ${ARCH_FLAGS} -fvisibility=default -std=c++11 -stdlib=libstdc++ -ffunction-sections -funwind-tables -Wno-invalid-command-line-argument -Wno-unused-command-line-argument -no-canonical-prefixes -fomit-frame-pointer -DANDROID -DFT2_BUILD_LIBRARY" )
+    set( CXX_FLAGS "-gcc-toolchain ${NDK_ROOT}/toolchains/arm-linux-androideabi-4.9/prebuilt/${NDK_TOOLCHAIN_HOST} ${ARCH_FLAGS} -fvisibility=default -fsigned-char -std=c++11 -stdlib=libstdc++ -ffunction-sections -funwind-tables -Wno-invalid-command-line-argument -Wno-unused-command-line-argument -no-canonical-prefixes -fomit-frame-pointer -DANDROID -DFT2_BUILD_LIBRARY" )
 	include_directories(
 		${NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/4.9/include
 		${NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/4.9/libs/${NDK_ARCH}/include
 	)
 else()
-    set( CXX_FLAGS "${ARCH_FLAGS} -fvisibility=default -std=c++11 -fsigned-char -DFT2_BUILD_LIBRARY" )
+    set( CXX_FLAGS "${ARCH_FLAGS} -fvisibility=default -fsigned-char -std=c++11 -DFT2_BUILD_LIBRARY" )
 endif()
 if( NDK_GLES2 )
     set( CXX_FLAGS "-DCINDER_GL_ES_2 ${CXX_FLAGS}")
