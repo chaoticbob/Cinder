@@ -486,9 +486,9 @@ endif()
 
 # C_FLAGS
 if( NDK_TOOLCHAIN_CLANG )
-    set( C_FLAGS "-DANDROID -DFT2_BUILD_LIBRARY ${ARCH_FLAGS} -fvisibility=default" )
+    set( C_FLAGS "-DANDROID -DFT2_BUILD_LIBRARY ${ARCH_FLAGS} -fvisibility=default -fsigned-char" )
 else()
-    set( C_FLAGS "-DFT2_BUILD_LIBRARY ${ARCH_FLAGS} -fvisibility=default" )
+    set( C_FLAGS "-DFT2_BUILD_LIBRARY ${ARCH_FLAGS} -fvisibility=default -fsigned-char" )
 endif()
 if( NDK_GLES2 )
     set( C_FLAGS "-DCINDER_GL_ES_2 ${C_FLAGS}")
@@ -506,7 +506,7 @@ if( NDK_TOOLCHAIN_CLANG )
 		${NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/4.9/libs/${NDK_ARCH}/include
 	)
 else()
-    set( CXX_FLAGS "${ARCH_FLAGS} -fvisibility=default -std=c++11 -DFT2_BUILD_LIBRARY" )
+    set( CXX_FLAGS "${ARCH_FLAGS} -fvisibility=default -std=c++11 -fsigned-char -DFT2_BUILD_LIBRARY" )
 endif()
 if( NDK_GLES2 )
     set( CXX_FLAGS "-DCINDER_GL_ES_2 ${CXX_FLAGS}")
@@ -639,6 +639,7 @@ set( CINDER_CXX_SRC_FILES
     ${CINDER_SRC_DIR}/cinder/svg/Svg.cpp
 
     ${CINDER_SRC_DIR}/cinder/Area.cpp
+    ${CINDER_SRC_DIR}/cinder/Base64.cpp
     ${CINDER_SRC_DIR}/cinder/BSpline.cpp
     ${CINDER_SRC_DIR}/cinder/BSplineFit.cpp
     ${CINDER_SRC_DIR}/cinder/Buffer.cpp
