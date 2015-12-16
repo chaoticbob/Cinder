@@ -1,11 +1,21 @@
 cmake_minimum_required( VERSION 3.0 FATAL_ERROR )
 set( CMAKE_VERBOSE_MAKEFILE on )
 
+# Suppress compiler checks. Why? CMake seems to be inconsistent
+# with how it checks compilers on different platforms. 
+set( CMAKE_C_COMPILER_WORKS   1 )
+set( CMAKE_CXX_COMPILER_WORKS 1 )
+
 # Module path
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
 # Find architecture name
 execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH )
+
+set( RPI2_ROOT				"/home/hai/code/rpi2/rpi2_root" )
+set( RPI2_TOOLCHAIN_ROOT 	"/home/hai/code/rpi2/toolchain" )
+set( RPI2_TOOLCHAIN_NAME 	"armv7a-rpi2-linux-gnueabihf"  )
+set( RPI2_TOOLCHAIN_PREFIX	"${RPI2_TOOLCHAIN_ROOT}/bin/${RPI2_TOOLCHAIN_NAME}" )
 
 set( CINDER_INCLUDE_DEPENDS )
 set( CINDER_LIBS_DEPENDS )
@@ -24,14 +34,14 @@ if( CINDER_LINUX_EGL_RPI2 )
     set( CINDER_USE_SYSTEM_GL_HEADERS 	false )
 
     list( APPEND CINDER_INCLUDE_DEPENDS 
-		/opt/vc/include
-		/opt/vc/include/interface/vcos/pthreads 
+		${RPI2_ROOT}/opt/vc/include
+		${RPI2_ROOT}/opt/vc/include/interface/vcos/pthreads 
 	)
 
     list( APPEND CINDER_LIBS_DEPENDS 
-		/opt/vc/lib/libEGL.so
-		/opt/vc/lib/libGLESv2.so 
-		/opt/vc/lib/libbcm_host.so 
+		${RPI2_ROOT}/opt/vc/lib/libEGL.so
+		${RPI2_ROOT}/opt/vc/lib/libGLESv2.so 
+		${RPI2_ROOT}/opt/vc/lib/libbcm_host.so 
 	)
 endif()
 
@@ -92,7 +102,7 @@ if( NOT CINDER_TOOLCHAIN_GCC AND CLANG_FOUND )
     set( CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT	"-O2 -g" 		CACHE STRING "" FORCE )
     set( CMAKE_CCC_FLAGS						"${CMAKE_C_FLAGS} -fmessage-length=0 " CACHE STRING "" FORCE )
 
-    set( STDCXXLIB                           	"-stdlib=libstdc++" )
+    #set( STDCXXLIB                           	"-stdlib=libstdc++" )
 else()
 	# Keep these versionless
     set( CMAKE_C_COMPILER						"gcc"	CACHE FILEPATH "" FORCE )
@@ -100,6 +110,16 @@ else()
 	set( CINDER_TOOLCHAIN_GCC 					true 	CACHE BOOL "" FORCE )
 	set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 endif()
+
+set( CMAKE_SYSROOT			"/home/hai/code/rpi2/toolchain/armv7a-rpi2-linux-gnueabihf/sysroot" CACHE FILEPATH "" FORCE )
+set( CMAKE_C_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-gcc"		CACHE FILEPATH "" FORCE )
+set( CMAKE_CXX_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-g++"		CACHE FILEPATH "" FORCE )
+set( CMAKE_AR          		"${RPI2_TOOLCHAIN_PREFIX}-ar"		CACHE FILEPATH "" FORCE )
+set( CMAKE_LINKER       	"${RPI2_TOOLCHAIN_PREFIX}-ld"		CACHE FILEPATH "" FORCE )
+set( CMAKE_NM           	"${RPI2_TOOLCHAIN_PREFIX}-nm"		CACHE FILEPATH "" FORCE )
+set( CMAKE_RANLIB       	"${RPI2_TOOLCHAIN_PREFIX}-ranlib"	CACHE FILEPATH "" FORCE )
+set( CINDER_TOOLCHAIN_GCC 					true 	CACHE BOOL "" FORCE )
+set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 
 # Needs to come after compilers are set
 project( cinder_linux )
@@ -165,6 +185,8 @@ elseif( CINDER_TOOLCHAIN_GCC )
 	if( ( "${GCC_VERSION}" VERSION_GREATER 5.0 ) OR ( "${GCC_VERSION}" VERSION_EQUAL 5.0 ) )
 		# Disable these warnings, many of which are coming from Boost - append at end
 		set( CXX_DISABLE_WARNINGS "-Wno-deprecated-declarations" )
+	else()
+		set( CXX_DISABLE_WARNINGS "-Wno-reorder -Wno-comment" )
 	endif()
 endif()
 
@@ -174,6 +196,13 @@ set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -O3 -fexceptions -frtti -ffast-math 
 
 # Include directories
 include(${CMAKE_MODULE_PATH}/CinderIncludes.cmake)
+list( APPEND CINDER_INCLUDE_DIRS 
+	/home/hai/code/rpi2/toolchain/armv7a-rpi2-linux-gnueabihf/sysroot/usr/include
+	${RPI2_ROOT}/usr/include
+	${RPI2_ROOT}/usr/include/gstreamer-1.0
+	${RPI2_ROOT}/usr/include/glib-2.0
+	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/glib-2.0/include
+)
 
 # Source files
 include(${CMAKE_MODULE_PATH}/CinderSources.cmake)
@@ -196,35 +225,37 @@ if( CINDER_USE_X11 )
     list( APPEND CINDER_LIBS_DEPENDS 	${X11_LIBRARIES} Xcursor Xinerama Xrandr Xi )
 endif()
 
-# zlib
-find_package( ZLIB REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
-list( APPEND CINDER_LIBS_DEPENDS 	${ZLIB_LIBRARIES} )
+## zlib
+#find_package( ZLIB REQUIRED  )
+#list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
+#list( APPEND CINDER_LIBS_DEPENDS 	${ZLIB_LIBRARIES} )
+#message( "${ZLIB_INCLUDE_DIR}" )
+#message( "${ZLIB_LIBRARIES}" )
 
-# curl
-find_package( CURL REQUIRED )
-list( APPEND CINDER_LIBS_DEPENDS ${CURL_LIBRARIES} )
+## curl
+#find_package( CURL REQUIRED )
+#list( APPEND CINDER_LIBS_DEPENDS ${CURL_LIBRARIES} )
 
-# fontconfig
-find_package( FontConfig REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS ${FONTGONFIG_INCLUDE_DIRS} )
-list( APPEND CINDER_LIBS_DEPENDS 	${FONTCONFIG_LIBRARIES} )
+## fontconfig
+#find_package( FontConfig REQUIRED )
+#list( APPEND CINDER_INCLUDE_DEPENDS ${FONTGONFIG_INCLUDE_DIRS} )
+#list( APPEND CINDER_LIBS_DEPENDS 	${FONTCONFIG_LIBRARIES} )
 
-# PulseAudio
-find_package( PulseAudio REQUIRED )
-list( APPEND CINDER_LIBS_DEPENDS ${PULSEAUDIO_LIBRARY} )
+## PulseAudio
+#find_package( PulseAudio REQUIRED )
+#list( APPEND CINDER_LIBS_DEPENDS ${PULSEAUDIO_LIBRARY} )
 
-# mpg123
-find_package( MPG123 REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS ${MPG123_INCLUDE_DIR} )
-list( APPEND CINDER_LIBS_DEPENDS 	${MPG123_LIBRARY} )
+## mpg123
+#find_package( MPG123 REQUIRED )
+#list( APPEND CINDER_INCLUDE_DEPENDS ${MPG123_INCLUDE_DIR} )
+#list( APPEND CINDER_LIBS_DEPENDS 	${MPG123_LIBRARY} )
 
-# sndfile
-find_package( SNDFILE REQUIRED )
-list( APPEND CINDER_LIBS_DEPENDS ${SNDFILE_LIBRARY} )
+## sndfile
+#find_package( SNDFILE REQUIRED )
+#list( APPEND CINDER_LIBS_DEPENDS ${SNDFILE_LIBRARY} )
 
 # GStreamer
-set( CINDER_USE_GSTREAMER true )
+set( CINDER_USE_GSTREAMER false )
 
 if( CINDER_USE_GSTREAMER )
     find_package (Glib REQUIRED COMPONENTS gobject )
