@@ -189,11 +189,11 @@ do
 	esac
 done
 
-if [ ! -z "${RPI2}" ]; then
-	if [ ! -z "${GCC}" ] && [ "${NUMPROCS}" -ge "4" ]; then
-		NUMPROCS=3
-	fi
-fi
+#if [ ! -z "${RPI2}" ]; then
+#	if [ ! -z "${GCC}" ] && [ "${NUMPROCS}" -ge "4" ]; then
+#		NUMPROCS=3
+#	fi
+#fi
 
 for build in ${BUILD_TYPES[@]}; do
 	build_type=${build}

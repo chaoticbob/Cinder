@@ -12,9 +12,11 @@ set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 # Find architecture name
 execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH )
 
+set( CINDER_ARCH "armv7l" )
+
 set( RPI2_ROOT				"/home/hai/code/rpi2/rpi2_root" )
 set( RPI2_TOOLCHAIN_ROOT 	"/home/hai/code/rpi2/toolchain" )
-set( RPI2_TOOLCHAIN_NAME 	"armv7a-rpi2-linux-gnueabihf"  )
+set( RPI2_TOOLCHAIN_NAME 	"arm-unknown-linux-gnueabihf"  )
 set( RPI2_TOOLCHAIN_PREFIX	"${RPI2_TOOLCHAIN_ROOT}/bin/${RPI2_TOOLCHAIN_NAME}" )
 
 set( CINDER_INCLUDE_DEPENDS )
@@ -111,7 +113,7 @@ else()
 	set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 endif()
 
-set( CMAKE_SYSROOT			"/home/hai/code/rpi2/toolchain/armv7a-rpi2-linux-gnueabihf/sysroot" CACHE FILEPATH "" FORCE )
+set( CMAKE_SYSROOT			"/home/hai/code/rpi2/rpi2_root" CACHE FILEPATH "" FORCE )
 set( CMAKE_C_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-gcc"		CACHE FILEPATH "" FORCE )
 set( CMAKE_CXX_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-g++"		CACHE FILEPATH "" FORCE )
 set( CMAKE_AR          		"${RPI2_TOOLCHAIN_PREFIX}-ar"		CACHE FILEPATH "" FORCE )
@@ -165,6 +167,9 @@ endif()
 
 # C flags
 set( C_FLAGS "-fvisibility=default -D_UNIX ${GLFW_FLAGS} ${CINDER_GL_ES_FLAGS}" )
+if( CINDER_LINUX_EGL_RPI2 )
+	set( C_FLAGS "-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard ${C_FLAGS}" )
+endif()
 
 # Disable warnings for C files - append at end
 set( C_DISABLE_WARNINGS "-Wno-unused-function" )
@@ -175,6 +180,10 @@ set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -O3 -ffast-math ${C_DISABLE_WARNINGS}" )
 
 # C++ flags - TODO: Add logic for the case when GCC5's new C++ ABI is desired.
 set( CXX_FLAGS "${STDCXXLIB} -std=c++11 -fvisibility=default -D_UNIX" )
+if( CINDER_LINUX_EGL_RPI2 )
+	set( CXX_FLAGS "-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard ${CXX_FLAGS}" )
+endif()
+
 list( APPEND CINDER_DEFINITIONS "-D_GLIBCXX_USE_CXX11_ABI=0" )
 
 if( CINDER_TOOLCHAIN_CLANG )
@@ -197,8 +206,7 @@ set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -O3 -fexceptions -frtti -ffast-math 
 # Include directories
 include(${CMAKE_MODULE_PATH}/CinderIncludes.cmake)
 list( APPEND CINDER_INCLUDE_DIRS 
-	/home/hai/code/rpi2/toolchain/armv7a-rpi2-linux-gnueabihf/sysroot/usr/include
-	${RPI2_ROOT}/usr/include
+	${RPI2_ROOT}/usr/include/arm-linux-gnueabihf
 	${RPI2_ROOT}/usr/include/gstreamer-1.0
 	${RPI2_ROOT}/usr/include/glib-2.0
 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/glib-2.0/include
@@ -229,30 +237,33 @@ endif()
 #find_package( ZLIB REQUIRED  )
 #list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
 #list( APPEND CINDER_LIBS_DEPENDS 	${ZLIB_LIBRARIES} )
-#message( "${ZLIB_INCLUDE_DIR}" )
-#message( "${ZLIB_LIBRARIES}" )
+list( APPEND CINDER_INCLUDE_DEPENDS ${RPI2_ROOT}/usr/include )
+list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libz.so )
 
 ## curl
 #find_package( CURL REQUIRED )
-#list( APPEND CINDER_LIBS_DEPENDS ${CURL_LIBRARIES} )
+#list( APPEND CINDER_LIBS_DEPENDS	${CURL_LIBRARIES} )
+list( APPEND CINDER_LIBS_DEPENDS	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libcurl.so )
 
 ## fontconfig
 #find_package( FontConfig REQUIRED )
 #list( APPEND CINDER_INCLUDE_DEPENDS ${FONTGONFIG_INCLUDE_DIRS} )
 #list( APPEND CINDER_LIBS_DEPENDS 	${FONTCONFIG_LIBRARIES} )
+list( APPEND CINDER_INCLUDE_DEPENDS ${RPI2_ROOT}/usr/include )
+list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libfontconfig.so )
 
 ## PulseAudio
 #find_package( PulseAudio REQUIRED )
-#list( APPEND CINDER_LIBS_DEPENDS ${PULSEAUDIO_LIBRARY} )
+list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libpulse.so )
 
 ## mpg123
 #find_package( MPG123 REQUIRED )
-#list( APPEND CINDER_INCLUDE_DEPENDS ${MPG123_INCLUDE_DIR} )
-#list( APPEND CINDER_LIBS_DEPENDS 	${MPG123_LIBRARY} )
+list( APPEND CINDER_INCLUDE_DEPENDS	${MPG123_INCLUDE_DIR} )
+list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libmpg123.so )
 
 ## sndfile
 #find_package( SNDFILE REQUIRED )
-#list( APPEND CINDER_LIBS_DEPENDS ${SNDFILE_LIBRARY} )
+list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libsndfile.so  )
 
 # GStreamer
 set( CINDER_USE_GSTREAMER false )
@@ -353,14 +364,14 @@ target_compile_definitions( cinder${CINDER_LIB_SUFFIX} PUBLIC ${CINDER_DEFINITIO
 # Include directories.
 target_include_directories( cinder${CINDER_LIB_SUFFIX} PUBLIC "$<BUILD_INTERFACE:${CINDER_INCLUDE_DIRS};${CINDER_INCLUDE_DEPENDS}>" )
 
-# NOTE: This needs to come after all the other includedirectories so that boost/asio doesn't get
-#       precendence over cinder/include/asio.
-#
-# There is a conflict between boost/regex.h and /usr/include/regex.h when building the examples
-# so avoid propagating the boost dirs across the compilation of samples.
-if( NOT CINDER_USE_SYSTEM_LIBS )
-    target_include_directories( cinder${CINDER_LIB_SUFFIX} PRIVATE ${CINDER_INC_DIR}/boost )
-endif()
+## NOTE: This needs to come after all the other includedirectories so that boost/asio doesn't get
+##       precendence over cinder/include/asio.
+##
+## There is a conflict between boost/regex.h and /usr/include/regex.h when building the examples
+## so avoid propagating the boost dirs across the compilation of samples.
+#if( NOT CINDER_USE_SYSTEM_LIBS )
+#    target_include_directories( cinder${CINDER_LIB_SUFFIX} PRIVATE ${CINDER_INC_DIR}/boost )
+#endif()
 
 
 # Link libraries.

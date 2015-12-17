@@ -32,3 +32,8 @@ target_include_directories(
 )
 
 target_link_libraries( "${EXE_NAME}" cinder${CINDER_LIB_SUFFIX} )
+
+set( FAKE_SYSROOT 	"/home/hai/code/rpi2/rpi2_root" )
+set( FAKE_LIB 		"${FAKE_SYSROOT}/usr/lib/arm-linux-gnueabihf" )
+set( FAKE_ARCH	 	"arm-linux-gnueabihf" )
+set( CMAKE_EXE_LINKER_FLAGS "-L${FAKE_LIB} -Wl,-rpath,${FAKE_SYSROOT}/lib/${FAKE_ARCH}:${FAKE_SYSROOT}/usr/lib/${FAKE_ARCH}:${FAKE_SYSROOT}/opt/vc/lib" )
