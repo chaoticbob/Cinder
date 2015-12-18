@@ -19,10 +19,11 @@ if( CINDER_RPI2_SYSROOT AND CINDER_RPI2_TOOLCHAIN_ROOT AND CINDER_RPI2_TOOLCHAIN
 	# Full toolchain prefix
 	set( CINDER_RPI2_TOOLCHAIN_PREFIX "${CINDER_RPI2_TOOLCHAIN_ROOT}/bin/${CINDER_RPI2_TOOLCHAIN_NAME}" )
 
-	# Force GCC toolchain
-	set( CINDER_TOOLCHAIN_GCC true )
-
+	# This is the toolchain name used on Raspbian itself
 	set( CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME "arm-linux-gnueabihf" )
+
+	# Force GCC for cross compile
+	set( CINDER_TOOLCHAIN_GCC TRUE )
 
 	# Override the arch
 	set( CINDER_ARCH "armv7l" )
@@ -87,9 +88,7 @@ set( CINDER_INC_DIR ${CINDER_DIR}/include )
 set( CINDER_SRC_DIR ${CINDER_DIR}/src )
 set( CINDER_LIB_DIR ${CINDER_DIR}/lib/linux/${CINDER_ARCH} )
 
-if( NOT CINDER_RPI2_CROSS_COMPILE )
-	find_package( CLANG )
-endif()
+find_package( CLANG )
 
 if( NOT CINDER_TOOLCHAIN_GCC AND CLANG_FOUND )
 	set( CINDER_TOOLCHAIN_CLANG TRUE )
@@ -101,37 +100,26 @@ if( NOT CINDER_TOOLCHAIN_GCC AND CLANG_FOUND )
     set( CMAKE_NM           					"${CLANG_LLVM_NM}"		CACHE FILEPATH "" FORCE )
     set( CMAKE_RANLIB       					"${CLANG_LLVM_RANLIB}"	CACHE FILEPATH "" FORCE )
 
-    set( CMAKE_C_FLAGS_INIT						"-Wall -std=c99" 	CACHE STRING "" FORCE )
-    set( CMAKE_C_FLAGS_DEBUG_INIT				"-g" 				CACHE STRING "" FORCE )
-    set( CMAKE_C_FLAGS_MINSIZEREL_INIT			"-Os -DNDEBUG" 		CACHE STRING "" FORCE )
-    set( CMAKE_C_FLAGS_RELEASE_INIT				"-O4 -DNDEBUG" 		CACHE STRING "" FORCE )
-    set( CMAKE_C_FLAGS_RELWITHDEBINFO_INIT		"-O2 -g" 			CACHE STRING "" FORCE )
-    set( CMAKE_C_FLAGS							"${CMAKE_C_FLAGS} -fmessage-length=0 " CACHE STRING "" FORCE )
-
-    set( CMAKE_CXX_FLAGS_INIT					"-Wall" 		CACHE STRING "" FORCE )
-    set( CMAKE_CXX_FLAGS_DEBUG_INIT				"-g" 			CACHE STRING "" FORCE )
-    set( CMAKE_CXX_FLAGS_MINSIZEREL_INIT		"-Os -DNDEBUG" 	CACHE STRING "" FORCE ) 
-    set( CMAKE_CXX_FLAGS_RELEASE_INIT			"-O4 -DNDEBUG" 	CACHE STRING "" FORCE )
-    set( CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT	"-O2 -g" 		CACHE STRING "" FORCE )
-    set( CMAKE_CCC_FLAGS						"${CMAKE_C_FLAGS} -fmessage-length=0 " CACHE STRING "" FORCE )
-
     set( STDCXXLIB                           	"-stdlib=libstdc++" )
-elseif( CINDER_RPI2_CROSS_COMPILE )
+else()
+	# Keep these versionless
+    set( CMAKE_C_COMPILER						"gcc"	CACHE FILEPATH "" FORCE )
+    set( CMAKE_CXX_COMPILER						"g++" 	CACHE FILEPATH "" FORCE )
+	set( CINDER_TOOLCHAIN_GCC 					TRUE 	CACHE BOOL "" FORCE )
+	set( CINDER_TOOLCHAIN_CLANG 				FALSE 	CACHE BOOL "" FORCE )
+endif()
+
+
+if( CINDER_RPI2_CROSS_COMPILE )
 	set( CMAKE_SYSROOT							"${CINDER_RPI2_SYSROOT}"					CACHE FILEPATH "" FORCE )
+	set( CINDER_RPI2_PLATFORM_FLAGS				"-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard" CACHE STRING "" FORCE )
+
 	set( CMAKE_C_COMPILER						"${CINDER_RPI2_TOOLCHAIN_PREFIX}-gcc"		CACHE FILEPATH "" FORCE )
 	set( CMAKE_CXX_COMPILER						"${CINDER_RPI2_TOOLCHAIN_PREFIX}-g++"		CACHE FILEPATH "" FORCE )
 	set( CMAKE_AR								"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ar"		CACHE FILEPATH "" FORCE )
 	set( CMAKE_LINKER							"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ld"		CACHE FILEPATH "" FORCE )
 	set( CMAKE_NM								"${CINDER_RPI2_TOOLCHAIN_PREFIX}-nm"		CACHE FILEPATH "" FORCE )
 	set( CMAKE_RANLIB							"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ranlib"	CACHE FILEPATH "" FORCE )
-	set( CINDER_TOOLCHAIN_GCC					true										CACHE BOOL "" FORCE )
-	set( CINDER_TOOLCHAIN_CLANG					false										CACHE BOOL "" FORCE )
-else()
-	# Keep these versionless
-    set( CMAKE_C_COMPILER						"gcc"	CACHE FILEPATH "" FORCE )
-    set( CMAKE_CXX_COMPILER						"g++" 	CACHE FILEPATH "" FORCE )
-	set( CINDER_TOOLCHAIN_GCC 					true 	CACHE BOOL "" FORCE )
-	set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 endif()
 
 
@@ -179,7 +167,7 @@ endif()
 # C flags
 set( C_FLAGS "-fvisibility=default -D_UNIX ${GLFW_FLAGS} ${CINDER_GL_ES_FLAGS}" )
 if( CINDER_LINUX_EGL_RPI2 )
-	set( C_FLAGS "-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard ${C_FLAGS}" )
+	set( C_FLAGS "${CINDER_RPI2_PLATFORM_FLAGS} ${C_FLAGS}" )
 endif()
 
 # Disable warnings for C files - append at end
@@ -189,10 +177,10 @@ set( C_DISABLE_WARNINGS "-Wno-unused-function" )
 set( CMAKE_C_FLAGS_DEBUG   "${C_FLAGS} -g3 -ggdb3 -O0 ${C_DISABLE_WARNINGS}" )
 set( CMAKE_C_FLAGS_RELEASE "${C_FLAGS} -O3 -ffast-math ${C_DISABLE_WARNINGS}" )
 
-# C++ flags - TODO: Add logic for the case when GCC5's new C++ ABI is desired.
+# C++ flags
 set( CXX_FLAGS "${STDCXXLIB} -std=c++11 -fvisibility=default -D_UNIX" )
 if( CINDER_LINUX_EGL_RPI2 )
-	set( CXX_FLAGS "-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard ${CXX_FLAGS}" )
+	set( CXX_FLAGS "${CINDER_RPI2_PLATFORM_FLAGS} ${CXX_FLAGS}" )
 endif()
 
 list( APPEND CINDER_DEFINITIONS "-D_GLIBCXX_USE_CXX11_ABI=0" )
@@ -218,10 +206,12 @@ set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -O3 -fexceptions -frtti -ffast-math 
 include(${CMAKE_MODULE_PATH}/CinderIncludes.cmake)
 if( CINDER_RPI2_CROSS_COMPILE )
 	list( APPEND CINDER_INCLUDE_DIRS 
+		${CINDER_RPI2_TOOLCHAIN_ROOT}/${CINDER_RPI2_TOOLCHAIN_NAME}/include/c++/4.9.4
+		${CINDER_RPI2_TOOLCHAIN_ROOT}/${CINDER_RPI2_TOOLCHAIN_NAME}/include/c++/4.9.4/${CINDER_RPI2_TOOLCHAIN_NAME}
 		${CINDER_RPI2_SYSROOT}/usr/include/arm-linux-gnueabihf
 		${CINDER_RPI2_SYSROOT}/usr/include/gstreamer-1.0
 		${CINDER_RPI2_SYSROOT}/usr/include/glib-2.0
-		${CINDER_RPI2_SYSROOT}/usr/lib/arm-linux-gnueabihf/glib-2.0/include
+		${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/glib-2.0/include
 	)
 endif()
 
