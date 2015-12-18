@@ -1,6 +1,7 @@
 #!/bin/bash
 
-if (( $# == 0 )); then
+function print_help()
+{
     echo -e  "cibuilder.sh - Cinder for Linux wrapper script"
     echo -e "usage examples:"
     echo -e "\tcibuilder.sh -j 4 -b Debug"
@@ -19,7 +20,15 @@ if (( $# == 0 )); then
     echo -e "\t-rpi2    Build for Raspberry Pi 2 (must be on platform)"
     echo -e "\t-r       Rebuild instead of full build"
     echo -e "\t-v       Turns on verbose mode"
-    #echo -e ""
+	echo -e ""
+	echo -e "\t-rpi2-sysroot [str]          Path to Raspberry Pi 2 sysroot"
+	echo -e "\t-rpi2-toolchain-root [str]   Path to Raspberry Pi 2 toolchain root"
+	echo -e "\t-rpi2-toolchain-name [str]   Raspberry Pi 2 toolchain name"
+    echo -e ""
+}
+
+if [ $# == 0 ]; then
+	print_help
     exit 0
 fi
 
@@ -37,6 +46,10 @@ CINDER_OUT_DIR_PREFIX="-DCINDER_OUT_DIR_PREFIX:STRING=ogl"
 CINDER_LIB_SUFFIX="-DCINDER_LIB_SUFFIX:STRING="
 FULLBUILD=true
 RPI2=
+RPI2_CROSS_COMPILE=false
+RPI2_SYSROOT=
+RPI2_TOOLCHAIN_ROOT=
+RPI2_TOOLCHAIN_NAME="-DCINDER_RPI2_TOOLCHAIN_NAME=arm-unknown-linux-gnueabihf"
 VERBOSE=
 APP_BUILD=false
 SAMPLES=
@@ -151,6 +164,24 @@ do
 			shift 1
 		;;
 
+		# Rapsberry Pi 2 virtual system root
+		-rpi2-sysroot)
+			RPI2_SYSROOT="-DCINDER_RPI2_SYSROOT=$2"
+			shift 2
+		;;
+
+		# Raspberry Pi 2 toolchain root
+		-rpi2-toolchain-root)
+			RPI2_TOOLCHAIN_ROOT="-DCINDER_RPI2_TOOLCHAIN_ROOT=$2"
+			shift 2
+		;;
+
+		# Raspberry Pi 2 toolchain name
+		-rpi2-toolchain-name)
+			RPI2_TOOLCHAIN_NAME="-DCINDER_RPI2_TOOLCHAIN_NAME=$2"
+			shift 2
+		;;
+
         # Rebuild
         -r)
 			FULLBUILD=false
@@ -182,6 +213,12 @@ do
 			shift
 		;;
 
+		# Help
+		-h|-help)
+			print_help
+			exit 0
+		;;
+
 		?*)
 			echo "Unknown parameter: ${arg}"
 			exit 1
@@ -189,11 +226,29 @@ do
 	esac
 done
 
-#if [ ! -z "${RPI2}" ]; then
-#	if [ ! -z "${GCC}" ] && [ "${NUMPROCS}" -ge "4" ]; then
-#		NUMPROCS=3
-#	fi
-#fi
+if [ ! -z "${RPI2_SYSROOT}" ] && [ ! -z "${RPI2_TOOLCHAIN_ROOT}" ]; then
+	if [ -z "${RPI2_TOOLCHAIN_NAME}" ]; then
+		echo "ERROR: Missing RPI2_TOOLCHAIN_NAME can't be empty"
+		exit 1
+	fi
+
+	# If -rpi2 wasn't specified - it should be implied
+	if [ -z "${RPI2}" ]; then
+		RPI2="-DCINDER_LINUX_EGL_RPI2=1"
+		GLES="-DCINDER_GL_ES_2=1"
+		CINDER_OUT_DIR_PREFIX="-DCINDER_OUT_DIR_PREFIX:STRING=es2-rpi2"
+		CINDER_LIB_SUFFIX="-DCINDER_LIB_SUFFIX:STRING=-es2"
+		OPENGL_PLAT="es2-rpi2"			
+	fi
+
+	RPI2_CROSS_COMPILE=true
+fi
+
+if [ ! -z "${RPI2}" ] && [ ${RPI2_CROSS_COMPILE} == true ]; then
+	if [ ! -z "${GCC}" ] && [ "${NUMPROCS}" -ge "4" ]; then
+		NUMPROCS=3
+	fi
+fi
 
 for build in ${BUILD_TYPES[@]}; do
 	build_type=${build}
@@ -240,8 +295,13 @@ for build in ${BUILD_TYPES[@]}; do
 
 	cd ${build_dir}
 	if [ ${FULLBUILD} == true ] || [ ! -f "${build_dir}/CMakeCache.txt" ]; then
-		echo "CMAKE COMMAND: cmake ../.. -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}"
-		cmake ../.. --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}
+		if [ ${RPI2_CROSS_COMPILE} == true ]; then
+			echo "CMAKE COMMAND: cmake ../.. -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX} ${RPI2_SYSROOT} ${RPI2_TOOLCHAIN_ROOT} ${RPI2_TOOLCHAIN_NAME}"
+			cmake ../.. --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX} ${RPI2_SYSROOT} ${RPI2_TOOLCHAIN_ROOT} ${RPI2_TOOLCHAIN_NAME}
+		else 
+			echo "CMAKE COMMAND: cmake ../.. -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}"
+			cmake ../.. --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}
+		fi
 	fi
 	make -j ${NUMPROCS} ${VERBOSE}
 

@@ -12,12 +12,21 @@ set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 # Find architecture name
 execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH )
 
-set( CINDER_ARCH "armv7l" )
+# Raspberry Pi 2 cross compile
+if( CINDER_RPI2_SYSROOT AND CINDER_RPI2_TOOLCHAIN_ROOT AND CINDER_RPI2_TOOLCHAIN_NAME )
+	set( CINDER_RPI2_CROSS_COMPILE true )
+	
+	# Full toolchain prefix
+	set( CINDER_RPI2_TOOLCHAIN_PREFIX "${CINDER_RPI2_TOOLCHAIN_ROOT}/bin/${CINDER_RPI2_TOOLCHAIN_NAME}" )
 
-set( RPI2_ROOT				"/home/hai/code/rpi2/rpi2_root" )
-set( RPI2_TOOLCHAIN_ROOT 	"/home/hai/code/rpi2/toolchain" )
-set( RPI2_TOOLCHAIN_NAME 	"arm-unknown-linux-gnueabihf"  )
-set( RPI2_TOOLCHAIN_PREFIX	"${RPI2_TOOLCHAIN_ROOT}/bin/${RPI2_TOOLCHAIN_NAME}" )
+	# Force GCC toolchain
+	set( CINDER_TOOLCHAIN_GCC true )
+
+	set( CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME "arm-linux-gnueabihf" )
+
+	# Override the arch
+	set( CINDER_ARCH "armv7l" )
+endif() 
 
 set( CINDER_INCLUDE_DEPENDS )
 set( CINDER_LIBS_DEPENDS )
@@ -36,14 +45,14 @@ if( CINDER_LINUX_EGL_RPI2 )
     set( CINDER_USE_SYSTEM_GL_HEADERS 	false )
 
     list( APPEND CINDER_INCLUDE_DEPENDS 
-		${RPI2_ROOT}/opt/vc/include
-		${RPI2_ROOT}/opt/vc/include/interface/vcos/pthreads 
+		${CINDER_RPI2_SYSROOT}/opt/vc/include
+		${CINDER_RPI2_SYSROOT}/opt/vc/include/interface/vcos/pthreads 
 	)
 
     list( APPEND CINDER_LIBS_DEPENDS 
-		${RPI2_ROOT}/opt/vc/lib/libEGL.so
-		${RPI2_ROOT}/opt/vc/lib/libGLESv2.so 
-		${RPI2_ROOT}/opt/vc/lib/libbcm_host.so 
+		${CINDER_RPI2_SYSROOT}/opt/vc/lib/libEGL.so
+		${CINDER_RPI2_SYSROOT}/opt/vc/lib/libGLESv2.so 
+		${CINDER_RPI2_SYSROOT}/opt/vc/lib/libbcm_host.so 
 	)
 endif()
 
@@ -78,7 +87,9 @@ set( CINDER_INC_DIR ${CINDER_DIR}/include )
 set( CINDER_SRC_DIR ${CINDER_DIR}/src )
 set( CINDER_LIB_DIR ${CINDER_DIR}/lib/linux/${CINDER_ARCH} )
 
-find_package( CLANG )
+if( NOT CINDER_RPI2_CROSS_COMPILE )
+	find_package( CLANG )
+endif()
 
 if( NOT CINDER_TOOLCHAIN_GCC AND CLANG_FOUND )
 	set( CINDER_TOOLCHAIN_CLANG TRUE )
@@ -104,7 +115,17 @@ if( NOT CINDER_TOOLCHAIN_GCC AND CLANG_FOUND )
     set( CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT	"-O2 -g" 		CACHE STRING "" FORCE )
     set( CMAKE_CCC_FLAGS						"${CMAKE_C_FLAGS} -fmessage-length=0 " CACHE STRING "" FORCE )
 
-    #set( STDCXXLIB                           	"-stdlib=libstdc++" )
+    set( STDCXXLIB                           	"-stdlib=libstdc++" )
+elseif( CINDER_RPI2_CROSS_COMPILE )
+	set( CMAKE_SYSROOT							"${CINDER_RPI2_SYSROOT}"					CACHE FILEPATH "" FORCE )
+	set( CMAKE_C_COMPILER						"${CINDER_RPI2_TOOLCHAIN_PREFIX}-gcc"		CACHE FILEPATH "" FORCE )
+	set( CMAKE_CXX_COMPILER						"${CINDER_RPI2_TOOLCHAIN_PREFIX}-g++"		CACHE FILEPATH "" FORCE )
+	set( CMAKE_AR								"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ar"		CACHE FILEPATH "" FORCE )
+	set( CMAKE_LINKER							"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ld"		CACHE FILEPATH "" FORCE )
+	set( CMAKE_NM								"${CINDER_RPI2_TOOLCHAIN_PREFIX}-nm"		CACHE FILEPATH "" FORCE )
+	set( CMAKE_RANLIB							"${CINDER_RPI2_TOOLCHAIN_PREFIX}-ranlib"	CACHE FILEPATH "" FORCE )
+	set( CINDER_TOOLCHAIN_GCC					true										CACHE BOOL "" FORCE )
+	set( CINDER_TOOLCHAIN_CLANG					false										CACHE BOOL "" FORCE )
 else()
 	# Keep these versionless
     set( CMAKE_C_COMPILER						"gcc"	CACHE FILEPATH "" FORCE )
@@ -113,15 +134,6 @@ else()
 	set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 endif()
 
-set( CMAKE_SYSROOT			"/home/hai/code/rpi2/rpi2_root" CACHE FILEPATH "" FORCE )
-set( CMAKE_C_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-gcc"		CACHE FILEPATH "" FORCE )
-set( CMAKE_CXX_COMPILER		"${RPI2_TOOLCHAIN_PREFIX}-g++"		CACHE FILEPATH "" FORCE )
-set( CMAKE_AR          		"${RPI2_TOOLCHAIN_PREFIX}-ar"		CACHE FILEPATH "" FORCE )
-set( CMAKE_LINKER       	"${RPI2_TOOLCHAIN_PREFIX}-ld"		CACHE FILEPATH "" FORCE )
-set( CMAKE_NM           	"${RPI2_TOOLCHAIN_PREFIX}-nm"		CACHE FILEPATH "" FORCE )
-set( CMAKE_RANLIB       	"${RPI2_TOOLCHAIN_PREFIX}-ranlib"	CACHE FILEPATH "" FORCE )
-set( CINDER_TOOLCHAIN_GCC 					true 	CACHE BOOL "" FORCE )
-set( CINDER_TOOLCHAIN_CLANG 				false 	CACHE BOOL "" FORCE )
 
 # Needs to come after compilers are set
 project( cinder_linux )
@@ -155,7 +167,6 @@ message( "${BoldGreen}CMAKE_LINKER      : ${CMAKE_LINKER}${ColorReset}" )
 message( "${BoldGreen}CMAKE_NM          : ${CMAKE_NM}${ColorReset}" ) 
 message( "${BoldGreen}CMAKE_RANLIB      : ${CMAKE_RANLIB}${ColorReset}" ) 
 message( "" )
-
 
 if( NOT CINDER_LINUX_EGL_RPI2 )
 	if( CINDER_GL_ES )
@@ -205,12 +216,14 @@ set( CMAKE_CXX_FLAGS_RELEASE  "${CXX_FLAGS} -O3 -fexceptions -frtti -ffast-math 
 
 # Include directories
 include(${CMAKE_MODULE_PATH}/CinderIncludes.cmake)
-list( APPEND CINDER_INCLUDE_DIRS 
-	${RPI2_ROOT}/usr/include/arm-linux-gnueabihf
-	${RPI2_ROOT}/usr/include/gstreamer-1.0
-	${RPI2_ROOT}/usr/include/glib-2.0
-	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/glib-2.0/include
-)
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_INCLUDE_DIRS 
+		${CINDER_RPI2_SYSROOT}/usr/include/arm-linux-gnueabihf
+		${CINDER_RPI2_SYSROOT}/usr/include/gstreamer-1.0
+		${CINDER_RPI2_SYSROOT}/usr/include/glib-2.0
+		${CINDER_RPI2_SYSROOT}/usr/lib/arm-linux-gnueabihf/glib-2.0/include
+	)
+endif()
 
 # Source files
 include(${CMAKE_MODULE_PATH}/CinderSources.cmake)
@@ -234,36 +247,58 @@ if( CINDER_USE_X11 )
 endif()
 
 ## zlib
-#find_package( ZLIB REQUIRED  )
-#list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
-#list( APPEND CINDER_LIBS_DEPENDS 	${ZLIB_LIBRARIES} )
-list( APPEND CINDER_INCLUDE_DEPENDS ${RPI2_ROOT}/usr/include )
-list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libz.so )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_INCLUDE_DEPENDS ${CINDER_RPI2_SYSROOT}/usr/include )
+	list( APPEND CINDER_LIBS_DEPENDS 	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libz.so )
+else()
+	find_package( ZLIB REQUIRED  )
+	list( APPEND CINDER_INCLUDE_DEPENDS ${ZLIB_INCLUDE_DIR} )
+	list( APPEND CINDER_LIBS_DEPENDS 	${ZLIB_LIBRARIES} )
+endif()
 
 ## curl
-#find_package( CURL REQUIRED )
-#list( APPEND CINDER_LIBS_DEPENDS	${CURL_LIBRARIES} )
-list( APPEND CINDER_LIBS_DEPENDS	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libcurl.so )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_LIBS_DEPENDS	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libcurl.so )
+else()
+	find_package( CURL REQUIRED )
+	list( APPEND CINDER_LIBS_DEPENDS	${CURL_LIBRARIES} )
+endif()
 
 ## fontconfig
-#find_package( FontConfig REQUIRED )
-#list( APPEND CINDER_INCLUDE_DEPENDS ${FONTGONFIG_INCLUDE_DIRS} )
-#list( APPEND CINDER_LIBS_DEPENDS 	${FONTCONFIG_LIBRARIES} )
-list( APPEND CINDER_INCLUDE_DEPENDS ${RPI2_ROOT}/usr/include )
-list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libfontconfig.so )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_INCLUDE_DEPENDS ${CINDER_RPI2_SYSROOT}/usr/include )
+	list( APPEND CINDER_LIBS_DEPENDS 	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libfontconfig.so )
+else()
+	find_package( FontConfig REQUIRED )
+	list( APPEND CINDER_INCLUDE_DEPENDS ${FONTGONFIG_INCLUDE_DIRS} )
+	list( APPEND CINDER_LIBS_DEPENDS 	${FONTCONFIG_LIBRARIES} )
+endif()
 
 ## PulseAudio
-#find_package( PulseAudio REQUIRED )
-list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libpulse.so )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_LIBS_DEPENDS 	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libpulse.so )
+else()
+	find_package( PulseAudio REQUIRED )
+	list( APPEND CINDER_LIBS_DEPENDS 	${PULSEAUDIO_LIBRARY} )
+endif()
 
 ## mpg123
-#find_package( MPG123 REQUIRED )
-list( APPEND CINDER_INCLUDE_DEPENDS	${MPG123_INCLUDE_DIR} )
-list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libmpg123.so )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_INCLUDE_DEPENDS	${CINDER_RPI2_SYSROOT}/usr/include )
+	list( APPEND CINDER_LIBS_DEPENDS 	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libmpg123.so )
+else()
+	find_package( MPG123 REQUIRED )
+	list( APPEND CINDER_INCLUDE_DEPENDS ${MPG123_INCLUDE_DIR} )
+	list( APPEND CINDER_LIBS_DEPENDS 	${MPG123_LIBRARY} )
+endif()
 
 ## sndfile
-#find_package( SNDFILE REQUIRED )
-list( APPEND CINDER_LIBS_DEPENDS 	${RPI2_ROOT}/usr/lib/arm-linux-gnueabihf/libsndfile.so  )
+if( CINDER_RPI2_CROSS_COMPILE )
+	list( APPEND CINDER_LIBS_DEPENDS 	${CINDER_RPI2_SYSROOT}/usr/lib/${CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME}/libsndfile.so  )
+else()
+	find_package( SNDFILE REQUIRED )
+	list( APPEND CINDER_LIBS_DEPENDS 	${SNDFILE_LIBRARY} )
+endif()
 
 # GStreamer
 set( CINDER_USE_GSTREAMER false )

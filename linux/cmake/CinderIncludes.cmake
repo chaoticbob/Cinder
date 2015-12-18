@@ -2,9 +2,9 @@ set(CINDER_INCLUDE_DIRS)
 
 if( CINDER_LINUX_EGL_RPI2 )
     list( APPEND CINDER_INCLUDE_DIRS 
-		${RPI2_ROOT}/opt/vc/include
-		${RPI2_ROOT}/opt/vc/include/interface/vcos/pthreads
-		${RPI2_ROOT}/opt/vc/include/interface/vmcs_host/linux
+		${CINDER_RPI2_SYSROOT}/opt/vc/include
+		${CINDER_RPI2_SYSROOT}/opt/vc/include/interface/vcos/pthreads
+		${CINDER_RPI2_SYSROOT}/opt/vc/include/interface/vmcs_host/linux
 	)
 else()
     list( APPEND CINDER_INCLUDE_DIRS
