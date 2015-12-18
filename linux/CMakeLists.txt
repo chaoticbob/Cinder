@@ -15,16 +15,12 @@ execute_process( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE CINDER_ARCH
 # Raspberry Pi 2 cross compile
 if( CINDER_RPI2_SYSROOT AND CINDER_RPI2_TOOLCHAIN_ROOT AND CINDER_RPI2_TOOLCHAIN_NAME )
 	set( CINDER_RPI2_CROSS_COMPILE true )
-	
 	# Full toolchain prefix
 	set( CINDER_RPI2_TOOLCHAIN_PREFIX "${CINDER_RPI2_TOOLCHAIN_ROOT}/bin/${CINDER_RPI2_TOOLCHAIN_NAME}" )
-
 	# This is the toolchain name used on Raspbian itself
 	set( CINDER_RPI2_DEFAULT_TOOLCHAIN_NAME "arm-linux-gnueabihf" )
-
 	# Force GCC for cross compile
 	set( CINDER_TOOLCHAIN_GCC TRUE )
-
 	# Override the arch
 	set( CINDER_ARCH "armv7l" )
 endif() 
