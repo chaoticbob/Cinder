@@ -1,9 +1,3 @@
-//
-// This sample demonstrates basic usage of the VboMesh class by creating a simple Plane mesh
-// with a texture mapped onto it. The mesh has static indices and texture coordinates, but
-// its vertex positions are dynamic.
-//
-
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/Vbo.h"
