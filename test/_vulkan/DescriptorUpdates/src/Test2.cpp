@@ -64,14 +64,12 @@ void Test2::setup()
 		bindings[0].descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		bindings[0].descriptorCount		= 1;
 		bindings[0].stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;
-		
-/*
+
 		bindings[1] = {};
 		bindings[1].binding				= 1;
 		bindings[1].descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		bindings[1].descriptorCount		= 1;
 		bindings[1].stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;
-*/
 		
 		bindings[2] = {};
 		bindings[2].binding				= 2;
