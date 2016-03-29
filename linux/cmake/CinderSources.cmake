@@ -57,11 +57,19 @@ else()
 		)
 	endif()
 
-	list( APPEND CINDER_CXX_SRC_FILES
-   		${CINDER_SRC_DIR}/cinder/app/linux/AppImplLinuxGlfw.cpp
-    	${CINDER_SRC_DIR}/cinder/app/linux/RendererGlLinuxGlfw.cpp
-    	${CINDER_SRC_DIR}/cinder/app/linux/WindowImplLinuxGlfw.cpp
-	)
+	if( CINDER_HEADLESS )
+		list( APPEND CINDER_CXX_SRC_FILES
+			${CINDER_SRC_DIR}/cinder/app/linux/AppImplLinuxOsMesa.cpp
+			${CINDER_SRC_DIR}/cinder/app/linux/RendererGlLinuxOsMesa.cpp
+			${CINDER_SRC_DIR}/cinder/app/linux/WindowImplLinuxOsMesa.cpp
+		)
+	else()
+		list( APPEND CINDER_CXX_SRC_FILES
+			${CINDER_SRC_DIR}/cinder/app/linux/AppImplLinuxGlfw.cpp
+			${CINDER_SRC_DIR}/cinder/app/linux/RendererGlLinuxGlfw.cpp
+			${CINDER_SRC_DIR}/cinder/app/linux/WindowImplLinuxGlfw.cpp
+		)
+	endif()
 endif()
 
 if( CINDER_GL_ES )

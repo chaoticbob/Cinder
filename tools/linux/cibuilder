@@ -12,13 +12,14 @@ if (( $# == 0 )); then
     echo -e "\t-j [n]   Number of compile processes, ex: -j 4"
     echo -e ""
     echo -e "flags:"
-	echo -e "\t-es2     Build for OpenGL ES 2.0 instead of Desktop OpenGL"
-	echo -e "\t-es3     Build for OpenGL ES 3.0 instead of Desktop OpenGL"
-	echo -e "\t-es31    Build for OpenGL ES 3.1 instead of Desktop OpenGL"
-	echo -e "\t-es32    Build for OpenGL ES 3.2 instead of Desktop OpenGL"
-    echo -e "\t-rpi2    Build for Raspberry Pi 2 (must be on platform)"
-    echo -e "\t-r       Rebuild instead of full build"
-    echo -e "\t-v       Turns on verbose mode"
+	echo -e "\t-es2      Build for OpenGL ES 2.0 instead of Desktop OpenGL"
+	echo -e "\t-es3      Build for OpenGL ES 3.0 instead of Desktop OpenGL"
+	echo -e "\t-es31     Build for OpenGL ES 3.1 instead of Desktop OpenGL"
+	echo -e "\t-es32     Build for OpenGL ES 3.2 instead of Desktop OpenGL"
+    echo -e "\t-rpi2     Build for Raspberry Pi 2 (must be on platform)"
+    echo -e "\t-headless Build for OSMesa instead of Desktop OpenGL"
+    echo -e "\t-r        Rebuild instead of full build"
+    echo -e "\t-v        Turns on verbose mode"
     #echo -e ""
     exit 0
 fi
@@ -39,6 +40,7 @@ VERBOSE=
 APP_BUILD=false
 SAMPLES=
 GCC=
+HEADLESS=
 
 if [ "$DISTRIBUTION_ID" == "Raspbian" ]; then
     echo "Building for Rasbian....."
@@ -188,6 +190,12 @@ do
 			GCC="-DCINDER_TOOLCHAIN_GCC=1"
 			shift
 		;;
+    
+        # Headless
+        -headless)
+			HEADLESS="-DCINDER_HEADLESS=1"
+			shift
+        ;;
 
 		?*)
 			echo "Unknown parameter: ${arg}"
@@ -247,8 +255,8 @@ for build in ${BUILD_TYPES[@]}; do
 
 	cd ${build_dir}
 	if [ ${FULLBUILD} == true ] || [ ! -f "${build_dir}/CMakeCache.txt" ]; then
-		echo "CMAKE COMMAND: cmake ../.. -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}"
-		cmake ../.. --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX}
+		echo "CMAKE COMMAND: cmake ../.. -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX} ${HEADLESS}"
+		cmake ../.. --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${build_type} ${GCC} ${GLES} ${RPI2} ${SAMPLES} ${CINDER_OUT_DIR_PREFIX} ${CINDER_LIB_SUFFIX} ${HEADLESS}
 	fi
 	make -j ${NUMPROCS} ${VERBOSE}
 

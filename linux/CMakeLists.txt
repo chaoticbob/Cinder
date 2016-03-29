@@ -184,9 +184,14 @@ list( APPEND CINDER_LIBS_DEPENDS pthread )
 
 ### If this is set then we should be on Desktop.
 if( CINDER_USE_SYSTEM_GL_HEADERS )
-    find_package( OpenGL REQUIRED )
+    if( CINDER_HEADLESS )
+        find_package( OSMesa REQUIRED )
+    else()
+        find_package( OpenGL REQUIRED )
+    endif()
     list( APPEND CINDER_INCLUDE_DEPENDS ${OPENGL_INCLUDE_DIR} )
     list( APPEND CINDER_LIBS_DEPENDS 	${OPENGL_LIBRARIES} )
+    message( "OPENGL_LIBRARIES: ${OPENGL_LIBRARIES}" )
 endif()
 
 ### No X for RPI2.
