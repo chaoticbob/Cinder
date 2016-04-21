@@ -94,8 +94,11 @@ void ShadowMappingBasic::setup()
 {
 	mLightPos = vec3( 0.0f, 5.0f, 1.0f );
 	
+	VkFormat depthInternalFormat = vk::findBestDepthStencilAttachmentFormat( vk::context()->getDevice() );
+	CI_LOG_I( "Shadow Map Depth Format: " << vk::toStringVkFormat( depthInternalFormat ) );
+
 	vk::Texture2d::Format depthFormat;
-	depthFormat.setInternalFormat( VK_FORMAT_D32_SFLOAT );
+	depthFormat.setInternalFormat( depthInternalFormat );
 	depthFormat.setUsageDepthStencilAttachment();
 	depthFormat.setMagFilter( VK_FILTER_LINEAR );
 	depthFormat.setMinFilter( VK_FILTER_LINEAR );

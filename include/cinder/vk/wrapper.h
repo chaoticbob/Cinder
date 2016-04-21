@@ -44,6 +44,7 @@
 
 namespace cinder { namespace vk {
 
+class Device;
 class ShaderProg;
 using ShaderProgRef = std::shared_ptr<ShaderProg>;
 
@@ -122,6 +123,7 @@ inline VkFormat findBestVkFormat<float>( size_t numComponents )
 	return result;
 }
 
+VkFormat findBestDepthStencilAttachmentFormat( vk::Device *device );
 
 //! Context
 class Context* context();

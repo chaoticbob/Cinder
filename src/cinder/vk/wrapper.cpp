@@ -38,6 +38,7 @@
 
 #include "cinder/vk/wrapper.h"
 #include "cinder/vk/Context.h"
+#include "cinder/vk/Device.h"
 #include "cinder/GeomIo.h"
 
 namespace cinder { namespace vk {
@@ -96,13 +97,6 @@ namespace cinder { namespace vk {
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR	0x93DC
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR	0x93DD
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Context
-class Context* context()
-{
-	return Context::getCurrent();
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 // toVk conversion functions
@@ -510,11 +504,36 @@ size_t formatSizeBytes( VkFormat format )
 	return dataTypeSizeBytes( formatDataType( format ) ) * formatNumChannels( format );
 }
 
-std::pair<ivec2, ivec2> getViewport()
+VkFormat findBestDepthStencilAttachmentFormat( vk::Device *device )
 {
-	auto ctx = vk::context();
-	auto view = ctx->getViewport();
-	return view;
+	const std::vector<VkFormat> kFormats = { 
+		VK_FORMAT_D32_SFLOAT, 
+		VK_FORMAT_D24_UNORM_S8_UINT, 
+		VK_FORMAT_X8_D24_UNORM_PACK32, 
+		VK_FORMAT_D16_UNORM_S8_UINT, 
+		VK_FORMAT_D16_UNORM, 
+		VK_FORMAT_D32_SFLOAT_S8_UINT 
+	};
+
+	// Assume a safe option
+	VkFormat result = VK_FORMAT_D16_UNORM;
+	for( const auto& format : kFormats ) {
+		VkFormatProperties properties = {};
+		vkGetPhysicalDeviceFormatProperties( device->getGpu(), format, &properties );
+		if( VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT == ( properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) ) {
+			result = format;
+			break;
+		}
+	}
+
+	return result;
+}
+
+// -------------------------------------------------------------------------------------------------
+
+class Context* context()
+{
+	return Context::getCurrent();
 }
 
 ShaderProgRef& getStockShader( const class ShaderDef &shader )
@@ -525,6 +544,13 @@ ShaderProgRef& getStockShader( const class ShaderDef &shader )
 void clear( bool color, bool depthStencil )
 {
 	vk::context()->clearAttachments( color, depthStencil );
+}
+
+std::pair<ivec2, ivec2> getViewport()
+{
+	auto ctx = vk::context();
+	auto view = ctx->getViewport();
+	return view;
 }
 
 void viewport( const std::pair<ivec2, ivec2> positionAndSize )

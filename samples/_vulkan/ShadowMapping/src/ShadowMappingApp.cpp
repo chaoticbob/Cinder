@@ -85,8 +85,11 @@ public:
 	
 	void reset( int size )
 	{
+		VkFormat depthInternalFormat = vk::findBestDepthStencilAttachmentFormat( vk::context()->getDevice() );
+		CI_LOG_I( "Shadow Map Depth Format: " << vk::toStringVkFormat( depthInternalFormat ) );
+
 		vk::Texture2d::Format depthFormat;
-		depthFormat.setInternalFormat( VK_FORMAT_D32_SFLOAT );
+		depthFormat.setInternalFormat( depthInternalFormat );
 		depthFormat.setUsageDepthStencilAttachment();
 		depthFormat.setMagFilter( VK_FILTER_LINEAR );
 		depthFormat.setMinFilter( VK_FILTER_LINEAR );
