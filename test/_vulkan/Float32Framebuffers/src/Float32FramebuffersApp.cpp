@@ -47,6 +47,9 @@ void Float32FramebuffersApp::setup()
 	mAttachmentTex0 = vk::Texture2d::create( getWindowWidth(), getWindowHeight(), texFormat );
 	mAttachmentTex1 = vk::Texture2d::create( getWindowWidth(), getWindowHeight(), texFormat );
 	mAttachmentTex2 = vk::Texture2d::create( getWindowWidth(), getWindowHeight(), texFormat );
+	vk::transitionToFirstUse( mAttachmentTex0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
+	vk::transitionToFirstUse( mAttachmentTex1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
+	vk::transitionToFirstUse( mAttachmentTex2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
 
 	// Render pass
 	ci::vk::RenderPass::Attachment attachment0 = ci::vk::RenderPass::Attachment( textureInternalFormat )
@@ -82,7 +85,8 @@ void Float32FramebuffersApp::setup()
 
 void Float32FramebuffersApp::update()
 {
-	mRenderPass->beginRender( vk::context()->getDefaultCommandBuffer(), mFramebuffer );
+	auto cmdBuf = vk::context()->getDefaultCommandBuffer();
+	mRenderPass->beginRender( cmdBuf, mFramebuffer );
 		
 	vk::setMatricesWindow( getWindowSize() );
 
@@ -96,6 +100,13 @@ void Float32FramebuffersApp::update()
 	mRenderPass->nextSubpass();
 
 	{
+		vk::ImageMemoryBarrierParams barrier( mAttachmentTex0->getImageView()->getImage() );
+		barrier.setOldLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+		barrier.setNewLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+		barrier.setSrcAccessMask( VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT );
+		barrier.setDstAccessMask( VK_ACCESS_SHADER_READ_BIT );
+		cmdBuf->pipelineBarrierImageMemory( barrier );
+
 		{
 			vk::ScopedShaderProg shader( mShader );
 			mShader->uniform( "ciBlock1.color", vec4( 0.25f, 0, 0, 0 ) );
@@ -109,6 +120,13 @@ void Float32FramebuffersApp::update()
 	mRenderPass->nextSubpass();
 
 	{
+		vk::ImageMemoryBarrierParams barrier( mAttachmentTex1->getImageView()->getImage() );
+		barrier.setOldLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+		barrier.setNewLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+		barrier.setSrcAccessMask( VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT );
+		barrier.setDstAccessMask( VK_ACCESS_SHADER_READ_BIT );
+		cmdBuf->pipelineBarrierImageMemory( barrier );
+
 		{
 			vk::ScopedShaderProg shader( mShader );
 			mShader->uniform( "ciBlock1.color", vec4( 0, 0.25f, 0, 0 ) );
@@ -124,6 +142,15 @@ void Float32FramebuffersApp::update()
 
 void Float32FramebuffersApp::draw()
 {
+	auto cmdBuf = vk::context()->getDefaultCommandBuffer();
+
+	vk::ImageMemoryBarrierParams barrier( mAttachmentTex2->getImageView()->getImage() );
+	barrier.setOldLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+	barrier.setNewLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+	barrier.setSrcAccessMask( VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT );
+	barrier.setDstAccessMask( VK_ACCESS_SHADER_READ_BIT );
+	cmdBuf->pipelineBarrierImageMemory( barrier );
+
 	vk::setMatricesWindow( getWindowSize() );
 	vk::draw( mAttachmentTex2, getWindowBounds() );
 }
