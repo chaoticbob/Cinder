@@ -1,57 +1,83 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererVk.h"
 #include "cinder/vk/vk.h"
+#include "cinder/GeomIo.h"
 #include "cinder/ImageIo.h"
-
 using namespace ci;
 using namespace ci::app;
+using namespace std;
 
-class Float32FramebuffersAppApp : public App {
-  public:	
-	void	setup() override;
-	void	resize() override;
-	void	update() override;
-	void	draw() override;
+/** \class BasicApp
+ *
+ */
+class Float32FramebuffersApp : public App {
+public:
+	void setup() override;
+	void update() override;
+	void draw() override;
+
+private:
+	vk::TextureRef		mTex;
+
+	vk::TextureRef		mAttachmentTex;
+	vk::RenderPassRef	mRenderPass;
+	vk::FramebufferRef	mFramebuffer;
+	vk::ShaderProgRef	mShader;
 	
-	CameraPersp			mCam;
-	vk::BatchRef		mBatch;
-	mat4				mCubeRotation;
+	void drawBlendingTests();
 };
 
-void Float32FramebuffersAppApp::setup()
+void Float32FramebuffersApp::setup()
 {
-	mCam.lookAt( vec3( 3, 2, 4 ), vec3( 0 ) );
+	Surface surf8u = Surface( loadImage( getAssetPath( "bloom.jpg" ) ) );
+	mTex = vk::Texture::create( surf8u );
 
-	mBatch = vk::Batch::create( geom::Cube(), vk::getStockShader( vk::ShaderDef().color() ) );
+	VkFormat textureInternalFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-	vk::enableDepthWrite();
-	vk::enableDepthRead();
+	// Attachment
+	vk::Texture2d::Format texFormat;
+	texFormat.setInternalFormat( textureInternalFormat );
+	texFormat.setUsageColorAttachment();
+	texFormat.setMagFilter( VK_FILTER_NEAREST );
+	texFormat.setMinFilter( VK_FILTER_NEAREST );
+	texFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+	texFormat.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
+	mAttachmentTex = vk::Texture2d::create( getWindowWidth(), getWindowHeight(), texFormat );
+
+	// Render pass
+	ci::vk::RenderPass::Attachment attachment = ci::vk::RenderPass::Attachment( textureInternalFormat )
+		.setInitialLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL )
+		.setFinalLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+	auto renderPassOptions = ci::vk::RenderPass::Options()
+		.addAttachment( attachment )
+		.addSubPass( ci::vk::RenderPass::Subpass().addColorAttachment( 0 ) );
+		renderPassOptions.addSubpassSelfDependency( 0 );
+	mRenderPass = vk::RenderPass::create( renderPassOptions );
+	
+	// Framebuffer
+	vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
+		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex->getImageView() ) );
+	mFramebuffer = vk::Framebuffer::create( mRenderPass->getRenderPass(), mAttachmentTex->getSize(), framebufferFormat );
+
+	mShader = vk::ShaderProg::create( vk::ShaderProg::Format().vertex( loadAsset( "shader.vert" ) ).fragment( loadAsset( "shader.frag" ) ) );
 }
 
-void Float32FramebuffersAppApp::resize()
+void Float32FramebuffersApp::update()
 {
-	mCam.setPerspective( 60, getWindowAspectRatio(), 1, 1000 );
+	mRenderPass->beginRender( vk::context()->getDefaultCommandBuffer(), mFramebuffer );
+		
+	vk::setMatricesWindow( getWindowSize() );
+	vk::draw( mTex, getWindowBounds() );
 
-	vk::setMatrices( mCam );
+	mRenderPass->endRender();
 }
 
-void Float32FramebuffersAppApp::update()
+void Float32FramebuffersApp::draw()
 {
-	// Rotate the cube by 0.2 degrees around the y-axis
-	mCubeRotation *= rotate( toRadians( 0.2f ), normalize( vec3( 0, 1, 0 ) ) );
+	vk::ScopedShaderProg shader( mShader );
 
-	vk::setMatrices( mCam );
-
-	vk::ScopedModelMatrix modelScope;
-	vk::multModelMatrix( mCubeRotation );
-
-	vk::context()->setDefaultUniformVars( mBatch );
-	vk::context()->addPendingUniformVars( mBatch );
+	vk::setMatricesWindow( getWindowSize() );
+	vk::draw( mAttachmentTex, getWindowBounds() );
 }
 
-void Float32FramebuffersAppApp::draw()
-{
-	mBatch->draw();
-}
-
-CINDER_APP( Float32FramebuffersAppApp, RendererVk( RendererVk::Options().setSamples( VK_SAMPLE_COUNT_1_BIT ) ) )
+CINDER_APP( Float32FramebuffersApp, RendererVk )
