@@ -65,12 +65,12 @@ public:
 	static DescriptorSetLayoutRef				create( const std::vector<VkDescriptorSetLayoutBinding>& bindings, vk::Device *device = nullptr );
 	static std::vector<DescriptorSetLayoutRef>	create( const std::vector<std::vector<VkDescriptorSetLayoutBinding>>& setOfBindings, vk::Device *device = nullptr );
 
-	VkDescriptorSetLayout					vkObject() const { return mDescriptorSetLayout; }
+	VkDescriptorSetLayout						vkObject() const { return mDescriptorSetLayout; }
 
 private:
 	DescriptorSetLayout( const std::vector<VkDescriptorSetLayoutBinding>& bindings, vk::Device *device );
 
-	VkDescriptorSetLayout					mDescriptorSetLayout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout						mDescriptorSetLayout = VK_NULL_HANDLE;
 
 	void initialize( const std::vector<VkDescriptorSetLayoutBinding>& layoutBindings );
 	void destroy( bool removeFromTracking = true );

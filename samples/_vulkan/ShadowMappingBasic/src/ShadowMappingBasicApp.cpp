@@ -124,7 +124,7 @@ void ShadowMappingBasic::setup()
 
 		// Framebuffer
 		vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-			.addAttachment( vk::Framebuffer::Attachment( mShadowMapTex->getImageView() ) );
+			.addAttachment( vk::Framebuffer::Attachment( mShadowMapTex ) );
 		mFbo = vk::Framebuffer::create( mRenderPass->getRenderPass(), mShadowMapTex->getSize(), framebufferFormat );
 	}
 	catch( const std::exception& e ) {

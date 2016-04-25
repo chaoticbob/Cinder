@@ -152,11 +152,22 @@ public:
 	virtual ~TextureBase();
 
 	const vk::ImageViewRef&			getImageView() const { return mImageView; }
+	const vk::ImageRef&				getImage() const { return mImageView->getImage(); }
+
+	VkFormat						getInternalFormat() const { return mImageView->getInternalFormat(); }
+	int32_t							getWidth()  const { return mImageView->getWidth(); }
+	int32_t							getHeight() const { return mImageView->getHeight(); }
+	int32_t							getDepth()  const { return mImageView->getDepth(); }
+	const VkExtent3D&				getExtent() const { return mImageView->getExtent(); }		
+	uint32_t						getMipLevels() const { return mImageView->getMipLevels(); }
+	uint32_t						getArrayLayers() const { return mImageView->getArrayLayers(); }
+	VkSampleCountFlagBits			getSamples() const { return mImageView->getSamples(); }
+	VkImageTiling					getTiling() const { return mImageView->getTiling(); }
+	VkImageUsageFlags				getUsage() const { return mImageView->getUsage(); }
+	VkImageLayout					getInitialLayout() const { return mImageView->getInitialLayout(); }
+	VkImageAspectFlags				getAspectMask() const { return mImageView->getAspectMask(); }
+
 	const VkDescriptorImageInfo&	getImageInfo() const { return mImageInfo; }
-
-	uint32_t						getMipLevels() const { return mMipLevels; }
-
-	//void							transitionToFirstUse( vk::Context *context, VkImageLayout firstUseLayout );
 
 protected:
 	vk::ImageViewRef				mImageView;
@@ -238,6 +249,7 @@ public:
 	Texture2d( const Surface16u& surf, const Texture2d::Format &format, vk::Device *device );
 	Texture2d( const Surface32f& surf, const Texture2d::Format &format, vk::Device *device );
 	//Texture2d( const ImageSourceRef& imageSource, const Texture2d::Format &format, vk::Device *device );
+	Texture2d( const vk::ImageViewRef& imageView, const Texture2d::Format& format );
 	virtual ~Texture2d();
 
 	// Parameter 'format' will override the format in options
@@ -248,6 +260,7 @@ public:
 	static Texture2dRef		create( const Surface32f& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
 	//static Texture2dRef		create( ImageSourceRef imageSource, const Format &format = Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef		create( const vk::ImageViewRef& imageView, const Texture2d::Format& format = Texture2d::Format() );
 
 	uint32_t					getWidth() const { return mImageView->getWidth(); }
 	uint32_t					getHeight() const { return mImageView->getHeight(); }

@@ -44,7 +44,9 @@
 namespace cinder { namespace vk {
 
 class ImageView;
+class Texture2d;
 using ImageViewRef = std::shared_ptr<ImageView>;
+using Texture2dRef = std::shared_ptr<Texture2d>;
 
 class Framebuffer;
 using FramebufferRef = std::shared_ptr<Framebuffer>;
@@ -63,22 +65,23 @@ public:
 	class Attachment {
 	public:
 		Attachment( VkFormat format, VkSampleCountFlagBits samples );
+		Attachment( const vk::Texture2dRef& attachment );
 		Attachment( const vk::ImageViewRef& attachment );
 		virtual ~Attachment() {}
 
-		VkFormat					getFormat() const { return mFormat; }
+		VkFormat					getInternalFormat() const { return mInternalFormat; }
 		VkSampleCountFlagBits		getSamples() const { return mSamples; }
 
-		const vk::ImageViewRef&		getAttachment() const { return mAttachment; }
+		const vk::Texture2dRef&		getAttachment() const { return mAttachment; }
 
 		bool						isColorAttachment() const { return 0 != ( mFormatFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ); }
 		bool						isDepthStencilAttachment() const { return 0 != ( mFormatFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ); }
 
 	private:
-		VkFormat				mFormat = VK_FORMAT_UNDEFINED;
+		VkFormat				mInternalFormat = VK_FORMAT_UNDEFINED;
 		VkFormatFeatureFlags	mFormatFeatures = 0;
 		VkSampleCountFlagBits	mSamples = VK_SAMPLE_COUNT_1_BIT;
-		vk::ImageViewRef		mAttachment;
+		vk::Texture2dRef		mAttachment;
 		friend class Framebuffer::Format;
 		friend class Framebuffer;
 	};

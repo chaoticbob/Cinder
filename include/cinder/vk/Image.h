@@ -157,26 +157,24 @@ public:
 
 	static ImageRef			create( VkImageType imageType, int32_t width, int32_t height, int32_t depth, VkImage image, const Image::Format& options, Device *device = nullptr );
 
-	VkImage					getImage() const { return mImage; }
+	VkImage					vkObject() const { return mImage; }
 
+	const Image::Format&	getFormat() const { return mFormat; }
+
+	VkMemoryPropertyFlags	getMemoryProperty() const { return mFormat.mMemoryProperty; }
+
+	VkFormat				getInternalFormat() const  { return mFormat.mInternalFormat; }
 	int32_t					getWidth()  const { return mExtent.width; }
 	int32_t					getHeight() const { return mExtent.height; }
 	int32_t					getDepth()  const { return mExtent.depth; }
 	const VkExtent3D&		getExtent() const { return mExtent; }
-
-	const Image::Format&	getFormat() const { return mFormat; }
-	VkFormat				getInternalFormat() const  { return mFormat.mInternalFormat; }
+	uint32_t				getMipLevels() const { return mFormat.mMipLevels; }
+	uint32_t				getArrayLayers() const { return mFormat.mArrayLayers; }
 	VkSampleCountFlagBits	getSamples() const { return mFormat.mSamples; }
 	VkImageTiling			getTiling() const { return mFormat.mTiling; }
 	VkImageUsageFlags		getUsage() const { return mFormat.mUsage; }
-	VkMemoryPropertyFlags	getMemoryProperty() const { mFormat.mMemoryProperty; }
-
-	VkImageAspectFlags		getAspectMask() const { return mAspectMask; }
-
-	uint32_t				getMipLevels() const { return mFormat.mMipLevels; }
-	uint32_t				getArrayLayers() const { return mFormat.mArrayLayers; }
-
 	VkImageLayout			getInitialLayout() const { return mFormat.mInitialLayout; }
+	VkImageAspectFlags		getAspectMask() const { return mAspectMask; }
 
 	//! Reflects the current and pending image layout. The image layout is considered pending if underlying VkImage object is in a operation (e.g. render pass) that hasn'te executed yet.
 	VkImageLayout			getCurrentLayout() const { return mCurrentLayout; }

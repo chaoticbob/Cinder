@@ -41,6 +41,7 @@
 #include "cinder/vk/Device.h"
 #include "cinder/vk/ImageView.h"
 #include "cinder/vk/RenderPass.h"
+#include "cinder/vk/Texture.h"
 #include "cinder/vk/Util.h"
 #include "cinder/vk/wrapper.h"
 
@@ -49,10 +50,25 @@ namespace cinder { namespace vk {
 // -------------------------------------------------------------------------------------------------
 // Framebuffer::Attachment
 // -------------------------------------------------------------------------------------------------
-Framebuffer::Attachment::Attachment( VkFormat format, VkSampleCountFlagBits samples ) 
-	: mFormat(format), mSamples(samples)
+Framebuffer::Attachment::Attachment( VkFormat internalFormat, VkSampleCountFlagBits samples ) 
+	: mInternalFormat( internalFormat ), mSamples( samples )
 {
-	VkImageAspectFlags aspectMask = determineAspectMask( mFormat );
+	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
+	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
+		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	}
+	else {
+		mFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+}
+
+Framebuffer::Attachment::Attachment( const vk::Texture2dRef& attachment )
+{
+	mAttachment = attachment;
+	mInternalFormat = mAttachment->getInternalFormat();
+	mSamples = mAttachment->getSamples();
+
+	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
 	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
 		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 	}
@@ -63,11 +79,11 @@ Framebuffer::Attachment::Attachment( VkFormat format, VkSampleCountFlagBits samp
 
 Framebuffer::Attachment::Attachment( const vk::ImageViewRef& attachment )
 {
-	mAttachment = attachment;
-	mFormat = mAttachment->getFormat();
-	mSamples = mAttachment->getImage()->getSamples();
+	mAttachment = vk::Texture2d::create( attachment );
+	mInternalFormat = mAttachment->getInternalFormat();
+	mSamples = mAttachment->getSamples();
 
-	VkImageAspectFlags aspectMask = determineAspectMask( mFormat );
+	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
 	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
 		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 	}
@@ -109,9 +125,31 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 		}
 
 		VkFormatProperties formatProperties = {};
-		vkGetPhysicalDeviceFormatProperties( mDevice->getGpu(), elem.mFormat, &formatProperties );
+		vkGetPhysicalDeviceFormatProperties( mDevice->getGpu(), elem.mInternalFormat, &formatProperties );
 
-		vk::Image::Format imageFormat = vk::Image::Format( elem.mFormat )
+		vk::Texture2d::Format texFormat = vk::Texture2d::Format( elem.mInternalFormat );
+		texFormat.setSamples( elem.mSamples );
+		texFormat.setUsageTransferDestination();
+		// Attachment type
+		if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ) {
+			texFormat.setUsageColorAttachment();
+		}
+		else if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
+			texFormat.setUsageDepthStencilAttachment();
+		}
+		// Create attachment
+		elem.mAttachment = vk::Texture2d::create( mWidth, mHeight, texFormat, mDevice );
+
+		// Transition to first use
+		if( elem.isColorAttachment() ) {
+			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
+		}
+		else if( elem.isDepthStencilAttachment() ) {
+			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
+		}			
+
+		/*
+		vk::Image::Format imageFormat = vk::Image::Format( elem.mInternalFormat )
 			.setSamples( elem.mSamples )
 			.setTilingOptimal()
 			.setUsageTransferDestination()
@@ -123,7 +161,7 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 		else if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
 			imageFormat.setUsageDepthStencilAttachment();
 		}
-		// Create image
+		// Create attachment
 		elem.mAttachment = vk::ImageView::create( mWidth, mHeight, imageFormat, mDevice );
 
 		// Transition to first use
@@ -133,12 +171,13 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 		else if( elem.isDepthStencilAttachment() ) {
 			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
 		}
+		*/
 	}
 
 	// Attachment array for creation
 	std::vector<VkImageView> attachments;
 	for( const auto& elem : mFormat.mAttachments ) {
-		attachments.push_back( elem.mAttachment->getImageView() );
+		attachments.push_back( elem.mAttachment->getImageView()->vkObject() );
 	}
 
 	VkFramebufferCreateInfo createInfo = {};

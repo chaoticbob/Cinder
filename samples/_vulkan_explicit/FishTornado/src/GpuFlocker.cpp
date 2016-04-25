@@ -124,8 +124,8 @@ GpuFlocker::GpuFlocker( FishTornadoApp *app )
 		mRenderPasses[i] = ci::vk::RenderPass::create( renderPassOptions );
 
 		vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-			.addAttachment( vk::Framebuffer::Attachment( mVelocityTextures[i]->getImageView() ) )
-			.addAttachment( vk::Framebuffer::Attachment( mPositionTextures[i]->getImageView() ) );
+			.addAttachment( vk::Framebuffer::Attachment( mVelocityTextures[i] ) )
+			.addAttachment( vk::Framebuffer::Attachment( mPositionTextures[i] ) );
 		mFbos[i] = vk::Framebuffer::create( mRenderPasses[i]->getRenderPass(), mFboSize, framebufferFormat );
 	}
 

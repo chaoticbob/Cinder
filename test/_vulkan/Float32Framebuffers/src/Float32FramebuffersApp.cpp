@@ -75,9 +75,9 @@ void Float32FramebuffersApp::setup()
 	
 	// Framebuffer
 	vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex0->getImageView() ) )
-		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex1->getImageView() ) )
-		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex2->getImageView() ) );
+		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex0 ) )
+		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex1 ) )
+		.addAttachment( vk::Framebuffer::Attachment( mAttachmentTex2 ) );
 	mFramebuffer = vk::Framebuffer::create( mRenderPass->getRenderPass(), mAttachmentTex0->getSize(), framebufferFormat );
 
 	mShader = vk::ShaderProg::create( vk::ShaderProg::Format().vertex( loadAsset( "shader.vert" ) ).fragment( loadAsset( "shader.frag" ) ) );

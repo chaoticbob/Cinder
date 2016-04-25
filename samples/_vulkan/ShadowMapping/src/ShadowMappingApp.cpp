@@ -113,7 +113,7 @@ public:
 
 			// Framebuffer
 			vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-				.addAttachment( vk::Framebuffer::Attachment( mTextureShadowMap->getImageView() ) );
+				.addAttachment( vk::Framebuffer::Attachment( mTextureShadowMap ) );
 			mFramebuffer = vk::Framebuffer::create( mRenderPass->getRenderPass(), mTextureShadowMap->getSize(), framebufferFormat );
 		}
 		catch( const std::exception& e ) {

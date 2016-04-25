@@ -84,27 +84,6 @@ TextureBase::~TextureBase()
 {
 }
 
-/*
-void TextureBase::transitionToFirstUse( vk::Context *context, VkImageLayout firstUseLayout )
-{
-	auto& cmdPool = context->getDefaultTransientCommandPool();
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->getCommandPool(), context );
-
-	cmdBuf->begin();
-	{
-		auto& image = mImageView->getImage();
-		VkImageLayout oldLayout = image->getInitialLayout();
-		VkImageLayout newLayout = firstUseLayout;
-		vk::ImageMemoryBarrierParams params = vk::ImageMemoryBarrierParams( image, oldLayout, newLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
-		cmdBuf->pipelineBarrierImageMemory( params );
-	}
-	cmdBuf->end();
-
-	context->getGraphicsQueue()->submit( cmdBuf );
-	context->getGraphicsQueue()->waitIdle();
-}
-*/
-
 // -------------------------------------------------------------------------------------------------
 // Texture2d
 // -------------------------------------------------------------------------------------------------
@@ -215,6 +194,29 @@ Texture2d::Texture2d( const Surface32f& surf, const Texture2d::Format &format, v
 //	initialize( imageSource, context );
 //}
 
+Texture2d::Texture2d( const vk::ImageViewRef& imageView, const Texture2d::Format& format )
+	: TextureBase(), mFormat( format )
+{
+	mImageView = imageView;
+	
+	bool hostVisible = ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT == ( imageView->getImage()->getMemoryProperty() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ) );
+	bool mipmapEnabled = ( imageView->getMipLevels() > 1 );
+	mFormat.setInternalFormat( imageView->getInternalFormat() );
+	mFormat.setHostVisible( hostVisible );
+	mFormat.setSamples( imageView->getSamples() );
+	mFormat.setTiling( imageView->getTiling() );
+	mFormat.setUsage( imageView->getUsage() );
+	mFormat.setMipmapEnabled( mipmapEnabled );
+	mFormat.setMaxMipmapLevels( imageView->getMipLevels() );
+
+	mFormatProperties = {};
+	vkGetPhysicalDeviceFormatProperties( mImageView->getDevice()->getGpu(), mFormat.getInternalFormat(), &mFormatProperties );
+
+	mHostVisible = mFormat.getHostVisible();
+
+	initializeFinal( mImageView->getDevice() );
+}
+
 Texture2d::~Texture2d()
 {
 	destroy();
@@ -273,7 +275,7 @@ void Texture2d::initializeFinal( vk::Device *device )
     assert(res == VK_SUCCESS);
 	
 	// Descriptor
-	mImageInfo.imageView   = this->getImageView()->getImageView();
+	mImageInfo.imageView   = this->getImageView()->vkObject();
 	mImageInfo.sampler     = this->mSampler;
 	mImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 }
@@ -529,7 +531,7 @@ Texture2dRef Texture2d::create( const gl::TextureData& textureData, const Textur
 				width /= 2;
 				height /= 2;
 			}
-			cmdBuf->copyBufferToImage( buf->getBuffer(), dstImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>( regions.size() ), regions.data() );
+			cmdBuf->copyBufferToImage( buf->getBuffer(), dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>( regions.size() ), regions.data() );
 
 			//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
 			cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT ) );
@@ -539,6 +541,12 @@ Texture2dRef Texture2d::create( const gl::TextureData& textureData, const Textur
 		ctx->getGraphicsQueue()->submit( cmdBuf );
 		ctx->getGraphicsQueue()->waitIdle();
 	}
+	return result;
+}
+
+Texture2dRef Texture2d::create( const vk::ImageViewRef& imageView, const Texture2d::Format& format )
+{
+	Texture2dRef result = Texture2dRef( new Texture2d( imageView, format ) );
 	return result;
 }
 
@@ -849,7 +857,7 @@ void TextureCubeMap::initializeFinal( vk::Device *device )
     assert(res == VK_SUCCESS);
 	
 	// Descriptor
-	mImageInfo.imageView   = this->getImageView()->getImageView();
+	mImageInfo.imageView   = this->getImageView()->vkObject();
 	mImageInfo.sampler     = this->mSampler;
 	mImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }

@@ -95,7 +95,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
     imageViewCreateInfo.viewType						= mViewType;
     imageViewCreateInfo.format							= mImage->getInternalFormat();
     imageViewCreateInfo.flags							= 0;
-	imageViewCreateInfo.image							= mImage->getImage();
+	imageViewCreateInfo.image							= mImage->vkObject();
 	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
 	imageViewCreateInfo.subresourceRange.levelCount     = mImage->getMipLevels();
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -137,7 +137,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
     imageViewCreateInfo.viewType						= mViewType;
     imageViewCreateInfo.format							= mImage->getInternalFormat();
     imageViewCreateInfo.flags							= 0;
-	imageViewCreateInfo.image							= mImage->getImage();
+	imageViewCreateInfo.image							= mImage->vkObject();
 	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
 	imageViewCreateInfo.subresourceRange.levelCount     = mImage->getMipLevels();
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;

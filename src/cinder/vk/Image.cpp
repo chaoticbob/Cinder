@@ -862,7 +862,7 @@ void Image::copy( vk::Context *context, const vk::ImageRef& srcImage, uint32_t s
 		region.dstOffset						= { dstOffset.x, dstOffset.y, 0 };
 		region.extent							= { static_cast<uint32_t>( srcImage->getWidth() ), static_cast<uint32_t>( srcImage->getHeight() ), 1 };
 
-		cmdBuf->copyImage( srcImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
+		cmdBuf->copyImage( srcImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
 
 		//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
 		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT ) );
@@ -937,7 +937,7 @@ void Image::blit( vk::Context *context, const vk::ImageRef& srcImage, uint32_t s
 		region.dstOffsets[0]					= { dstArea.x1, dstArea.y1, 0 };
 		region.dstOffsets[1]					= { dstArea.x2, dstArea.y2, 1 };
 
-		cmdBuf->blitImage( srcImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR );
+		cmdBuf->blitImage( srcImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR );
 
 		//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT ) );

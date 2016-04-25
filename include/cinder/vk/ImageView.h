@@ -118,18 +118,22 @@ public:
 	//! Creates an 2D image view using a specific viewType
 	static ImageViewRef		createCube( int32_t width, int32_t height, const vk::ImageRef& premadeImage, vk::Device *device = nullptr );
 
-	VkImageView				getImageView() const { return mImageView; }
+	VkImageView				vkObject() const { return mImageView; }
 
 	const vk::ImageRef&		getImage() const { return mImage; }
 
+	VkFormat				getInternalFormat() const { return mImage->getInternalFormat(); }
 	int32_t					getWidth()  const { return mImage->getWidth(); }
 	int32_t					getHeight() const { return mImage->getHeight(); }
 	int32_t					getDepth()  const { return mImage->getDepth(); }
-
-	VkFormat				getFormat() const { return mImage->getInternalFormat(); }
-	VkImageAspectFlags		getAspectMask() const { return mImage->getAspectMask(); }
-
+	const VkExtent3D&		getExtent() const { return mImage->getExtent(); }		
+	uint32_t				getMipLevels() const { return mImage->getMipLevels(); }
+	uint32_t				getArrayLayers() const { return mImage->getArrayLayers(); }
+	VkSampleCountFlagBits	getSamples() const { return mImage->getSamples(); }
+	VkImageTiling			getTiling() const { return mImage->getTiling(); }
+	VkImageUsageFlags		getUsage() const { return mImage->getUsage(); }
 	VkImageLayout			getInitialLayout() const { return mImage->getInitialLayout(); }
+	VkImageAspectFlags		getAspectMask() const { return mImage->getAspectMask(); }
 
 protected:
 	// Derived objects should use this c'tor

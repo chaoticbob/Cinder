@@ -45,6 +45,7 @@
 #include "cinder/vk/PipelineSelector.h"
 #include "cinder/vk/Queue.h"
 #include "cinder/vk/Surface.h"
+#include "cinder/vk/Texture.h"
 #include "cinder/Log.h"
 
 namespace cinder { namespace vk {
@@ -272,7 +273,7 @@ void Presenter::clearSwapchainImages( vk::Context *context )
 			subresRange.levelCount		= 1;
 			subresRange.baseArrayLayer	= 0;
 			subresRange.layerCount		= 1;
-			cmdBuf->clearColorImage( attachment->getImage()->getImage(), VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &subresRange );
+			cmdBuf->clearColorImage( attachment->getImage()->vkObject(), VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &subresRange );
 		}
 	}
 	cmdBuf->end();

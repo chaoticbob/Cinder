@@ -43,6 +43,7 @@
 #include "cinder/vk/Framebuffer.h"
 #include "cinder/vk/ImageView.h"
 #include "cinder/vk/Queue.h"
+#include "cinder/vk/Texture.h"
 #include "cinder/vk/wrapper.h"
 
 namespace cinder { namespace vk {
