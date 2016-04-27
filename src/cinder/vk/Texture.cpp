@@ -42,6 +42,7 @@
 #include "cinder/vk/CommandPool.h"
 #include "cinder/vk/Context.h"
 #include "cinder/vk/Device.h"
+#include "cinder/vk/Image.h"
 #include "cinder/vk/ImageView.h"
 #include "cinder/vk/Queue.h"
 #include "cinder/vk/wrapper.h"
@@ -134,65 +135,77 @@ Texture2d::Texture2d( const Surface32f& surf, const Texture2d::Format &format, v
 	initialize( surf.getData(), surf.getRowBytes(), surf.getPixelBytes(), device );
 }
 
-//Texture2d::Texture2d( const ImageSourceRef& imageSource,const Texture2d::Format &format, vk::Device *device )
-//	: TextureBase(), mWidth( imageSource->getWidth() ), mHeight( imageSource->getHeight() ), mFormat( format )
-//{
-//	VkFormat defaultInternalFormat = VK_FORMAT_UNDEFINED;
-//	// Set the internal format based on the image's color space
-//	switch( imageSource->getColorModel() ) {
-//		// Force RGBA format for now, since VUlkan doesn't seem to like creating RGB images.
-//		case ImageIo::CM_RGB:
-//			switch( imageSource->getDataType() ) {
-//				case ImageIo::UINT16:
-//					defaultInternalFormat = VK_FORMAT_R16G16B16A16_UNORM; //( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16_UNORM;
-//				break;
-//				case ImageIo::FLOAT16:
-//					defaultInternalFormat = VK_FORMAT_R16G16B16A16_SFLOAT; //( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R16G16B16_SFLOAT;
-//				break;
-//				case ImageIo::FLOAT32:
-//					defaultInternalFormat = VK_FORMAT_R32G32B32A32_SFLOAT; //( imageSource->hasAlpha() ) ? VK_FORMAT_R32G32B32A32_SFLOAT : VK_FORMAT_R32G32B32_SFLOAT;
-//				break;
-//				default:
-//					defaultInternalFormat = VK_FORMAT_R8G8B8A8_UNORM; //( imageSource->hasAlpha() ) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8_UNORM;
-//				break;
-//			}
-//		break;
-//		case ImageIo::CM_GRAY: {
-//			switch( imageSource->getDataType() ) {
-//				case ImageIo::UINT16:
-//					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16_UNORM;
-//				break;
-//				case ImageIo::FLOAT16:
-//					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16_SFLOAT : VK_FORMAT_R16_SFLOAT;
-//				break;
-//				case ImageIo::FLOAT32:
-//					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R32G32_SFLOAT : VK_FORMAT_R32_SFLOAT;
-//				break;
-//				default:
-//					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
-//				break;
-//			}
-//			
-//			//if( ! format.mSwizzleSpecified ) {
-//			//	std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
-//			//	if( imageSource->hasAlpha() )
-//			//		swizzleMask[3] = GL_GREEN;
-//			//	format.setSwizzleMask( swizzleMask );
-//			//}
-//		}
-//		break;
-//		default:
-//			throw ImageIoExceptionIllegalColorModel( "Unsupported color model for vk::Texture2d construction." );
-//		break;
-//	}
-//
-//	// Set internal format if one isn't defined
-//	if( VK_FORMAT_UNDEFINED == mFormat.getInternalFormat() ) {
-//		mFormat.setInternalFormat( defaultInternalFormat );
-//	}
-//
-//	initialize( imageSource, context );
-//}
+Texture2d::Texture2d( const ImageSourceRef& imageSource,const Texture2d::Format &format, vk::Device *device )
+	: TextureBase(), mSize( imageSource->getWidth(), imageSource->getHeight() ), mFormat( format )
+{
+	VkFormat defaultInternalFormat = VK_FORMAT_UNDEFINED;
+	VkFormat imageSourceFormat = VK_FORMAT_UNDEFINED;
+
+	// Set the internal format based on the image's color space
+	switch( imageSource->getColorModel() ) {
+		// Force RGBA format for now, since Vulkan doesn't require 3 channel images to be supported
+		case ImageIo::CM_RGB: {
+			ImageIo::DataType dataType = imageSource->getDataType();
+			switch( dataType ) {
+				case ImageIo::UINT16:
+					defaultInternalFormat = VK_FORMAT_R16G16B16A16_UNORM;
+					imageSourceFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16_UNORM;
+				break;
+				case ImageIo::FLOAT16:
+					defaultInternalFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+					imageSourceFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R16G16B16_SFLOAT;
+				break;
+				case ImageIo::FLOAT32:
+					defaultInternalFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+					imageSourceFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R32G32B32A32_SFLOAT : VK_FORMAT_R32G32B32_SFLOAT;
+				break;
+				default:
+					defaultInternalFormat = VK_FORMAT_R8G8B8A8_UNORM;
+					imageSourceFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8_UNORM;
+				break;
+			}
+		}
+		break;
+
+		case ImageIo::CM_GRAY: {
+			ImageIo::DataType dataType = imageSource->getDataType();
+			switch( dataType ) {
+				case ImageIo::UINT16:
+					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16_UNORM : VK_FORMAT_R16_UNORM;
+				break;
+				case ImageIo::FLOAT16:
+					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R16G16_SFLOAT : VK_FORMAT_R16_SFLOAT;
+				break;
+				case ImageIo::FLOAT32:
+					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R32G32_SFLOAT : VK_FORMAT_R32_SFLOAT;
+				break;
+				default:
+					defaultInternalFormat = ( imageSource->hasAlpha() ) ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
+				break;
+			}
+			imageSourceFormat = defaultInternalFormat;
+			
+			//if( ! format.mSwizzleSpecified ) {
+			//	std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
+			//	if( imageSource->hasAlpha() )
+			//		swizzleMask[3] = GL_GREEN;
+			//	format.setSwizzleMask( swizzleMask );
+			//}
+		}
+		break;
+
+		default:
+			throw ImageIoExceptionIllegalColorModel( "Unsupported color model for vk::Texture2d construction." );
+		break;
+	}
+
+	// Set internal format if one isn't defined
+	if( VK_FORMAT_UNDEFINED == mFormat.getInternalFormat() ) {
+		mFormat.setInternalFormat( defaultInternalFormat );
+	}
+
+	initialize( imageSource, imageSourceFormat, device );
+}
 
 Texture2d::Texture2d( const vk::ImageViewRef& imageView, const Texture2d::Format& format )
 	: TextureBase(), mFormat( format )
@@ -309,25 +322,6 @@ void Texture2d::initialize( vk::Device *device )
 	initializeFinal( device );
 }
 
-/*
-void Texture2d::initialize( const void *data, VkFormat dataFormat, vk::Device *device )
-{
-	initializeCommon( device );	
-
-	// Create the premade image
-	vk::Image::Format imageOptions = vk::Image::Format( mFormat.getInternalFormat() )
-		.setSamples( VK_SAMPLE_COUNT_1_BIT )
-		.setMipLevels( mMipLevels )
-		.setTilingOptimal()
-		.setMemoryPropertyDeviceLocal();
-	vk::ImageRef premadeImage = vk::Image::create( mWidth, mHeight, imageOptions, device );
-	//premadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-	mImageView = vk::ImageView::create( mWidth, mHeight, premadeImage, device );
-		
-	initializeFinal( device );
-}
-*/
-
 template <typename T>
 void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixelBytes, vk::Device *device )
 {
@@ -336,7 +330,6 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 	size_t numChannels = srcPixelBytes / sizeof( T 	);
 	VkFormat srcDataFormat = vk::findBestVkFormat<uint8_t>( numChannels );
 	assert( srcDataFormat != VK_FORMAT_UNDEFINED );
-
 
 	if( mHostVisible ) {
 		// NOTE: If the device doesn't support linear tiled images with sampling or 
@@ -371,11 +364,8 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 	initializeFinal( device );
 }
 
-void Texture2d::initialize( const ImageSourceRef& imageSource, vk::Device* device )
+void Texture2d::initialize( const ImageSourceRef& imageSource, VkFormat imageSourceFormat, vk::Device* device )
 {
-	initializeCommon( device );
-
-	/*
 	// Setup an appropriate dataFormat/ImageTargetTexture based on the image's color space
 	ImageIo::ChannelOrder channelOrder;
 	bool isGray = false;
@@ -391,26 +381,17 @@ void Texture2d::initialize( const ImageSourceRef& imageSource, vk::Device* devic
 			channelOrder = ( imageSource->hasAlpha() ) ? ImageIo::RGBA : ImageIo::RGB;
 		break;
 	}
-	*/
-
-	ImageIo::ChannelOrder channelOrder =  ImageIo::RGBA;
-	bool isGray = false;
-
-	// Create the premade image
-	vk::Image::Format imageOptions = vk::Image::Format( mFormat.getInternalFormat() )
-		.setMipLevels( mMipLevels )
-		.setTilingLinear()
-		.setMemoryPropertyHostVisible();
-	vk::ImageRef premadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
-	//premadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-	//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, premadeImage->getOptions(), premadeImage );
-	mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), premadeImage, device );
-
-	initializeFinal( device );
-
-	// Load data
-	if( premadeImage ) {
-		void *data = premadeImage->map();
+	
+	// Allocate buffer
+	size_t bufferSize = static_cast<size_t>( mSize.x * mSize.y * vk::formatSizeBytes( mFormat.getInternalFormat() ) );
+	std::vector<uint8_t> buffer = std::vector<uint8_t>( bufferSize );	
+	// Copy data to buffer
+	{
+		void *data = static_cast<void*>( buffer.data() );
+		if( nullptr == data ) {
+			throw std::runtime_error( "Unable to map buffer for image data copy" );
+		}
+		
 		if( nullptr != data ) {
 			if( imageSource->getDataType() == ImageIo::UINT8 ) {
 				auto target = ImageTargetVkTexture2d<uint8_t>::create( this, channelOrder, isGray, imageSource->hasAlpha(), data );
@@ -424,16 +405,86 @@ void Texture2d::initialize( const ImageSourceRef& imageSource, vk::Device* devic
 				auto target = ImageTargetVkTexture2d<half_float>::create( this, channelOrder, isGray, imageSource->hasAlpha(), data );
 				imageSource->load( target );	
 			}
-			else {
+			else if( imageSource->getDataType() == ImageIo::FLOAT32 ) {
 				auto target = ImageTargetVkTexture2d<float>::create( this, channelOrder, isGray, imageSource->hasAlpha(), data );
 				imageSource->load( target );	
 			}
-			premadeImage->unmap();
+			else {
+				auto target = ImageTargetVkTexture2d<float>::create( this, channelOrder, isGray, imageSource->hasAlpha(), data );
+				imageSource->load( target );	
+			}			
 		}
 	}
 
-	if( mMipLevels > 1 ) {
-		//generateMipmaps();
+	// Create the final image
+	{
+		initializeCommon( device );
+
+		const uint32_t width = static_cast<uint32_t>( mSize.x );
+		const uint32_t height = static_cast<uint32_t>( mSize.y );
+		const size_t srcPixelBytes = vk::formatSizeBytes( imageSourceFormat );
+		const size_t srcRowBytes = static_cast<size_t>( width * srcPixelBytes );
+
+		if( mHostVisible ) {
+			// NOTE: If the device doesn't support linear tiled images with sampling or 
+			//       a memory type can't be found for these properties - an error will
+			//       occur during the initialization of the image. 
+			vk::Image::Format imageOptions = vk::Image::Format( mFormat.getInternalFormat() )
+				.setSamples( VK_SAMPLE_COUNT_1_BIT )
+				.setTilingLinear()
+				.setUsageSampled()
+				.setMemoryPropertyHostVisible()
+				.setMipLevels( 1 );
+			vk::ImageRef preMadeImage;
+			if( imageSource->getDataType() == ImageIo::UINT8 ) {
+				const uint8_t *srcData = reinterpret_cast<const uint8_t *>( buffer.data() );
+				preMadeImage = vk::Image::create( width, height, srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mSize.x, mSize.y ), imageOptions, device );
+			}
+			else if( imageSource->getDataType() == ImageIo::UINT16 ) {
+				const uint16_t *srcData = reinterpret_cast<const uint16_t *>( buffer.data() );
+				preMadeImage = vk::Image::create( width, height, srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mSize.x, mSize.y ), imageOptions, device );
+			}
+			else if( imageSource->getDataType() == ImageIo::FLOAT16 ) {
+				// @TODO: Figure out what to do here
+			}
+			else if( imageSource->getDataType() == ImageIo::FLOAT32 ) {
+				const float *srcData = reinterpret_cast<const float *>( buffer.data() );
+				preMadeImage = vk::Image::create( width, height, srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mSize.x, mSize.y ), imageOptions, device );
+			}
+			// Create image view
+			if( preMadeImage ) {
+				mImageView = vk::ImageView::create( width, height, preMadeImage, device );
+			}
+		}
+		else {
+			vk::Image::Format imageOptions = vk::Image::Format( mFormat.getInternalFormat() )
+				.setSamples( mFormat.getSamples() )
+				.setTilingOptimal()
+				.setUsageSampled()
+				.setUsageTransferDestination()
+				.setMemoryPropertyDeviceLocal()
+				.setMipLevels( mMipLevels );
+			vk::ImageRef preMadeImage = vk::Image::create( width, height, imageOptions, device );
+			mImageView = vk::ImageView::create( width, height, preMadeImage, device );
+		
+			if( imageSource->getDataType() == ImageIo::UINT8 ) {
+				const uint8_t *srcData = reinterpret_cast<const uint8_t *>( buffer.data() );
+				doUpdate( width, height, srcData, srcRowBytes, srcPixelBytes );
+			}
+			else if( imageSource->getDataType() == ImageIo::UINT16 ) {
+				const uint16_t *srcData = reinterpret_cast<const uint16_t *>( buffer.data() );
+				doUpdate( width, height, srcData, srcRowBytes, srcPixelBytes );
+			}
+			else if( imageSource->getDataType() == ImageIo::FLOAT16 ) {
+				// @TODO: Figure out what to do here
+			}
+			else if( imageSource->getDataType() == ImageIo::FLOAT32 ) {
+				const float *srcData = reinterpret_cast<const float *>( buffer.data() );
+				doUpdate( width, height, srcData, srcRowBytes, srcPixelBytes );
+			}
+		}
+
+		initializeFinal( device );
 	}
 }
 
@@ -477,12 +528,12 @@ Texture2dRef Texture2d::create( const Surface32f& surf, const Texture2d::Format&
 	return result;
 }
 
-//Texture2dRef Texture2d::create( ImageSourceRef imageSource, const Format &format, vk::Device *device )
-//{
-//	context = ( nullptr != context ) ? context : Context::getCurrent();
-//	Texture2dRef result = Texture2dRef( new Texture2d( imageSource, format, context ) );
-//	return result;
-//}
+Texture2dRef Texture2d::create( ImageSourceRef imageSource, const Format &format, vk::Device *device )
+{
+	device = ( nullptr != device ) ? device : vk::Context::getCurrent()->getDevice();
+	Texture2dRef result = Texture2dRef( new Texture2d( imageSource, format, device ) );
+	return result;
+}
 
 Texture2dRef Texture2d::create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat, vk::Device *device )
 {
@@ -666,7 +717,7 @@ ImageTargetVkTexture2d<T>::ImageTargetVkTexture2d( const Texture2d *texture, Ima
 template<typename T>
 void* ImageTargetVkTexture2d<T>::getRowPointer( int32_t row )
 {
-	return mDataBaseAddress + ( mTexture->getHeight() - 1 - row ) * mRowInc;
+	return mDataBaseAddress + row * mRowInc;
 }
 
 // -------------------------------------------------------------------------------------------------

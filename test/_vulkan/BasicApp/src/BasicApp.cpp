@@ -25,7 +25,8 @@ private:
 
 void BasicApp::setup()
 {
-	mTex = vk::Texture::create( *Surface::create( loadImage( getAssetPath( "bloom.jpg" 	) ) ) );
+	auto image = loadImage( getAssetPath( "bloom.jpg" ) );
+	mTex = vk::Texture::create( image );
 }
 
 void BasicApp::mouseDown( MouseEvent event )

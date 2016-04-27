@@ -248,7 +248,7 @@ public:
 	Texture2d( const Surface8u& surf, const Texture2d::Format &format, vk::Device *device );
 	Texture2d( const Surface16u& surf, const Texture2d::Format &format, vk::Device *device );
 	Texture2d( const Surface32f& surf, const Texture2d::Format &format, vk::Device *device );
-	//Texture2d( const ImageSourceRef& imageSource, const Texture2d::Format &format, vk::Device *device );
+	Texture2d( const ImageSourceRef& imageSource, const Texture2d::Format &format, vk::Device *device );
 	Texture2d( const vk::ImageViewRef& imageView, const Texture2d::Format& format );
 	virtual ~Texture2d();
 
@@ -258,7 +258,7 @@ public:
 	static Texture2dRef		create( const Surface8u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const Surface16u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const Surface32f& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
-	//static Texture2dRef		create( ImageSourceRef imageSource, const Format &format = Format(), vk::Device *device = nullptr );
+	static Texture2dRef		create( ImageSourceRef imageSource, const Format &format = Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat = Texture2d::Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const vk::ImageViewRef& imageView, const Texture2d::Format& format = Texture2d::Format() );
 
@@ -282,9 +282,8 @@ private:
 	void						initializeCommon( vk::Device *device );
 	void						initializeFinal( vk::Device *device );
 	void						initialize( vk::Device *device );
-	//void						initialize( const void *data, VkFormat dataFormat, vk::Device *device );
 	template <typename T> void	initialize( const T* srcData, size_t srcRowBytes, size_t srcPixelBytes, vk::Device *device );
-	void						initialize( const ImageSourceRef& imageSource, vk::Device *device );
+	void						initialize( const ImageSourceRef& imageSource, VkFormat imageSourceFormat, vk::Device *device );
 	void						destroy();
 	friend class Context;
 

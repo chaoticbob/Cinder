@@ -181,15 +181,15 @@ void NormalMappingApp::setup()
 	// load assets
 	try {
 		// load our copyright message
-		mCopyrightMap  = vk::Texture::create( *Surface::create( loadImage( loadAsset("copyright.png") ) ) );
+		mCopyrightMap  = vk::Texture::create( loadImage( loadAsset("copyright.png") ) );
 
 		// load textures
 		auto texFmt = vk::Texture2d::Format();
 		texFmt.setMipmapEnabled();
-		mDiffuseMap  = vk::Texture::create( *Surface::create( loadImage( loadAsset("leprechaun_diffuse.jpg"  ) ) ), texFmt );
-		mSpecularMap = vk::Texture::create( *Surface::create( loadImage( loadAsset("leprechaun_specular.jpg" ) ) ), texFmt );
-		mNormalMap   = vk::Texture::create( *Surface::create( loadImage( loadAsset("leprechaun_normal.jpg"   ) ) ), texFmt );
-		mEmissiveMap = vk::Texture::create( *Surface::create( loadImage( loadAsset("leprechaun_emmisive.png" ) ) ), texFmt );
+		mDiffuseMap  = vk::Texture::create( loadImage( loadAsset("leprechaun_diffuse.jpg"  ) ), texFmt );
+		mSpecularMap = vk::Texture::create( loadImage( loadAsset("leprechaun_specular.jpg" ) ), texFmt );
+		mNormalMap   = vk::Texture::create( loadImage( loadAsset("leprechaun_normal.jpg"   ) ), texFmt );
+		mEmissiveMap = vk::Texture::create( loadImage( loadAsset("leprechaun_emmisive.png" ) ), texFmt );
 
 		// load our shaders and set the non-varying uniforms
 		vk::ShaderProg::Format format = vk::ShaderProg::Format()
