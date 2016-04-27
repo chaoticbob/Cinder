@@ -42,6 +42,7 @@
 #include "cinder/vk/ImageView.h"
 #include "cinder/vk/IndexBuffer.h"
 #include "cinder/vk/Swapchain.h"
+#include "cinder/vk/Texture.h"
 #include "cinder/vk/UniformBuffer.h"
 
 namespace cinder { namespace vk {
@@ -147,6 +148,26 @@ ImageMemoryBarrierParams::ImageMemoryBarrierParams( const vk::ImageRef& image, V
 	mBarrier.subresourceRange.levelCount		= image->getMipLevels();
 	mBarrier.subresourceRange.baseArrayLayer	= 0;
 	mBarrier.subresourceRange.layerCount		= image->getArrayLayers();
+
+	mSrcStageMask = srcStageMask;
+	mDstStageMask = dstStageMask;
+}
+
+ImageMemoryBarrierParams::ImageMemoryBarrierParams( const vk::Texture2dRef& texture, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask )
+	: ImageMemoryBarrierParams()
+{
+    mBarrier.srcAccessMask						= 0;
+    mBarrier.dstAccessMask						= 0;
+	mBarrier.oldLayout							= oldLayout;
+    mBarrier.newLayout							= newLayout;
+    mBarrier.srcQueueFamilyIndex				= 0;
+    mBarrier.dstQueueFamilyIndex				= 0;
+    mBarrier.image								= texture->getImage()->vkObject();
+	mBarrier.subresourceRange.aspectMask		= texture->getAspectMask();
+	mBarrier.subresourceRange.baseMipLevel		= 0;
+	mBarrier.subresourceRange.levelCount		= texture->getMipLevels();
+	mBarrier.subresourceRange.baseArrayLayer	= 0;
+	mBarrier.subresourceRange.layerCount		= texture->getArrayLayers();
 
 	mSrcStageMask = srcStageMask;
 	mDstStageMask = dstStageMask;

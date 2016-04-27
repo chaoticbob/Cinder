@@ -50,45 +50,72 @@ namespace cinder { namespace vk {
 // -------------------------------------------------------------------------------------------------
 // Framebuffer::Attachment
 // -------------------------------------------------------------------------------------------------
-Framebuffer::Attachment::Attachment( VkFormat internalFormat, VkSampleCountFlagBits samples ) 
-	: mInternalFormat( internalFormat ), mSamples( samples )
+Framebuffer::Attachment::Attachment( VkFormat internalFormat, const vk::Texture2d::Format& textureParams ) 
 {
-	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
-	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
-		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	mStorageParams = textureParams;
+	mStorageParams.setInternalFormat( internalFormat );
+
+	VkImageAspectFlags aspectMask = determineAspectMask( mStorageParams.getInternalFormat() );
+	bool isColor   = ( VK_IMAGE_ASPECT_COLOR_BIT   == ( aspectMask & VK_IMAGE_ASPECT_COLOR_BIT   ) );
+	bool isDepth   = ( VK_IMAGE_ASPECT_DEPTH_BIT   == ( aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT   ) );
+	bool isStencil = ( VK_IMAGE_ASPECT_STENCIL_BIT == ( aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ) );
+	if( isColor ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 	}
-	else {
-		mFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	else if( isDepth || isStencil ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+}
+
+Framebuffer::Attachment::Attachment( VkFormat internalFormat, VkSampleCountFlagBits samples )
+{
+	mStorageParams.setInternalFormat( internalFormat );
+	mStorageParams.setSamples( samples );
+
+	VkImageAspectFlags aspectMask = determineAspectMask( mStorageParams.getInternalFormat() );
+	bool isColor   = ( VK_IMAGE_ASPECT_COLOR_BIT   == ( aspectMask & VK_IMAGE_ASPECT_COLOR_BIT   ) );
+	bool isDepth   = ( VK_IMAGE_ASPECT_DEPTH_BIT   == ( aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT   ) );
+	bool isStencil = ( VK_IMAGE_ASPECT_STENCIL_BIT == ( aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ) );
+	if( isColor ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	}
+	else if( isDepth || isStencil ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	}
 }
 
 Framebuffer::Attachment::Attachment( const vk::Texture2dRef& attachment )
 {
-	mAttachment = attachment;
-	mInternalFormat = mAttachment->getInternalFormat();
-	mSamples = mAttachment->getSamples();
+	mStorage = attachment;
+	mStorageParams.setSamples( mStorage->getSamples() );
 
-	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
-	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
-		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	VkImageAspectFlags aspectMask = determineAspectMask( mStorageParams.getInternalFormat() );
+	bool isColor   = ( VK_IMAGE_ASPECT_COLOR_BIT   == ( aspectMask & VK_IMAGE_ASPECT_COLOR_BIT   ) );
+	bool isDepth   = ( VK_IMAGE_ASPECT_DEPTH_BIT   == ( aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT   ) );
+	bool isStencil = ( VK_IMAGE_ASPECT_STENCIL_BIT == ( aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ) );
+	if( isColor ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 	}
-	else {
-		mFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	else if( isDepth || isStencil ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	}
 }
 
 Framebuffer::Attachment::Attachment( const vk::ImageViewRef& attachment )
 {
-	mAttachment = vk::Texture2d::create( attachment );
-	mInternalFormat = mAttachment->getInternalFormat();
-	mSamples = mAttachment->getSamples();
+	mStorage = vk::Texture2d::create( attachment );
+	mStorageParams.setInternalFormat( mStorage->getInternalFormat() );
+	mStorageParams.setSamples( mStorage->getSamples() );
 
-	VkImageAspectFlags aspectMask = determineAspectMask( mInternalFormat );
-	if( VK_IMAGE_ASPECT_COLOR_BIT == aspectMask ) {
-		mFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	VkImageAspectFlags aspectMask = determineAspectMask( mStorageParams.getInternalFormat() );
+	bool isColor   = ( VK_IMAGE_ASPECT_COLOR_BIT   == ( aspectMask & VK_IMAGE_ASPECT_COLOR_BIT   ) );
+	bool isDepth   = ( VK_IMAGE_ASPECT_DEPTH_BIT   == ( aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT   ) );
+	bool isStencil = ( VK_IMAGE_ASPECT_STENCIL_BIT == ( aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ) );
+	if( isColor ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
 	}
-	else {
-		mFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	else if( isDepth || isStencil ) {
+		mInternalFormatFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	}
 }
 
@@ -115,69 +142,43 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 		return;
 	}
 
-	mFormat = format;
-
 	// Allocate storage for attachments - if needed
-	for( auto& elem : mFormat.mAttachments ) {
-		// Already allocated skip
-		if( elem.mAttachment ) {
-			continue;
+	for( const auto& srcAttachment : format.mAttachments ) {
+		Framebuffer::Attachment dstAttachment = srcAttachment;
+
+		if( ! dstAttachment.mStorage ) {
+			VkFormatProperties formatProperties = {};
+			vkGetPhysicalDeviceFormatProperties( mDevice->getGpu(), dstAttachment.mStorageParams.getInternalFormat(), &formatProperties );
+
+			vk::Texture2d::Format textureParams = srcAttachment.mStorageParams;
+			textureParams.setUsageTransferDestination();
+			// Attachment type
+			if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ) {
+				textureParams.setUsageColorAttachment();
+			}
+			else if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
+				textureParams.setUsageDepthStencilAttachment();
+			}
+			// Create attachment
+			dstAttachment.mStorage = vk::Texture2d::create( mWidth, mHeight, textureParams, mDevice );
+
+			// Transition to first use
+			if( dstAttachment.isColorAttachment() ) {
+				vk::transitionToFirstUse( dstAttachment.mStorage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
+			}
+			else if( dstAttachment.isDepthStencilAttachment() ) {
+				vk::transitionToFirstUse( dstAttachment.mStorage, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
+			}
 		}
 
-		VkFormatProperties formatProperties = {};
-		vkGetPhysicalDeviceFormatProperties( mDevice->getGpu(), elem.mInternalFormat, &formatProperties );
-
-		vk::Texture2d::Format texFormat = vk::Texture2d::Format( elem.mInternalFormat );
-		texFormat.setSamples( elem.mSamples );
-		texFormat.setUsageTransferDestination();
-		// Attachment type
-		if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ) {
-			texFormat.setUsageColorAttachment();
-		}
-		else if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
-			texFormat.setUsageDepthStencilAttachment();
-		}
-		// Create attachment
-		elem.mAttachment = vk::Texture2d::create( mWidth, mHeight, texFormat, mDevice );
-
-		// Transition to first use
-		if( elem.isColorAttachment() ) {
-			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
-		}
-		else if( elem.isDepthStencilAttachment() ) {
-			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
-		}			
-
-		/*
-		vk::Image::Format imageFormat = vk::Image::Format( elem.mInternalFormat )
-			.setSamples( elem.mSamples )
-			.setTilingOptimal()
-			.setUsageTransferDestination()
-			.setMemoryPropertyDeviceLocal();
-		// Attachment type
-		if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ) {
-			imageFormat.setUsageColorAttachment();
-		}
-		else if( formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) {
-			imageFormat.setUsageDepthStencilAttachment();
-		}
-		// Create attachment
-		elem.mAttachment = vk::ImageView::create( mWidth, mHeight, imageFormat, mDevice );
-
-		// Transition to first use
-		if( elem.isColorAttachment() ) {
-			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
-		}
-		else if( elem.isDepthStencilAttachment() ) {
-			vk::transitionToFirstUse( elem.mAttachment, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
-		}
-		*/
+		mAttachments.push_back( dstAttachment );
 	}
 
 	// Attachment array for creation
 	std::vector<VkImageView> attachments;
-	for( const auto& elem : mFormat.mAttachments ) {
-		attachments.push_back( elem.mAttachment->getImageView()->vkObject() );
+	for( const auto& fbAttachment : mAttachments ) {
+		const auto& storage = fbAttachment.getStorage();
+		attachments.push_back( storage->getImageView()->vkObject() );
 	}
 
 	VkFramebufferCreateInfo createInfo = {};

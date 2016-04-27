@@ -39,14 +39,11 @@
 #pragma once
 
 #include "cinder/vk/BaseVkObject.h"
+#include "cinder/vk/ImageView.h"
+#include "cinder/vk/Texture.h"
 #include "cinder/Vector.h"
 
 namespace cinder { namespace vk {
-
-class ImageView;
-class Texture2d;
-using ImageViewRef = std::shared_ptr<ImageView>;
-using Texture2dRef = std::shared_ptr<Texture2d>;
 
 class Framebuffer;
 using FramebufferRef = std::shared_ptr<Framebuffer>;
@@ -64,25 +61,24 @@ public:
 	//!
 	class Attachment {
 	public:
-		Attachment( VkFormat format, VkSampleCountFlagBits samples );
+		Attachment( VkFormat internalFormat, const vk::Texture2d::Format& textureParams = vk::Texture2d::Format() );
+		Attachment( VkFormat internalFormat, VkSampleCountFlagBits samples );
 		Attachment( const vk::Texture2dRef& attachment );
 		Attachment( const vk::ImageViewRef& attachment );
 		virtual ~Attachment() {}
 
-		VkFormat					getInternalFormat() const { return mInternalFormat; }
-		VkSampleCountFlagBits		getSamples() const { return mSamples; }
+		VkFormat					getInternalFormat() const { return mStorageParams.getInternalFormat(); }
+		VkSampleCountFlagBits		getSamples() const { return mStorageParams.getSamples(); }
 
-		const vk::Texture2dRef&		getAttachment() const { return mAttachment; }
+		const vk::Texture2dRef&		getStorage() const { return mStorage; }
 
-		bool						isColorAttachment() const { return 0 != ( mFormatFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ); }
-		bool						isDepthStencilAttachment() const { return 0 != ( mFormatFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ); }
+		bool						isColorAttachment() const { return 0 != ( mInternalFormatFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ); }
+		bool						isDepthStencilAttachment() const { return 0 != ( mInternalFormatFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ); }
 
 	private:
-		VkFormat				mInternalFormat = VK_FORMAT_UNDEFINED;
-		VkFormatFeatureFlags	mFormatFeatures = 0;
-		VkSampleCountFlagBits	mSamples = VK_SAMPLE_COUNT_1_BIT;
-		vk::Texture2dRef		mAttachment;
-		friend class Framebuffer::Format;
+		vk::Texture2d::Format		mStorageParams;
+		vk::Texture2dRef			mStorage;
+		VkFormatFeatureFlags		mInternalFormatFeatures = 0;
 		friend class Framebuffer;
 	};
 
@@ -114,16 +110,17 @@ public:
 	ivec2						getSize() const { return ivec2( mWidth, mHeight ); }
 	float						getAspectRatio() const { return (float)mWidth / (float)mHeight; }
 
-	const std::vector<Framebuffer::Attachment>&	getAttachments() const { return mFormat.mAttachments; }
+	const std::vector<Framebuffer::Attachment>&	getAttachments() const { return mAttachments; }
+	const vk::Texture2dRef&						getTexture( uint32_t attachmentIndex ) const { return mAttachments[attachmentIndex].getStorage(); }
 
 private:
 	Framebuffer( VkRenderPass renderPass, const ivec2& size, const vk::Framebuffer::Format& format, vk::Device *device );
 
-	VkFramebuffer				mFramebuffer = VK_NULL_HANDLE;
-	VkRenderPass				mRenderPass = VK_NULL_HANDLE;
-	uint32_t					mWidth = 0;
-	uint32_t					mHeight = 0;
-	vk::Framebuffer::Format		mFormat;
+	VkFramebuffer							mFramebuffer = VK_NULL_HANDLE;
+	VkRenderPass							mRenderPass = VK_NULL_HANDLE;
+	uint32_t								mWidth = 0;
+	uint32_t								mHeight = 0;
+	std::vector<Framebuffer::Attachment>	mAttachments;
 
 	void initialize( const vk::Framebuffer::Format& format );
 	void destroy( bool removeFromTracking = true );

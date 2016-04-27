@@ -1,40 +1,5 @@
-/*
- Copyright 2016 Google Inc.
- 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- 
- http://www.apache.org/licenses/LICENSE-2.0
- 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
 
 
- Copyright (c) 2016, The Cinder Project, All rights reserved.
-
- This code is intended for use with the Cinder C++ library: http://libcinder.org
-
- Redistribution and use in source and binary forms, with or without modification, are permitted provided that
- the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and
-	the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
-	the following disclaimer in the documentation and/or other materials provided with the distribution.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
- TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- POSSIBILITY OF SUCH DAMAGE.
-*/
 
 #include "cinder/vk/RenderPass.h"
 #include "cinder/vk/CommandBuffer.h"
@@ -214,12 +179,31 @@ RenderPass::Options::Options( VkFormat colorFormat, VkFormat depthStencilFormat,
 	addSubPass( subPass );
 }
 
+RenderPass::Options& RenderPass::Options::addSubPass( const Subpass& value )
+{
+	mSubpasses.push_back( value );
+	if( value.mSelfDependent ) {
+		uint32_t subpassIndex = static_cast<uint32_t>( mSubpasses.size() - 1 );
+		addSubpassSelfDependency( subpassIndex );
+	}
+	return *this;
+}
+
 RenderPass::Options& RenderPass::Options::addSubpassSelfDependency( uint32_t subpassIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask )
 {
-	vk::RenderPass::SubpassDependency subpassDep = vk::RenderPass::SubpassDependency( subpassIndex, subpassIndex )
-		.setStageMasks( srcStageMask, dstStageMask )
-		.setAccessMasks( srcAccessMask, dstAccessMask );
-	addSubpassDependency( subpassDep );
+	// Check to see if there's an existing self dependency...
+	auto it = std::find_if( std::begin( mSubpassDependencies ), std::end( mSubpassDependencies ),
+		[subpassIndex]( const RenderPass::SubpassDependency& elem ) -> bool {
+			return ( elem.mDependency.srcSubpass == subpassIndex ) && ( elem.mDependency.dstSubpass == subpassIndex );
+		}
+	);
+	// ...add self dependency if one doesn't exist
+	if( std::end( mSubpassDependencies ) == it ) {
+		vk::RenderPass::SubpassDependency subpassDep = vk::RenderPass::SubpassDependency( subpassIndex, subpassIndex )
+			.setStageMasks( srcStageMask, dstStageMask )
+			.setAccessMasks( srcAccessMask, dstAccessMask );
+		addSubpassDependency( subpassDep );
+	}
 	return *this;
 }
 
@@ -601,7 +585,7 @@ void RenderPass::beginRenderExplicit( const vk::CommandBufferRef& cmdBuf,const v
 	const auto& fbAttachments = mFramebuffer->getAttachments();
 	for( size_t i = 0; i < mOptions.mAttachments.size(); ++i ) {
 		VkImageLayout currentLayout = mOptions.mAttachments[i].mDescription.initialLayout;
-		fbAttachments[i].getAttachment()->getImage()->setCurrentLayout( currentLayout );
+		fbAttachments[i].getStorage()->getImage()->setCurrentLayout( currentLayout );
 	}
 
 	// Begin the render pass
@@ -640,7 +624,7 @@ void RenderPass::endRenderExplicit()
 	const auto& fbAttachments = mFramebuffer->getAttachments();
 	for( size_t i = 0; i < mOptions.mAttachments.size(); ++i ) {
 		VkImageLayout currentLayout = mOptions.mAttachments[i].mDescription.finalLayout;
-		fbAttachments[i].getAttachment()->getImage()->setCurrentLayout( currentLayout );
+		fbAttachments[i].getStorage()->getImage()->setCurrentLayout( currentLayout );
 	}
 
 	// Command buffer is not ended in explicit mode

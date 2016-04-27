@@ -114,7 +114,7 @@ class ImageMemoryBarrierParams {
 public:
 	ImageMemoryBarrierParams( VkImage image, VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkImageLayout newLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkPipelineStageFlags srcStageMask = 0, VkPipelineStageFlags dstStageMask = 0  );
 	ImageMemoryBarrierParams( const vk::ImageRef& image, VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkImageLayout newLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkPipelineStageFlags srcStageMask = 0, VkPipelineStageFlags dstStageMask = 0 );
-	ImageMemoryBarrierParams( const vk::Texture2dRef& image, VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkImageLayout newLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkPipelineStageFlags srcStageMask = 0, VkPipelineStageFlags dstStageMask = 0 );
+	ImageMemoryBarrierParams( const vk::Texture2dRef& texture, VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkImageLayout newLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkPipelineStageFlags srcStageMask = 0, VkPipelineStageFlags dstStageMask = 0 );
 	virtual ~ImageMemoryBarrierParams() {}
 	ImageMemoryBarrierParams&		setSrcAccessMask( VkAccessFlags value, bool exclusive = false ) { if( exclusive ) { mBarrier.srcAccessMask = value; } else { mBarrier.srcAccessMask |= value; } return *this; }
 	ImageMemoryBarrierParams&		setDstAccessMask( VkAccessFlags value, bool exclusive = false ) { if( exclusive ) { mBarrier.dstAccessMask = value; } else { mBarrier.dstAccessMask |= value; } return *this; }

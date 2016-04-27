@@ -93,18 +93,18 @@ Texture2d::Texture2d()
 }
 
 Texture2d::Texture2d( int width, int height, const Texture2d::Format &format, vk::Device *device )
-	: TextureBase(), mWidth( width ), mHeight( height ), mFormat( format )
+	: TextureBase(), mSize( width, height ), mFormat( format )
 {
 	initialize( device );
 }
 
 Texture2d::Texture2d( const void *data, VkFormat dataFormat, int width, int height, const Texture2d::Format &format, vk::Device *device )
-	: TextureBase(), mWidth( width ), mHeight( height ), mFormat( format )
+	: TextureBase(), mSize( width, height ), mFormat( format )
 {
 }
 
 Texture2d::Texture2d( const Surface8u& surf, const Texture2d::Format &format, vk::Device *device )
-	: TextureBase(), mWidth( surf.getWidth() ), mHeight( surf.getHeight() ), mFormat( format )
+	: TextureBase(), mSize( surf.getWidth(), surf.getHeight() ), mFormat( format )
 {
 	if( VK_FORMAT_UNDEFINED == mFormat.getInternalFormat() ) {
 		// Force a supported format 
@@ -114,7 +114,7 @@ Texture2d::Texture2d( const Surface8u& surf, const Texture2d::Format &format, vk
 }
 
 Texture2d::Texture2d( const Surface16u& surf, const Texture2d::Format &format, vk::Device *device )
-	: TextureBase(), mWidth( surf.getWidth() ), mHeight( surf.getHeight() ), mFormat( format )
+	: TextureBase(), mSize( surf.getWidth(), surf.getHeight() ), mFormat( format )
 {
 
 	if( VK_FORMAT_UNDEFINED == mFormat.getInternalFormat() ) {
@@ -125,7 +125,7 @@ Texture2d::Texture2d( const Surface16u& surf, const Texture2d::Format &format, v
 }
 
 Texture2d::Texture2d( const Surface32f& surf, const Texture2d::Format &format, vk::Device *device )
-	: TextureBase() , mWidth( surf.getWidth() ), mHeight( surf.getHeight() ), mFormat( format )
+	: TextureBase() , mSize( surf.getWidth(), surf.getHeight() ), mFormat( format )
 {
 	if( VK_FORMAT_UNDEFINED == mFormat.getInternalFormat() ) {
 		// Force a supported format 
@@ -198,6 +198,7 @@ Texture2d::Texture2d( const vk::ImageViewRef& imageView, const Texture2d::Format
 	: TextureBase(), mFormat( format )
 {
 	mImageView = imageView;
+	mSize = ivec2( mImageView->getWidth(), mImageView->getHeight() );
 	
 	bool hostVisible = ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT == ( imageView->getImage()->getMemoryProperty() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ) );
 	bool mipmapEnabled = ( imageView->getMipLevels() > 1 );
@@ -232,7 +233,7 @@ void Texture2d::initializeCommon( vk::Device* device )
 
 	// Calculate mipmap levels
 	if( mFormat.getMipmapEnabled() ) {
-		float maxDim = static_cast<float>( std::max( mWidth, mHeight ) );
+		float maxDim = static_cast<float>( std::max( mSize.x, mSize.y ) );
 		mMipLevels = static_cast<int>( log2( maxDim ) ) + 1;
 		if( mFormat.getMaxMipmapLevels() > 0 ) {
 			mMipLevels = std::min<uint32_t>( mMipLevels, mFormat.getMaxMipmapLevels() );
@@ -300,10 +301,10 @@ void Texture2d::initialize( vk::Device *device )
 		imageOptions.setUsage( mFormat.getUsage() );
 		imageOptions.setMemoryPropertyDeviceLocal();
 	}
-	vk::ImageRef preMadeImage = vk::Image::create( mWidth, mHeight, imageOptions, device );
+	vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
 	//preMadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );		
 	//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, imageOptions, preMadeImage );
-	mImageView = vk::ImageView::create( mWidth, mHeight, preMadeImage, device );
+	mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
 
 	initializeFinal( device );
 }
@@ -347,9 +348,9 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 			.setUsageSampled()
 			.setMemoryPropertyHostVisible()
 			.setMipLevels( 1 );
-		vk::ImageRef preMadeImage = vk::Image::create( mWidth, mHeight, srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mWidth, mHeight ), imageOptions, device );
+		vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mSize.x, mSize.y ), imageOptions, device );
 		//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, preMadeImage->getOptions(), preMadeImage );
-		mImageView = vk::ImageView::create( mWidth, mHeight, preMadeImage, device );
+		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
 	}
 	else {
 		// Create image for texture
@@ -360,11 +361,11 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 			.setUsageTransferDestination()
 			.setMemoryPropertyDeviceLocal()
 			.setMipLevels( mMipLevels );
-		vk::ImageRef preMadeImage = vk::Image::create( mWidth, mHeight, imageOptions, device );
+		vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
 		//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, preMadeImage->getOptions(), preMadeImage );
-		mImageView = vk::ImageView::create( mWidth, mHeight, preMadeImage, device );
+		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
 		
-		doUpdate( mWidth, mHeight, srcData, srcRowBytes, srcPixelBytes );
+		doUpdate( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), srcData, srcRowBytes, srcPixelBytes );
 	}
 
 	initializeFinal( device );
@@ -400,10 +401,10 @@ void Texture2d::initialize( const ImageSourceRef& imageSource, vk::Device* devic
 		.setMipLevels( mMipLevels )
 		.setTilingLinear()
 		.setMemoryPropertyHostVisible();
-	vk::ImageRef premadeImage = vk::Image::create( mWidth, mHeight, imageOptions, device );
+	vk::ImageRef premadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
 	//premadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 	//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, premadeImage->getOptions(), premadeImage );
-	mImageView = vk::ImageView::create( mWidth, mHeight, premadeImage, device );
+	mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), premadeImage, device );
 
 	initializeFinal( device );
 

@@ -924,6 +924,9 @@
     <ClCompile Include="..\src\cinder\vk\spir2cross\spir2glsl.cpp">
       <Filter>Source Files\vk\spir2cross</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cinder\vk\RenderTarget.cpp">
+      <Filter>Source Files\vk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\AntTweakBar\AntPerfTimer.h">
@@ -1930,6 +1933,9 @@
     </ClInclude>
     <ClInclude Include="..\src\cinder\vk\spir2cross\spirv.hpp">
       <Filter>Source Files\vk\spir2cross</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cinder\vk\RenderTarget.h">
+      <Filter>Header Files\vk</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

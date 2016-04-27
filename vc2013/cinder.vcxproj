@@ -590,6 +590,7 @@
     <ClCompile Include="..\src\cinder\vk\Presenter.cpp" />
     <ClCompile Include="..\src\cinder\vk\Queue.cpp" />
     <ClCompile Include="..\src\cinder\vk\RenderPass.cpp" />
+    <ClCompile Include="..\src\cinder\vk\RenderTarget.cpp" />
     <ClCompile Include="..\src\cinder\vk\scoped.cpp" />
     <ClCompile Include="..\src\cinder\vk\ShaderProg.cpp" />
     <ClCompile Include="..\src\cinder\vk\spir2cross\spir2cpp.cpp" />
@@ -852,6 +853,7 @@
     <ClInclude Include="..\include\cinder\vk\Presenter.h" />
     <ClInclude Include="..\include\cinder\vk\Queue.h" />
     <ClInclude Include="..\include\cinder\vk\RenderPass.h" />
+    <ClInclude Include="..\include\cinder\vk\RenderTarget.h" />
     <ClInclude Include="..\include\cinder\vk\scoped.h" />
     <ClInclude Include="..\include\cinder\vk\ShaderProg.h" />
     <ClInclude Include="..\include\cinder\vk\StageManager.h" />

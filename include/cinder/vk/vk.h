@@ -61,6 +61,7 @@
 #include "cinder/vk/Presenter.h"
 #include "cinder/vk/Queue.h"
 #include "cinder/vk/RenderPass.h"
+#include "cinder/vk/RenderTarget.h"
 #include "cinder/vk/ShaderProg.h"
 #include "cinder/vk/Swapchain.h"
 #include "cinder/vk/Texture.h"

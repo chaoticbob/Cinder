@@ -129,12 +129,15 @@ public:
 		Subpass&						addPreserveAttachment( uint32_t attachmentIndex );
 		Subpass&						addPreserveAttachments( const std::vector<uint32_t>& attachmentIndices );
 
+		Subpass&						setSelfDependent( bool value = true ) { mSelfDependent = value; return *this; }
+
 	private:
 		VkPipelineBindPoint		mPipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		std::vector<uint32_t>	mColorAttachments;			// 1 or more elements
 		std::vector<uint32_t>	mResolveAttachments;		// 1 or more elements
 		std::vector<uint32_t>	mDepthStencilAttachment;	// 1 element at most
 		std::vector<uint32_t>	mPreserveAttachments;		// 0 or more elements
+		bool					mSelfDependent = false;
 		friend class RenderPass;
 	};
 
@@ -172,7 +175,7 @@ public:
 		virtual ~Options() {}
 
 		Options&					addAttachment( const Attachment& value ) { mAttachments.push_back( value ); return *this; }
-		Options&					addSubPass( const Subpass& value ) { mSubpasses.push_back( value ); return *this; }
+		Options&					addSubPass( const Subpass& value );
 		Options&					addSubpassDependency( const SubpassDependency& value ) { mSubpassDependencies.push_back( value ); return *this; }
 		Options&					addSubpassSelfDependency( uint32_t subpassIndex, VkPipelineStageFlags srcStageMask = vk::PipelineStageGraphicsBits, VkPipelineStageFlags dstStageMask = vk::PipelineStageGraphicsBits, VkAccessFlags srcAccessMask = vk::AccessFlagsBits, VkAccessFlags dstAccessMask = vk::AccessFlagsBits );
 

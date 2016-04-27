@@ -291,9 +291,9 @@ void Presenter::transitionToFirstUse( vk::Context *context )
 		for( auto& framebuffer : mFramebuffers ) {
 			if( mOptions.mMultiSample ) {
 				auto& attachments = framebuffer->getAttachments();
-				auto& image0 = attachments[0].getAttachment()->getImage();
-				auto& image1 = attachments[1].getAttachment()->getImage();
-				auto& image2 = attachments[2].getAttachment()->getImage();
+				auto& image0 = attachments[0].getStorage()->getImage();
+				auto& image1 = attachments[1].getStorage()->getImage();
+				auto& image2 = attachments[2].getStorage()->getImage();
 				auto params0 = vk::ImageMemoryBarrierParams( image0, image0->getInitialLayout(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
 				auto params1 = vk::ImageMemoryBarrierParams( image1, image1->getInitialLayout(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
 				auto params2 = vk::ImageMemoryBarrierParams( image2, image2->getInitialLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
@@ -303,8 +303,8 @@ void Presenter::transitionToFirstUse( vk::Context *context )
 			}
 			else {
 				auto& attachments = framebuffer->getAttachments();
-				auto& image0 = attachments[0].getAttachment()->getImage();
-				auto& image1 = attachments[1].getAttachment()->getImage();
+				auto& image0 = attachments[0].getStorage()->getImage();
+				auto& image1 = attachments[1].getStorage()->getImage();
 				auto params0 = vk::ImageMemoryBarrierParams( image0, image0->getInitialLayout(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
 				auto params1 = vk::ImageMemoryBarrierParams( image1, image1->getInitialLayout(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
 				cmdBuf->pipelineBarrierImageMemory( params0 );

@@ -262,9 +262,9 @@ public:
 	static Texture2dRef		create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat = Texture2d::Format(), vk::Device *device = nullptr );
 	static Texture2dRef		create( const vk::ImageViewRef& imageView, const Texture2d::Format& format = Texture2d::Format() );
 
-	uint32_t					getWidth() const { return mImageView->getWidth(); }
-	uint32_t					getHeight() const { return mImageView->getHeight(); }
-	ivec2						getSize() const { return ivec2( mWidth, mHeight ); }
+	uint32_t					getWidth() const { return static_cast<uint32_t>( mSize.x ); }
+	uint32_t					getHeight() const { return static_cast<uint32_t>( mSize.y ); }
+	const ivec2&				getSize() const { return mSize; }
 	Area						getBounds() const { return Area( 0, 0, getWidth(), getHeight() ); }
 	const Texture2d::Format&	getFormat() const { return mFormat; }
 
@@ -276,8 +276,7 @@ public:
 	void					update( const Surface32f& surf );
 
 private:
-	uint32_t				mWidth = 0;
-	uint32_t				mHeight = 0;
+	ivec2					mSize = ivec2( 0 );
 	Texture2d::Format		mFormat;
 
 	void						initializeCommon( vk::Device *device );
