@@ -402,7 +402,6 @@ void NormalMappingApp::draw()
 		}
 
 		// Draw copyright
-		/*
 		{
 			vk::enableAlphaBlending();
 			vk::setMatricesWindow( getWindowSize() );
@@ -410,7 +409,6 @@ void NormalMappingApp::draw()
 			r += vec2( 0.5f*(getWindowWidth() - r.getWidth()), getWindowHeight() - r.getHeight() );
 			vk::draw( mCopyrightMap, r );
 		}
-		*/
 	}
 }
 

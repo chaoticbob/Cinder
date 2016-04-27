@@ -88,51 +88,21 @@ public:
 		VkFormat depthInternalFormat = vk::findBestDepthStencilAttachmentFormat( vk::context()->getDevice() );
 		CI_LOG_I( "Shadow Map Depth Format: " << vk::toStringVkFormat( depthInternalFormat ) );
 
-		vk::Texture2d::Format depthFormat;
-		depthFormat.setInternalFormat( depthInternalFormat );
-		depthFormat.setUsageDepthStencilAttachment();
-		depthFormat.setMagFilter( VK_FILTER_LINEAR );
-		depthFormat.setMinFilter( VK_FILTER_LINEAR );
-		depthFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
-		depthFormat.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
-		mTextureShadowMap = vk::Texture2d::create( size, size, depthFormat );
-		vk::transitionToFirstUse( mTextureShadowMap, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
-
-		try {	
-			// Render pass
-			vk::RenderPass::Attachment attachment = vk::RenderPass::Attachment( mTextureShadowMap->getFormat().getInternalFormat() )
-				.setInitialLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL )
-				.setFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
-			vk::RenderPass::Options renderPassOptions = vk::RenderPass::Options()
-				.addAttachment( attachment );
-			vk::RenderPass::Subpass subpass = vk::RenderPass::Subpass()
-				.addDepthStencilAttachment( 0 );
-			renderPassOptions.addSubPass( subpass );
-			renderPassOptions.addSubpassSelfDependency( 0 );
-			mRenderPass = vk::RenderPass::create( renderPassOptions );
-
-			// Framebuffer
-			vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-				.addAttachment( vk::Framebuffer::Attachment( mTextureShadowMap ) );
-			mFramebuffer = vk::Framebuffer::create( mRenderPass->getRenderPass(), mTextureShadowMap->getSize(), framebufferFormat );
-		}
-		catch( const std::exception& e ) {
-			console() << "FBO ERROR: " << e.what() << std::endl;
-		}
+		vk::Texture2d::Format texParms = vk::Texture2d::Format();
+		texParms.setMagFilter( VK_FILTER_LINEAR );
+		texParms.setMinFilter( VK_FILTER_LINEAR );
+		texParms.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+		texParms.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
+		mRenderTarget = vk::RenderTarget::create( ivec2( size, size ), vk::RenderTarget::Options( depthInternalFormat ).setDepthStencilTextureParams( texParms ) );  
 	}
 
-	const vk::RenderPassRef&	getRenderPass() const { return mRenderPass; }
-	const vk::FramebufferRef&	getFramebuffer() const { return mFramebuffer; }
-	const vk::Texture2dRef&		getTexture() const { return mTextureShadowMap; }
-	const vk::Texture2dRef&		getColorTexture() const { return mColorTexture; }
+	const vk::RenderTargetRef&	getRenderTarget() const { return mRenderTarget; }
+	const vk::Texture2dRef&		getTexture() const { return mRenderTarget->getDepthStencilTexture(); }
 	
-	float						getAspectRatio() const { return mFramebuffer->getAspectRatio(); }
-	ivec2						getSize() const { return mFramebuffer->getSize(); }
+	float						getAspectRatio() const { return mRenderTarget->getAspectRatio(); }
+	ivec2						getSize() const { return mRenderTarget->getSize(); }
 private:
-	vk::RenderPassRef			mRenderPass;
-	vk::FramebufferRef			mFramebuffer;
-	vk::Texture2dRef			mTextureShadowMap;
-	vk::Texture2dRef			mColorTexture;
+	vk::RenderTargetRef			mRenderTarget;
 };
 
 struct LightData {
@@ -229,7 +199,7 @@ void ShadowMappingApp::setup()
 	
 	auto positionGlsl = vk::getStockShader( vk::ShaderDef().color() );
 
-	vk::context()->pushRenderPass( mShadowMap->getRenderPass() );
+	vk::context()->pushRenderPass( mShadowMap->getRenderTarget()->getRenderPass() );
 	auto sphereMesh = vk::VboMesh::create( geom::Icosphere().colors(), { positionGlsl->getVertexLayout() } );
 	mSphere = vk::Batch::create( sphereMesh, positionGlsl );
 	mSphere->uniform( "ciBlock1.uIsTeapot", false );
@@ -250,7 +220,7 @@ void ShadowMappingApp::setup()
 		m *= scale( vec3( 6 * ( randFloat() + 1.1f ) ) );
 		m *= rotate( 2 * glm::pi<float>() * randFloat(), randVec3() );
 
-		vk::context()->pushRenderPass( mShadowMap->getRenderPass() );
+		vk::context()->pushRenderPass( mShadowMap->getRenderTarget()->getRenderPass() );
 			auto teapot = vk::Batch::create( teapotMesh, positionGlsl );
 		vk::context()->popRenderPass();
 
@@ -292,14 +262,14 @@ void ShadowMappingApp::update()
 		vk::enablePolygonOffsetFill();
 		vk::polygonOffset( mPolygonOffsetFactor, mPolygonOffsetUnits );
 
-		mShadowMap->getRenderPass()->beginRender( vk::context()->getDefaultCommandBuffer(), mShadowMap->getFramebuffer() );
+		mShadowMap->getRenderTarget()->beginRender( vk::context()->getDefaultCommandBuffer() );
 
 		vk::ScopedMatrices push;
 		vk::setMatrices( mLight.camera );
 
 		drawScene( mSpinAngle );
 
-		mShadowMap->getRenderPass()->endRender();
+		mShadowMap->getRenderTarget()->endRender();
 
 		vk::disablePolygonOffsetFill();
 	}

@@ -66,22 +66,20 @@ class ShadowMappingBasic : public App {
 	void renderDepthFbo();
 	
   private:
-	vk::RenderPassRef	mRenderPass;
-	vk::FramebufferRef	mFbo;
+	vk::RenderTargetRef		mFbo;
 
-	CameraPersp			mCam;
-	CameraPersp			mLightCam;
-	vec3				mLightPos;
+	CameraPersp				mCam;
+	CameraPersp				mLightCam;
+	vec3					mLightPos;
 	
-	vk::GlslProgRef		mGlsl;
-	vk::Texture2dRef	mShadowMapTex;
+	vk::GlslProgRef			mGlsl;
 	
-	vk::BatchRef		mTeapotBatch;
-	vk::BatchRef		mTeapotShadowedBatch;
-	vk::BatchRef		mFloorBatch;
-	vk::BatchRef		mFloorShadowedBatch;
+	vk::BatchRef			mTeapotBatch;
+	vk::BatchRef			mTeapotShadowedBatch;
+	vk::BatchRef			mFloorBatch;
+	vk::BatchRef			mFloorShadowedBatch;
 	
-	float				mTime;
+	float					mTime;
 };
 
 void ShadowMappingBasic::prepareSettings( Settings *settings )
@@ -92,56 +90,32 @@ void ShadowMappingBasic::prepareSettings( Settings *settings )
 
 void ShadowMappingBasic::setup()
 {
-	mLightPos = vec3( 0.0f, 5.0f, 1.0f );
-	
 	VkFormat depthInternalFormat = vk::findBestDepthStencilAttachmentFormat( vk::context()->getDevice() );
 	CI_LOG_I( "Shadow Map Depth Format: " << vk::toStringVkFormat( depthInternalFormat ) );
 
-	vk::Texture2d::Format depthFormat;
-	depthFormat.setInternalFormat( depthInternalFormat );
-	depthFormat.setUsageDepthStencilAttachment();
-	depthFormat.setMagFilter( VK_FILTER_LINEAR );
-	depthFormat.setMinFilter( VK_FILTER_LINEAR );
-	depthFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
-	depthFormat.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
-	mShadowMapTex = vk::Texture2d::create( FBO_WIDTH, FBO_HEIGHT, depthFormat );
-	vk::transitionToFirstUse( mShadowMapTex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );
-	
-	mCam.setPerspective( 40.0f, getWindowAspectRatio(), 0.5f, 500.0f );
-	
-	try {	
-		// Render pass
-		vk::RenderPass::Attachment attachment = vk::RenderPass::Attachment( mShadowMapTex->getFormat().getInternalFormat() )
-			.setInitialLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL )
-			.setFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
-		vk::RenderPass::Options renderPassOptions = vk::RenderPass::Options()
-			.addAttachment( attachment );
-		vk::RenderPass::Subpass subpass = vk::RenderPass::Subpass()
-			.addDepthStencilAttachment( 0 );
-		renderPassOptions.addSubPass( subpass );
-		renderPassOptions.addSubpassSelfDependency( 0 );
-		mRenderPass = vk::RenderPass::create( renderPassOptions );
+	vk::Texture2d::Format texParms = vk::Texture2d::Format();
+	texParms.setMagFilter( VK_FILTER_LINEAR );
+	texParms.setMinFilter( VK_FILTER_LINEAR );
+	texParms.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+	texParms.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
+	mFbo = vk::RenderTarget::create( ivec2( FBO_WIDTH, FBO_HEIGHT ), vk::RenderTarget::Options( depthInternalFormat ).setDepthStencilTextureParams( texParms ) );  
 
-		// Framebuffer
-		vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
-			.addAttachment( vk::Framebuffer::Attachment( mShadowMapTex ) );
-		mFbo = vk::Framebuffer::create( mRenderPass->getRenderPass(), mShadowMapTex->getSize(), framebufferFormat );
-	}
-	catch( const std::exception& e ) {
-		console() << "FBO ERROR: " << e.what() << std::endl;
-	}
-	
-	// Set up camera from the light's viewpoint
+	// Setup camera
+	mCam.setPerspective( 40.0f, getWindowAspectRatio(), 0.5f, 500.0f );
+
+	// Setup camera from the light's viewpoint
+	mLightPos = vec3( 0.0f, 5.0f, 1.0f );
 	mLightCam.setPerspective( 100.0f, mFbo->getAspectRatio(), 0.5f, 10.0f );
 	mLightCam.lookAt( mLightPos, vec3( 0.0f ) );
 
+	// Setup sahder
 	try {
 		vk::ShaderProg::Format format = vk::ShaderProg::Format()
 			.vertex( loadAsset("shadow_shader.vert") )
 			.fragment( loadAsset("shadow_shader.frag") );
 
 		mGlsl = vk::GlslProg::create( format );
-		mGlsl->uniform( "uShadowMap", mShadowMapTex );
+		mGlsl->uniform( "uShadowMap", mFbo->getDepthStencilTexture() );
 	}
 	catch ( Exception &exc ) {
 		CI_LOG_EXCEPTION( "glsl load failed", exc );
@@ -193,13 +167,13 @@ void ShadowMappingBasic::renderDepthFbo()
 	vk::enablePolygonOffsetFill();
 	vk::polygonOffset( 2.0f, 2.0f );
 
-	mRenderPass->beginRender( vk::context()->getDefaultCommandBuffer(), mFbo );
+	mFbo->beginRender( vk::context()->getDefaultCommandBuffer() );
 		
 	vk::ScopedMatrices pushMatrices;
 	vk::setMatrices( mLightCam );
 	drawScene( true );
 
-	mRenderPass->endRender();
+	mFbo->endRender();
 
 	vk::disablePolygonOffsetFill();
 }
@@ -226,14 +200,6 @@ void ShadowMappingBasic::draw()
 	mTeapotShadowedBatch->uniform( "ciBlock1.uLightPos", mvLightPos );
 	mFloorShadowedBatch->uniform( "ciBlock0.uShadowMatrix", shadowMatrix );
 	mFloorShadowedBatch->uniform( "ciBlock1.uLightPos", mvLightPos );
-
-	// Transition shadow map
-	vk::ImageMemoryBarrierParams imageMemoryBarrier = vk::ImageMemoryBarrierParams( mShadowMapTex->getImageView()->getImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-	imageMemoryBarrier.setSrcStageMask( VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT );
-	imageMemoryBarrier.setDstStageMask( VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT );
-	imageMemoryBarrier.setSrcAccessMask( VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT );
-	imageMemoryBarrier.setDstAccessMask( VK_ACCESS_SHADER_READ_BIT );
-	vk::context()->getDefaultCommandBuffer()->pipelineBarrierImageMemory( imageMemoryBarrier );
 
 	drawScene( false );
 

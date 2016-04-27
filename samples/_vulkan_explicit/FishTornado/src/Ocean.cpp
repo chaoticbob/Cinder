@@ -104,7 +104,8 @@ Ocean::Ocean( FishTornadoApp *app )
 		for( int i=0; i<32; i++ ) {
 			std::string num = toString( i );
 			if( num.length() == 1 ) num = "0" + num;
-			mCausticsTexs[i] = vk::Texture::create( *ci::Surface::create( loadImage( app::loadAsset( "ocean/caustics/save." + num + ".png" ) ) ), format );
+			auto surf = *(ci::Surface::create( loadImage( app::loadAsset( "ocean/caustics/save." + num + ".png" ) ) ) );
+			mCausticsTexs[i] = vk::Texture::create( surf, format );
 			vk::transitionToFirstUse( mCausticsTexs[i], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vk::context() );
 		}
 		CI_LOG_I( "Caustic textures loaded" );

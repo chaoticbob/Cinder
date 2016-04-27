@@ -140,7 +140,7 @@ void FishTornadoApp::setup()
 			uint32_t queueIndex = 2;
 			//auto secondaryCtx = vk::Context::createFromExisting( primaryCtx, { { VK_QUEUE_GRAPHICS_BIT, queueIndex } } );
 			auto secondaryCtx = vk::Context::createFromExisting( primaryCtx, VK_QUEUE_GRAPHICS_BIT );
-			mOceanLoadThread = std::shared_ptr<std::thread>( new std::thread( [this,  secondaryCtx, primaryCtx]() {
+			mOceanLoadThread = std::shared_ptr<std::thread>( new std::thread( [this, secondaryCtx, primaryCtx]() {
 				secondaryCtx->makeCurrent();
 				this->mOcean = Ocean::create( this );
 				//secondaryCtx->transferTrackedObjects( primaryCtx );
@@ -154,7 +154,7 @@ void FishTornadoApp::setup()
 			uint32_t queueIndex = 3;
 			//auto secondaryCtx = vk::Context::createFromExisting( primaryCtx, { { VK_QUEUE_GRAPHICS_BIT, queueIndex } } );
 			auto secondaryCtx = vk::Context::createFromExisting( primaryCtx, VK_QUEUE_GRAPHICS_BIT );
-			mSharkLoadThread = std::shared_ptr<std::thread>( new std::thread( [this,  secondaryCtx, primaryCtx]() {
+			mSharkLoadThread = std::shared_ptr<std::thread>( new std::thread( [this, secondaryCtx, primaryCtx]() {
 				secondaryCtx->makeCurrent();
 				this->mShark = Shark::create( this );
 				//secondaryCtx->transferTrackedObjects( primaryCtx );
@@ -238,6 +238,9 @@ void FishTornadoApp::setup()
 		mSharkLoaded = true;
 		mFishLoaded  = true;
 	}
+
+	// In case it got lost on the way here
+	primaryCtx->makeCurrent();
 #else
 	mLightLoaded	= true;
 	mOceanLoaded	= true;
@@ -278,8 +281,9 @@ void FishTornadoApp::setup()
 	try {
 		VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_8_BIT;
 
-		// Textures
+		// Resolve texture
 		vk::Texture::Format texFormat = vk::Texture::Format( VK_FORMAT_R8G8B8A8_UNORM );
+		texFormat.setSamples( VK_SAMPLE_COUNT_1_BIT );
 		texFormat.setUsageColorAttachment();
 		mMainColorTex = vk::Texture::create( getWindowWidth(), getWindowHeight(), texFormat );
 		vk::transitionToFirstUse( mMainColorTex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, vk::context() );
@@ -302,7 +306,7 @@ void FishTornadoApp::setup()
 		ci::vk::Framebuffer::Format framebufferFormat = ci::vk::Framebuffer::Format()
 			.addAttachment( ci::vk::Framebuffer::Attachment( VK_FORMAT_R8G8B8A8_UNORM, sampleCount ) )
 			.addAttachment( ci::vk::Framebuffer::Attachment( VK_FORMAT_D16_UNORM, sampleCount ) )
-			.addAttachment( ci::vk::Framebuffer::Attachment( mMainColorTex->getImageView() ) );
+			.addAttachment( ci::vk::Framebuffer::Attachment( mMainColorTex ) );
 		mMainFbo = ci::vk::Framebuffer::create( mMainRenderPass->getRenderPass(), getWindowSize(), framebufferFormat );
 	}
 	catch( const std::exception& e ) {
@@ -331,6 +335,13 @@ void FishTornadoApp::setup()
 
 	mCommandBuffers[0] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
 	mCommandBuffers[1] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphore );
+	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mRenderingCompleteSemaphore );
+
+	VkFenceCreateInfo fenceCreateInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	vkCreateFence( vk::context()->getDevice(), &fenceCreateInfo, nullptr, &mImageAcquiredFence );
 }
 
 void FishTornadoApp::resize()
@@ -550,24 +561,21 @@ void FishTornadoApp::generateCommandBuffer( const ci::vk::CommandBufferRef& cmdB
 			mMainBatch->uniform( "ciBlock1.uResolution",	vec2( getWindowWidth(), getWindowHeight() ) );
 
 			mMainBatch->draw();
-/*
-			vk::setMatricesWindow( getWindowSize() );
-			//vk::color( Color( 1, 1, 1 ) );
-			vk::draw( mGpuFlocker->mVelocityTextures[0], Rectf( 0, 0, 400, 400 ) );
-			vk::draw( mGpuFlocker->mPositionTextures[0], Rectf( 0, 0, 400, 400 ) + vec2( 410,   0 ) );
-			vk::draw( mGpuFlocker->mVelocityTextures[1], Rectf( 0, 0, 400, 400 ) + vec2(   0, 410 ) );
-			vk::draw( mGpuFlocker->mPositionTextures[1], Rectf( 0, 0, 400, 400 ) + vec2( 410, 410 ) );
-*/
 
-/*
-			if( mLightLoaded ) {
-				vk::setMatricesWindow( getWindowSize() );
-				//vk::color( 1.0f, 1.0f, 1.0f );
-				float size = 0.5f*std::min( getWindowWidth(), getWindowHeight() );
-				//vk::draw( mLight->getTexture(), Rectf( 0, 0, size, size ) ); 
-				vk::draw( mLight->getBlurredTexture(), Rectf( 0, 0, size, size ) + vec2( size + 10, 0 ) ); 
-			}
-*/
+			//vk::setMatricesWindow( getWindowSize() );
+			////vk::color( Color( 1, 1, 1 ) );
+			//vk::draw( mGpuFlocker->mVelocityTextures[0], Rectf( 0, 0, 400, 400 ) );
+			//vk::draw( mGpuFlocker->mPositionTextures[0], Rectf( 0, 0, 400, 400 ) + vec2( 410,   0 ) );
+			//vk::draw( mGpuFlocker->mVelocityTextures[1], Rectf( 0, 0, 400, 400 ) + vec2(   0, 410 ) );
+			//vk::draw( mGpuFlocker->mPositionTextures[1], Rectf( 0, 0, 400, 400 ) + vec2( 410, 410 ) );
+
+			//if( mLightLoaded ) {
+			//	vk::setMatricesWindow( getWindowSize() );
+			//	//vk::color( 1.0f, 1.0f, 1.0f );
+			//	float size = 0.5f*std::min( getWindowWidth(), getWindowHeight() );
+			//	//vk::draw( mLight->getTexture(), Rectf( 0, 0, size, size ) ); 
+			//	vk::draw( mLight->getBlurredTexture(), Rectf( 0, 0, size, size ) + vec2( size + 10, 0 ) ); 
+			//}
 
 		}
 		vk::context()->getPresenter()->endRender( vk::context() );
@@ -577,16 +585,14 @@ void FishTornadoApp::generateCommandBuffer( const ci::vk::CommandBufferRef& cmdB
 
 void FishTornadoApp::draw()
 {
-	// Semaphores
-	VkSemaphore imageAcquiredSemaphore = VK_NULL_HANDLE;
-	VkSemaphore renderingCompleteSemaphore = VK_NULL_HANDLE;
-	VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &imageAcquiredSemaphore );
-	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &renderingCompleteSemaphore );
-
 	// Get the next image
 	const auto& presenter = vk::context()->getPresenter();
-	uint32_t imageIndex = presenter->acquireNextImage( VK_NULL_HANDLE, imageAcquiredSemaphore );
+	uint32_t imageIndex = presenter->acquireNextImage( mImageAcquiredFence, mImageAcquiredSemaphore );
+
+	VkResult err = vkWaitForFences( vk::context()->getDevice(), 1, &mImageAcquiredFence, VK_TRUE, UINT32_MAX );
+	if( VK_SUCCESS == err ) {
+		vkResetFences( vk::context()->getDevice(), 1, &mImageAcquiredFence );
+	}
 
 	// Build command buffer
 	uint32_t frameIndex = (getElapsedFrames() + 1) % 2;
@@ -596,10 +602,10 @@ void FishTornadoApp::draw()
 
     // Submit command buffer for processing
 	const VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	vk::context()->getGraphicsQueue()->submit( cmdBuf, imageAcquiredSemaphore, waitDstStageMask, VK_NULL_HANDLE, renderingCompleteSemaphore );
+	vk::context()->getGraphicsQueue()->submit( cmdBuf, mImageAcquiredSemaphore, waitDstStageMask, VK_NULL_HANDLE, mRenderingCompleteSemaphore );
 
 	// Submit presentation
-	vk::context()->getGraphicsQueue()->present( renderingCompleteSemaphore, presenter );
+	vk::context()->getGraphicsQueue()->present( mRenderingCompleteSemaphore, presenter );
 
 	// Wait for work to be done
 	vk::context()->getGraphicsQueue()->waitIdle();
