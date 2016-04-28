@@ -98,6 +98,8 @@ public:
 	void								clearSwapchainImages( vk::Context *context );
 	void								transitionToFirstUse( vk::Context *context );
 
+	void								setClearColor( const ci::ColorA& color );
+
 	uint32_t							acquireNextImage( VkFence fence, VkSemaphore signalSemaphore );
 
 	void								beginRender( const vk::CommandBufferRef& cmdBuf, vk::Context *context );

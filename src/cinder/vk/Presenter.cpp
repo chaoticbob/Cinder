@@ -318,6 +318,18 @@ void Presenter::transitionToFirstUse( vk::Context *context )
 	context->getGraphicsQueue()->waitIdle();
 }
 
+void Presenter::setClearColor( const ci::ColorA& color )
+{
+	for( auto& renderPass : mRenderPasses ) {
+		VkClearValue clearValue = {};
+		clearValue.color.float32[0] = color.r;
+		clearValue.color.float32[1] = color.g;
+		clearValue.color.float32[2] = color.b;
+		clearValue.color.float32[3] = color.a;
+		renderPass->setAttachmentClearValue( 0, clearValue );
+	}
+}
+
 uint32_t Presenter::acquireNextImage( VkFence fence, VkSemaphore signalSemaphore )
 {
 	VkSwapchainKHR swapchain = mSwapchain->getSwapchain();
