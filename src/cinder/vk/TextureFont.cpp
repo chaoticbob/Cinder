@@ -367,6 +367,123 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 
 #endif
 
+static void drawGlyphsBuffers( 
+	const vk::ShaderProgRef&		shader, 
+	const vk::UniformSetRef&		transientUniformSet, 
+	const vk::DescriptorSetViewRef&	transientDescriptorSetView,
+	const vk::TextureRef&			curTex,
+	const vk::IndexBufferRef&		transientIndexBuffer, 
+	const vk::VertexBufferRef&		transientVertexBufferVerts, 
+	const vk::VertexBufferRef&		transientVertexBufferTexCoords, 
+	const vk::VertexBufferRef&		transientVertexBufferVertColors 
+)
+{
+	// Descriptor set layouts
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+
+	// Pipeline layout
+	VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
+
+	// Pipeline
+	VkPipeline pipeline = VK_NULL_HANDLE;
+	{
+		const VkFormat formatVert		= VK_FORMAT_R32G32_SFLOAT;
+		const VkFormat formatTexCoord	= VK_FORMAT_R32G32_SFLOAT;
+		const VkFormat formatVertColor	= VK_FORMAT_R8G8B8A8_UNORM;
+
+		// Vertex input binding description
+		// Position
+		VkVertexInputBindingDescription viBindingPos = {};
+		viBindingPos.binding			= 0;
+		viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
+		viBindingPos.stride				= vk::formatSizeBytes( formatVert );
+		// TexCoord
+		VkVertexInputBindingDescription viBindingTexCoord = {};
+		viBindingTexCoord.binding		= 1;
+		viBindingTexCoord.inputRate		= VK_VERTEX_INPUT_RATE_VERTEX;
+		viBindingTexCoord.stride		= vk::formatSizeBytes( formatTexCoord );
+		// Color
+		VkVertexInputBindingDescription viBindingVertColor = {};
+		viBindingVertColor.binding		= 2;
+		viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+		viBindingVertColor.stride		= vk::formatSizeBytes( formatVertColor );
+
+		// Vertex input attribute description
+		// Position
+		VkVertexInputAttributeDescription viAttrPos = {};
+		viAttrPos.binding				= viBindingPos.binding;
+		viAttrPos.format				= formatVert;
+		viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
+		viAttrPos.offset				= 0;
+		// TexCoord
+		VkVertexInputAttributeDescription viAttrTexCoord = {};
+		viAttrTexCoord.binding			= viBindingTexCoord.binding;
+		viAttrTexCoord.format			= formatTexCoord;
+		viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
+		viAttrTexCoord.offset			= 0;
+		// Color
+		VkVertexInputAttributeDescription viAttrVertColor = {};
+		viAttrVertColor.binding			= viBindingVertColor.binding;
+		viAttrVertColor.format			= formatVertColor;
+		viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
+		viAttrVertColor.offset			= 0;
+
+
+		auto ctx = vk::context();
+		auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
+		pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
+		pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
+		pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingTexCoord, viBindingVertColor } );
+		pipelineSelector->setCullMode( ctx->getCullMode() );
+		pipelineSelector->setFrontFace( ctx->getFrontFace() );
+		pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
+		pipelineSelector->setRasterizationSamples( ctx->getRenderPass()->getSubpassSampleCount( ctx->getSubpass() ) );
+		pipelineSelector->setDepthTest( ctx->getDepthTest() );
+		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
+		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
+		pipelineSelector->setShaderStages( shader->getShaderStages() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setSubPass( ctx->getSubpass() );
+		pipelineSelector->setPipelineLayout( pipelineLayout );
+		pipeline = pipelineSelector->getSelectedPipeline();
+	}
+
+	// -------------------------------------------------------------------------------------------------------------------------------------------
+
+	// Command buffer
+	auto cmdBufRef = vk::context()->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->getCommandBuffer();
+
+	// Fill out uniform vars
+	transientUniformSet->uniform( "uTex0", curTex );
+	transientUniformSet->setDefaultUniformVars( vk::context() );
+	transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+
+	// Update descriptor set
+	transientDescriptorSetView->updateDescriptorSets();
+
+	// Bind index buffer
+	cmdBufRef->bindIndexBuffer( transientIndexBuffer );
+
+	// Bind vertex buffer
+	cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors } );
+
+	// Bind pipeline
+	cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+
+	// Bind descriptor sets
+	const auto& descriptorSets = transientDescriptorSetView->getDescriptorSets();
+	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
+		const auto& ds = descriptorSets[i];
+		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+		cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+	}
+
+	// Draw geometry
+	uint32_t indexCount = transientIndexBuffer->getNumIndices();
+	cmdBufRef->drawIndexed( indexCount, 1, 0, 0, 0 );
+}
+
 void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasures, const vec2 &baselineIn, const DrawOptions &options, const std::vector<ColorA8u> &colors )
 {
 	if( mTextures.empty() ) {
@@ -470,113 +587,12 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
 		vk::context()->addTransient( transientUniformSet );
 		
-		// Descriptor view
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
-		vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
-		transientDescriptorView->allocateDescriptorSets();
-		vk::context()->addTransient( transientDescriptorView );
+		// Descriptor set view
+		vk::DescriptorSetViewRef transientDescriptorSetView = vk::DescriptorSetView::create( transientUniformSet );
+		transientDescriptorSetView->allocateDescriptorSets();
+		vk::context()->addTransient( transientDescriptorSetView );
 
-		// Pipeline layout
-		VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
-
-		// Pipeline
-		VkPipeline pipeline = VK_NULL_HANDLE;
-		{
-			const VkFormat formatVert		= VK_FORMAT_R32G32_SFLOAT;
-			const VkFormat formatTexCoord	= VK_FORMAT_R32G32_SFLOAT;
-			const VkFormat formatVertColor	= VK_FORMAT_R8G8B8A8_UNORM;
-
-			// Vertex input binding description
-			// Position
-			VkVertexInputBindingDescription viBindingPos = {};
-			viBindingPos.binding			= 0;
-			viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingPos.stride				= vk::formatSizeBytes( formatVert );
-			// TexCoord
-			VkVertexInputBindingDescription viBindingTexCoord = {};
-			viBindingTexCoord.binding		= 1;
-			viBindingTexCoord.inputRate		= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingTexCoord.stride		= vk::formatSizeBytes( formatTexCoord );
-			// Color
-			VkVertexInputBindingDescription viBindingVertColor = {};
-			viBindingVertColor.binding		= 2;
-			viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingVertColor.stride		= vk::formatSizeBytes( formatVertColor );
-
-			// Vertex input attribute description
-			// Position
-			VkVertexInputAttributeDescription viAttrPos = {};
-			viAttrPos.binding				= viBindingPos.binding;
-			viAttrPos.format				= formatVert;
-			viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
-			viAttrPos.offset				= 0;
-			// TexCoord
-			VkVertexInputAttributeDescription viAttrTexCoord = {};
-			viAttrTexCoord.binding			= viBindingTexCoord.binding;
-			viAttrTexCoord.format			= formatTexCoord;
-			viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
-			viAttrTexCoord.offset			= 0;
-			// Color
-			VkVertexInputAttributeDescription viAttrVertColor = {};
-			viAttrVertColor.binding			= viBindingVertColor.binding;
-			viAttrVertColor.format			= formatVertColor;
-			viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
-			viAttrVertColor.offset			= 0;
-
-
-			auto ctx = vk::context();
-			auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
-			pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
-			pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
-			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingTexCoord, viBindingVertColor } );
-			pipelineSelector->setCullMode( ctx->getCullMode() );
-			pipelineSelector->setFrontFace( ctx->getFrontFace() );
-			pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
-			pipelineSelector->setRasterizationSamples( ctx->getRenderPass()->getSubpassSampleCount( ctx->getSubpass() ) );
-			pipelineSelector->setDepthTest( ctx->getDepthTest() );
-			pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
-			pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
-			pipelineSelector->setShaderStages( shader->getShaderStages() );
-			pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
-			pipelineSelector->setSubPass( ctx->getSubpass() );
-			pipelineSelector->setPipelineLayout( pipelineLayout );
-			pipeline = pipelineSelector->getSelectedPipeline();
-		}
-
-		// -------------------------------------------------------------------------------------------------------------------------------------------
-
-		// Command buffer
-		auto cmdBufRef = vk::context()->getCommandBuffer();
-		auto cmdBuf = cmdBufRef->getCommandBuffer();
-
-		// Fill out uniform vars
-		transientUniformSet->uniform( "uTex0", curTex );
-		transientUniformSet->setDefaultUniformVars( vk::context() );
-		transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
-
-		// Update descriptor set
-		transientDescriptorView->updateDescriptorSets();
-
-		// Bind index buffer
-		cmdBufRef->bindIndexBuffer( transientIndexBuffer );
-
-		// Bind vertex buffer
-		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors } );
-
-		// Bind pipeline
-		cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
-
-		// Bind descriptor sets
-		const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
-		for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
-			const auto& ds = descriptorSets[i];
-			std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-			cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
-		}
-
-		// Draw geometry
-		uint32_t indexCount = transientIndexBuffer->getNumIndices();
-		cmdBufRef->drawIndexed( indexCount, 1, 0, 0, 0 );
+		drawGlyphsBuffers( shader, transientUniformSet, transientDescriptorSetView, curTex, transientIndexBuffer, transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors );
 	}
 }
 
@@ -701,113 +717,12 @@ void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &gl
 		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
 		vk::context()->addTransient( transientUniformSet );
 		
-		// Descriptor view
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
-		vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
-		transientDescriptorView->allocateDescriptorSets();
-		vk::context()->addTransient( transientDescriptorView );
+		// Descriptor view		
+		vk::DescriptorSetViewRef transientDescriptorSetView = vk::DescriptorSetView::create( transientUniformSet );
+		transientDescriptorSetView->allocateDescriptorSets();
+		vk::context()->addTransient( transientDescriptorSetView );
 
-		// Pipeline layout
-		VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
-
-		// Pipeline
-		VkPipeline pipeline = VK_NULL_HANDLE;
-		{
-			const VkFormat formatVert		= VK_FORMAT_R32G32_SFLOAT;
-			const VkFormat formatTexCoord	= VK_FORMAT_R32G32_SFLOAT;
-			const VkFormat formatVertColor	= VK_FORMAT_R8G8B8A8_UNORM;
-
-			// Vertex input binding description
-			// Position
-			VkVertexInputBindingDescription viBindingPos = {};
-			viBindingPos.binding			= 0;
-			viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingPos.stride				= vk::formatSizeBytes( formatVert );
-			// TexCoord
-			VkVertexInputBindingDescription viBindingTexCoord = {};
-			viBindingTexCoord.binding		= 1;
-			viBindingTexCoord.inputRate		= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingTexCoord.stride		= vk::formatSizeBytes( formatTexCoord );
-			// Color
-			VkVertexInputBindingDescription viBindingVertColor = {};
-			viBindingVertColor.binding		= 2;
-			viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingVertColor.stride		= vk::formatSizeBytes( formatVertColor );
-
-			// Vertex input attribute description
-			// Position
-			VkVertexInputAttributeDescription viAttrPos = {};
-			viAttrPos.binding				= viBindingPos.binding;
-			viAttrPos.format				= formatVert;
-			viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
-			viAttrPos.offset				= 0;
-			// TexCoord
-			VkVertexInputAttributeDescription viAttrTexCoord = {};
-			viAttrTexCoord.binding			= viBindingTexCoord.binding;
-			viAttrTexCoord.format			= formatTexCoord;
-			viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
-			viAttrTexCoord.offset			= 0;
-			// Color
-			VkVertexInputAttributeDescription viAttrVertColor = {};
-			viAttrVertColor.binding			= viBindingVertColor.binding;
-			viAttrVertColor.format			= formatVertColor;
-			viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
-			viAttrVertColor.offset			= 0;
-
-
-			auto ctx = vk::context();
-			auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
-			pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
-			pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
-			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingTexCoord, viBindingVertColor } );
-			pipelineSelector->setCullMode( ctx->getCullMode() );
-			pipelineSelector->setFrontFace( ctx->getFrontFace() );
-			pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
-			pipelineSelector->setRasterizationSamples( ctx->getRenderPass()->getSubpassSampleCount( ctx->getSubpass() ) );
-			pipelineSelector->setDepthTest( ctx->getDepthTest() );
-			pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
-			pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
-			pipelineSelector->setShaderStages( shader->getShaderStages() );
-			pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
-			pipelineSelector->setSubPass( ctx->getSubpass() );
-			pipelineSelector->setPipelineLayout( pipelineLayout );
-			pipeline = pipelineSelector->getSelectedPipeline();
-		}
-
-		// -------------------------------------------------------------------------------------------------------------------------------------------
-
-		// Command buffer
-		auto cmdBufRef = vk::context()->getCommandBuffer();
-		auto cmdBuf = cmdBufRef->getCommandBuffer();
-
-		// Fill out uniform vars
-		transientUniformSet->uniform( "uTex0", curTex );
-		transientUniformSet->setDefaultUniformVars( vk::context() );
-		transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
-
-		// Update descriptor set
-		transientDescriptorView->updateDescriptorSets();
-
-		// Bind index buffer
-		cmdBufRef->bindIndexBuffer( transientIndexBuffer );
-
-		// Bind vertex buffer
-		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors } );
-
-		// Bind pipeline
-		cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
-
-		// Bind descriptor sets
-		const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
-		for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
-			const auto& ds = descriptorSets[i];
-			std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-			cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
-		}
-
-		// Draw geometry
-		uint32_t indexCount = transientIndexBuffer->getNumIndices();
-		cmdBufRef->drawIndexed( indexCount, 1, 0, 0, 0 );
+		drawGlyphsBuffers( shader, transientUniformSet, transientDescriptorSetView, curTex, transientIndexBuffer, transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors );
 	}
 }
 
