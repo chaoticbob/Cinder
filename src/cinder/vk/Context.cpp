@@ -1182,7 +1182,7 @@ std::string	Context::generateVertexShader( const vk::ShaderDef &shader )
 	
 	s +=		"}";
 
-//	ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
+ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
 	return s;
 }
 
@@ -1245,7 +1245,7 @@ std::string	Context::generateFragmentShader( const vk::ShaderDef &shader )
 
 	s +=	"}";
 
-	//ci::app::console() << "Fragment shader: " << "\n" << s << "\n" << std::endl;
+ci::app::console() << "Fragment shader: " << "\n" << s << "\n" << std::endl;
 	return s;
 }
 

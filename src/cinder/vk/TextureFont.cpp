@@ -379,8 +379,7 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 
 	auto shader = options.getShaderProg();
 	if( ! shader ) {
-		//auto shaderDef = ShaderDef().texture().color();
-		auto shaderDef = ShaderDef().texture().positionDim( 4 );
+		auto shaderDef = ShaderDef().texture().color();
 		shader = vk::getStockShader( shaderDef );
 	}
 
@@ -389,7 +388,7 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 	vec2 baseline = baselineIn;
 	const float scale = options.getScale();
 	for( size_t texIdx = 0; texIdx < mTextures.size(); ++texIdx ) {
-		std::vector<float> verts, texCoords;
+		std::vector<vec2> verts, texCoords;
 		std::vector<ColorA8u> vertColors;
 		const vk::TextureRef &curTex = mTextures[texIdx];
 		std::vector<uint32_t> indices;
@@ -409,7 +408,7 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 			const GlyphInfo &glyphInfo = glyphInfoIt->second;
 			
 			Rectf destRect( glyphInfo.mTexCoords );
-			Rectf srcCoords = curTex->getAreaTexCoords( glyphInfo.mTexCoords );
+			Rectf srcTexCoords = curTex->getAreaTexCoords( glyphInfo.mTexCoords );
 			destRect -= destRect.getUpperLeft();
 			destRect.scale( scale );
 			destRect += glyphIt->second * scale;
@@ -419,15 +418,15 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 				destRect -= vec2( destRect.x1 - floor( destRect.x1 ), destRect.y1 - floor( destRect.y1 ) );				
 			}
 			
-			verts.push_back( destRect.getX2() ); verts.push_back( destRect.getY1() );
-			verts.push_back( destRect.getX1() ); verts.push_back( destRect.getY1() );
-			verts.push_back( destRect.getX2() ); verts.push_back( destRect.getY2() );
-			verts.push_back( destRect.getX1() ); verts.push_back( destRect.getY2() );
+			verts.push_back( vec2( destRect.getX2(), destRect.getY1() ) );
+			verts.push_back( vec2( destRect.getX1(), destRect.getY1() ) );
+			verts.push_back( vec2( destRect.getX2(), destRect.getY2() ) );
+			verts.push_back( vec2( destRect.getX1(), destRect.getY2() ) );
 
-			texCoords.push_back( srcCoords.getX2() ); texCoords.push_back( srcCoords.getY1() );
-			texCoords.push_back( srcCoords.getX1() ); texCoords.push_back( srcCoords.getY1() );
-			texCoords.push_back( srcCoords.getX2() ); texCoords.push_back( srcCoords.getY2() );
-			texCoords.push_back( srcCoords.getX1() ); texCoords.push_back( srcCoords.getY2() );
+			texCoords.push_back( vec2( srcTexCoords.getX2(), srcTexCoords.getY1() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX1(), srcTexCoords.getY1() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX2(), srcTexCoords.getY2() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX1(), srcTexCoords.getY2() ) );
 			
 			if( ! colors.empty() ) {
 				for( int i = 0; i < 4; ++i ) {
@@ -458,9 +457,9 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 		
 		// Vertex buffers
 		vk::VertexBuffer::Format vertexBufferFormat = vk::VertexBuffer::Format( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ).setUsageTransferDestination();
-		vk::VertexBufferRef transientVertexBufferVerts = vk::VertexBuffer::create( static_cast<const void *>( verts.data() ), verts.size()*sizeof( float ), vertexBufferFormat );
-		vk::VertexBufferRef transientVertexBufferTexCoords = vk::VertexBuffer::create( static_cast<const void *>( texCoords.data() ), texCoords.size()*sizeof( float ), vertexBufferFormat );
-		vk::VertexBufferRef transientVertexBufferVertColors = vk::VertexBuffer::create( static_cast<const void *>( vertColors.data() ), vertColors.size()*sizeof( float ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferVerts = vk::VertexBuffer::create( static_cast<const void *>( verts.data() ), verts.size()*sizeof( vec2 ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferTexCoords = vk::VertexBuffer::create( static_cast<const void *>( texCoords.data() ), texCoords.size()*sizeof( vec2 ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferVertColors = vk::VertexBuffer::create( static_cast<const void *>( vertColors.data() ), vertColors.size()*sizeof( ColorA8u ), vertexBufferFormat );
 		vk::context()->addTransient( transientVertexBufferVerts );
 		vk::context()->addTransient( transientVertexBufferTexCoords );
 		vk::context()->addTransient( transientVertexBufferVertColors );
@@ -483,48 +482,53 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 		// Pipeline
 		VkPipeline pipeline = VK_NULL_HANDLE;
 		{
+			const VkFormat formatVert		= VK_FORMAT_R32G32_SFLOAT;
+			const VkFormat formatTexCoord	= VK_FORMAT_R32G32_SFLOAT;
+			const VkFormat formatVertColor	= VK_FORMAT_R8G8B8A8_UNORM;
+
 			// Vertex input binding description
 			// Position
 			VkVertexInputBindingDescription viBindingPos = {};
 			viBindingPos.binding			= 0;
 			viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingPos.stride				= 2*sizeof(float);
+			viBindingPos.stride				= vk::formatSizeBytes( formatVert );
 			// TexCoord
 			VkVertexInputBindingDescription viBindingTexCoord = {};
 			viBindingTexCoord.binding		= 1;
-			viBindingTexCoord.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingTexCoord.stride		= 2*sizeof(float);
+			viBindingTexCoord.inputRate		= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingTexCoord.stride		= vk::formatSizeBytes( formatTexCoord );
 			// Color
 			VkVertexInputBindingDescription viBindingVertColor = {};
 			viBindingVertColor.binding		= 2;
 			viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-			viBindingVertColor.stride		= 4*sizeof(float);
+			viBindingVertColor.stride		= vk::formatSizeBytes( formatVertColor );
 
 			// Vertex input attribute description
 			// Position
 			VkVertexInputAttributeDescription viAttrPos = {};
 			viAttrPos.binding				= viBindingPos.binding;
-			viAttrPos.format				= VK_FORMAT_R32G32_SFLOAT;
+			viAttrPos.format				= formatVert;
 			viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
 			viAttrPos.offset				= 0;
 			// TexCoord
 			VkVertexInputAttributeDescription viAttrTexCoord = {};
-			viAttrTexCoord.binding			= viBindingVertColor.binding;
-			viAttrTexCoord.format			= VK_FORMAT_R32G32_SFLOAT;
+			viAttrTexCoord.binding			= viBindingTexCoord.binding;
+			viAttrTexCoord.format			= formatTexCoord;
 			viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
 			viAttrTexCoord.offset			= 0;
 			// Color
 			VkVertexInputAttributeDescription viAttrVertColor = {};
 			viAttrVertColor.binding			= viBindingVertColor.binding;
-			viAttrVertColor.format			= VK_FORMAT_R32G32B32A32_SFLOAT;
+			viAttrVertColor.format			= formatVertColor;
 			viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
 			viAttrVertColor.offset			= 0;
+
 
 			auto ctx = vk::context();
 			auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
 			pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
 			pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
-			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingVertColor, viBindingVertColor } );
+			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingTexCoord, viBindingVertColor } );
 			pipelineSelector->setCullMode( ctx->getCullMode() );
 			pipelineSelector->setFrontFace( ctx->getFrontFace() );
 			pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
@@ -557,7 +561,7 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 		cmdBufRef->bindIndexBuffer( transientIndexBuffer );
 
 		// Bind vertex buffer
-		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords } );
+		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors } );
 
 		// Bind pipeline
 		cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
@@ -578,43 +582,40 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 
 void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &glyphMeasures, const Rectf &clip, vec2 offset, const DrawOptions &options, const std::vector<ColorA8u> &colors )
 {
-#if 0
 	if( mTextures.empty() )
 		return;
 
-	if( ! colors.empty() )
+	if( ! colors.empty() ) {
 		assert( glyphMeasures.size() == colors.size() );
-
-	auto shader = options.getGlslProg();
-	if( ! shader ) {
-		auto shaderDef = ShaderDef().texture( mTextures[0] ).color();
-		shader = gl::getStockShader( shaderDef );
 	}
-	ScopedTextureBind texBindScp( mTextures[0] );
-	ScopedGlslProg glslScp( shader );
+
+	auto shader = options.getShaderProg();
+	if( ! shader ) {
+		auto shaderDef = ShaderDef().texture().color();
+		shader = vk::getStockShader( shaderDef );
+	}
+
+	auto currentColor = vk::context()->getCurrentColor();
 
 	const float scale = options.getScale();
 
 	for( size_t texIdx = 0; texIdx < mTextures.size(); ++texIdx ) {
-		vector<float> verts, texCoords;
-		vector<ColorA8u> vertColors;
-		const gl::TextureRef &curTex = mTextures[texIdx];
-#if defined( CINDER_GL_ES )
-		vector<uint16_t> indices;
-		uint16_t curIdx = 0;
-		GLenum indexType = GL_UNSIGNED_SHORT;
-#else
-		vector<uint32_t> indices;
+		std::vector<vec2> verts, texCoords;
+		std::vector<ColorA8u> vertColors;
+		const vk::TextureRef &curTex = mTextures[texIdx];
+		std::vector<uint32_t> indices;
 		uint32_t curIdx = 0;
-		GLenum indexType = GL_UNSIGNED_INT;
-#endif
-		if( options.getPixelSnap() )
+		VkIndexType indexType = VK_INDEX_TYPE_UINT32;
+
+		if( options.getPixelSnap() ) {
 			offset = vec2( floor( offset.x ), floor( offset.y ) );
+		}
 
 		for( vector<pair<Font::Glyph,vec2> >::const_iterator glyphIt = glyphMeasures.begin(); glyphIt != glyphMeasures.end(); ++glyphIt ) {
 			unordered_map<Font::Glyph, GlyphInfo>::const_iterator glyphInfoIt = mGlyphMap.find( glyphIt->first );
-			if( (glyphInfoIt == mGlyphMap.end()) || (mGlyphMap[glyphIt->first].mTextureIndex != texIdx) )
+			if( (glyphInfoIt == mGlyphMap.end()) || (mGlyphMap[glyphIt->first].mTextureIndex != texIdx) ) {
 				continue;
+			}
 				
 			const GlyphInfo &glyphInfo = glyphInfoIt->second;
 			Rectf srcTexCoords = curTex->getAreaTexCoords( glyphInfo.mTexCoords );
@@ -624,8 +625,9 @@ void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &gl
 			destRect += glyphIt->second * scale;
 			destRect += vec2( floor( glyphInfo.mOriginOffset.x + 0.5f ), floor( glyphInfo.mOriginOffset.y ) ) * scale;
 			destRect += vec2( offset.x, offset.y );
-			if( options.getPixelSnap() )
-				destRect -= vec2( destRect.x1 - floor( destRect.x1 ), destRect.y1 - floor( destRect.y1 ) );				
+			if( options.getPixelSnap() ) {
+				destRect -= vec2( destRect.x1 - floor( destRect.x1 ), destRect.y1 - floor( destRect.y1 ) );	
+			}
 
 			// clip
 			Rectf clipped( destRect );
@@ -648,19 +650,25 @@ void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &gl
 			srcTexCoords.y1 = srcTexCoords.y1 + ( clipped.y1 - destRect.y1 ) * coordScale.y;
 			srcTexCoords.y2 = srcTexCoords.y1 + ( clipped.y2 - clipped.y1 ) * coordScale.y;
 
-			verts.push_back( clipped.getX2() ); verts.push_back( clipped.getY1() );
-			verts.push_back( clipped.getX1() ); verts.push_back( clipped.getY1() );
-			verts.push_back( clipped.getX2() ); verts.push_back( clipped.getY2() );
-			verts.push_back( clipped.getX1() ); verts.push_back( clipped.getY2() );
+			verts.push_back( vec2( clipped.getX2(), clipped.getY1() ) );
+			verts.push_back( vec2( clipped.getX1(), clipped.getY1() ) );
+			verts.push_back( vec2( clipped.getX2(), clipped.getY2() ) );
+			verts.push_back( vec2( clipped.getX1(), clipped.getY2() ) );
 
-			texCoords.push_back( srcTexCoords.getX2() ); texCoords.push_back( srcTexCoords.getY1() );
-			texCoords.push_back( srcTexCoords.getX1() ); texCoords.push_back( srcTexCoords.getY1() );
-			texCoords.push_back( srcTexCoords.getX2() ); texCoords.push_back( srcTexCoords.getY2() );
-			texCoords.push_back( srcTexCoords.getX1() ); texCoords.push_back( srcTexCoords.getY2() );
-
+			texCoords.push_back( vec2( srcTexCoords.getX2(), srcTexCoords.getY1() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX1(), srcTexCoords.getY1() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX2(), srcTexCoords.getY2() ) );
+			texCoords.push_back( vec2( srcTexCoords.getX1(), srcTexCoords.getY2() ) );
+			
 			if( ! colors.empty() ) {
-				for( int i = 0; i < 4; ++i )
+				for( int i = 0; i < 4; ++i ) {
 					vertColors.push_back( colors[glyphIt-glyphMeasures.begin()] );
+				}
+			}
+			else {
+				for( int i = 0; i < 4; ++i ) {
+					vertColors.push_back( currentColor );
+				}
 			}
 			
 			indices.push_back( curIdx + 0 ); indices.push_back( curIdx + 1 ); indices.push_back( curIdx + 2 );
@@ -671,48 +679,136 @@ void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &gl
 		if( curIdx == 0 )
 			continue;
 		
-		curTex->bind();
-		auto ctx = gl::context();
-		size_t dataSize = (verts.size() + texCoords.size()) * sizeof(float) + vertColors.size() * sizeof(ColorA8u);
-		gl::ScopedVao vaoScp( ctx->getDefaultVao() );
-		ctx->getDefaultVao()->replacementBindBegin();
-		VboRef defaultElementVbo = ctx->getDefaultElementVbo( indices.size() * sizeof(curIdx) );
-		VboRef defaultArrayVbo = ctx->getDefaultArrayVbo( dataSize );
+		// -------------------------------------------------------------------------------------------------------------------------------------------
+		
+		// Index buffer
+		vk::IndexBuffer::Format indexBufferFormat = vk::IndexBuffer::Format( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ).setUsageTransferDestination();
+		vk::IndexBufferRef transientIndexBuffer = vk::IndexBuffer::create( indices.size(), indexType, static_cast<const void *>( indices.data() ), indexBufferFormat );
+		vk::context()->addTransient( transientIndexBuffer );
+		
+		// Vertex buffers
+		vk::VertexBuffer::Format vertexBufferFormat = vk::VertexBuffer::Format( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ).setUsageTransferDestination();
+		vk::VertexBufferRef transientVertexBufferVerts = vk::VertexBuffer::create( static_cast<const void *>( verts.data() ), verts.size()*sizeof( vec2 ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferTexCoords = vk::VertexBuffer::create( static_cast<const void *>( texCoords.data() ), texCoords.size()*sizeof( vec2 ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferVertColors = vk::VertexBuffer::create( static_cast<const void *>( vertColors.data() ), vertColors.size()*sizeof( ColorA8u ), vertexBufferFormat );
+		vk::context()->addTransient( transientVertexBufferVerts );
+		vk::context()->addTransient( transientVertexBufferTexCoords );
+		vk::context()->addTransient( transientVertexBufferVertColors );
 
-		ScopedBuffer vboArrayScp( defaultArrayVbo );
-		ScopedBuffer vboElScp( defaultElementVbo );
+		// Uniform layout, uniform set
+		const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
+		vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
+		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+		vk::context()->addTransient( transientUniformSet );
+		
+		// Descriptor view
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+		vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
+		transientDescriptorView->allocateDescriptorSets();
+		vk::context()->addTransient( transientDescriptorView );
 
-		size_t dataOffset = 0;
-		int posLoc = shader->getAttribSemanticLocation( geom::Attrib::POSITION );
-		if( posLoc >= 0 ) {
-			enableVertexAttribArray( posLoc );
-			vertexAttribPointer( posLoc, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
-			defaultArrayVbo->bufferSubData( dataOffset, verts.size() * sizeof(float), verts.data() );
-			dataOffset += verts.size() * sizeof(float);
-		}
-		int texLoc = shader->getAttribSemanticLocation( geom::Attrib::TEX_COORD_0 );
-		if( texLoc >= 0 ) {
-			enableVertexAttribArray( texLoc );
-			vertexAttribPointer( texLoc, 2, GL_FLOAT, GL_FALSE, 0, (void*)dataOffset );
-			defaultArrayVbo->bufferSubData( dataOffset, texCoords.size() * sizeof(float), texCoords.data() );
-			dataOffset += texCoords.size() * sizeof(float);
-		}
-		if( ! vertColors.empty() ) {
-			int colorLoc = shader->getAttribSemanticLocation( geom::Attrib::COLOR );
-			if( colorLoc >= 0 ) {
-				enableVertexAttribArray( colorLoc );
-				vertexAttribPointer( colorLoc, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)dataOffset );
-				defaultArrayVbo->bufferSubData( dataOffset, vertColors.size() * sizeof(ColorA8u), vertColors.data() );
-				dataOffset += vertColors.size() * sizeof(ColorA8u);				
-			}
+		// Pipeline layout
+		VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
+
+		// Pipeline
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		{
+			const VkFormat formatVert		= VK_FORMAT_R32G32_SFLOAT;
+			const VkFormat formatTexCoord	= VK_FORMAT_R32G32_SFLOAT;
+			const VkFormat formatVertColor	= VK_FORMAT_R8G8B8A8_UNORM;
+
+			// Vertex input binding description
+			// Position
+			VkVertexInputBindingDescription viBindingPos = {};
+			viBindingPos.binding			= 0;
+			viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingPos.stride				= vk::formatSizeBytes( formatVert );
+			// TexCoord
+			VkVertexInputBindingDescription viBindingTexCoord = {};
+			viBindingTexCoord.binding		= 1;
+			viBindingTexCoord.inputRate		= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingTexCoord.stride		= vk::formatSizeBytes( formatTexCoord );
+			// Color
+			VkVertexInputBindingDescription viBindingVertColor = {};
+			viBindingVertColor.binding		= 2;
+			viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingVertColor.stride		= vk::formatSizeBytes( formatVertColor );
+
+			// Vertex input attribute description
+			// Position
+			VkVertexInputAttributeDescription viAttrPos = {};
+			viAttrPos.binding				= viBindingPos.binding;
+			viAttrPos.format				= formatVert;
+			viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
+			viAttrPos.offset				= 0;
+			// TexCoord
+			VkVertexInputAttributeDescription viAttrTexCoord = {};
+			viAttrTexCoord.binding			= viBindingTexCoord.binding;
+			viAttrTexCoord.format			= formatTexCoord;
+			viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
+			viAttrTexCoord.offset			= 0;
+			// Color
+			VkVertexInputAttributeDescription viAttrVertColor = {};
+			viAttrVertColor.binding			= viBindingVertColor.binding;
+			viAttrVertColor.format			= formatVertColor;
+			viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
+			viAttrVertColor.offset			= 0;
+
+
+			auto ctx = vk::context();
+			auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
+			pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
+			pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
+			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingTexCoord, viBindingVertColor } );
+			pipelineSelector->setCullMode( ctx->getCullMode() );
+			pipelineSelector->setFrontFace( ctx->getFrontFace() );
+			pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
+			pipelineSelector->setRasterizationSamples( ctx->getRenderPass()->getSubpassSampleCount( ctx->getSubpass() ) );
+			pipelineSelector->setDepthTest( ctx->getDepthTest() );
+			pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
+			pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
+			pipelineSelector->setShaderStages( shader->getShaderStages() );
+			pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+			pipelineSelector->setSubPass( ctx->getSubpass() );
+			pipelineSelector->setPipelineLayout( pipelineLayout );
+			pipeline = pipelineSelector->getSelectedPipeline();
 		}
 
-		defaultElementVbo->bufferSubData( 0, indices.size() * sizeof(curIdx), indices.data() );
-		ctx->getDefaultVao()->replacementBindEnd();
-		gl::setDefaultShaderVars();
-		ctx->drawElements( GL_TRIANGLES, (GLsizei)indices.size(), indexType, 0 );
+		// -------------------------------------------------------------------------------------------------------------------------------------------
+
+		// Command buffer
+		auto cmdBufRef = vk::context()->getCommandBuffer();
+		auto cmdBuf = cmdBufRef->getCommandBuffer();
+
+		// Fill out uniform vars
+		transientUniformSet->uniform( "uTex0", curTex );
+		transientUniformSet->setDefaultUniformVars( vk::context() );
+		transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+
+		// Update descriptor set
+		transientDescriptorView->updateDescriptorSets();
+
+		// Bind index buffer
+		cmdBufRef->bindIndexBuffer( transientIndexBuffer );
+
+		// Bind vertex buffer
+		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords, transientVertexBufferVertColors } );
+
+		// Bind pipeline
+		cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+
+		// Bind descriptor sets
+		const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
+		for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
+			const auto& ds = descriptorSets[i];
+			std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+			cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+		}
+
+		// Draw geometry
+		uint32_t indexCount = transientIndexBuffer->getNumIndices();
+		cmdBufRef->drawIndexed( indexCount, 1, 0, 0, 0 );
 	}
-#endif
 }
 
 void TextureFont::drawString( const std::string &str, const vec2 &baseline, const DrawOptions &options )

@@ -90,8 +90,10 @@ CI_LOG_I( "Device ID: " << mGpuProperties.deviceID );
 CI_LOG_I( "Vendor ID: " << mGpuProperties.vendorID );
 CI_LOG_I( "Driver Version: " << mGpuProperties.driverVersion );
 CI_LOG_I( "limits.maxUniformBufferRange         : " << mGpuProperties.limits.maxUniformBufferRange );
-CI_LOG_I( "limits.maxBoundDescriptorSets        : " << mGpuProperties.limits.maxBoundDescriptorSets );
 CI_LOG_I( "limits.maxPushConstantsSize          : " << mGpuProperties.limits.maxPushConstantsSize );
+CI_LOG_I( "limits.maxBoundDescriptorSets        : " << mGpuProperties.limits.maxBoundDescriptorSets );
+CI_LOG_I( "limits.maxVertexInputAttributes      : " << mGpuProperties.limits.maxVertexInputAttributes );
+CI_LOG_I( "limits.maxVertexInputBindings        : " << mGpuProperties.limits.maxVertexInputBindings );
 CI_LOG_I( "limits.sampledImageColorSampleCounts : " << mGpuProperties.limits.sampledImageColorSampleCounts );
 CI_LOG_I( "limits.sampledImageDepthSampleCounts : " << mGpuProperties.limits.sampledImageDepthSampleCounts );
 
