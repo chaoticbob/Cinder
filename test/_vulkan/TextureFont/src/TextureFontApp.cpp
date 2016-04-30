@@ -1,10 +1,10 @@
 #include "cinder/app/App.h"
-#include "cinder/app/RendererGl.h"
-#include "cinder/gl/Texture.h"
+#include "cinder/app/RendererVk.h"
+#include "cinder/vk/Texture.h"
+#include "cinder/vk/TextureFont.h"
+#include "cinder/vk/vk.h"
 #include "cinder/Text.h"
 #include "cinder/Rand.h"
-#include "cinder/gl/gl.h"
-#include "cinder/gl/TextureFont.h"
 #include "cinder/Utilities.h"
 
 using namespace ci;
@@ -12,7 +12,7 @@ using namespace ci::app;
 using namespace std;
 
 class TextureFontApp : public App {
-  public:
+public:
 	static void prepareSettings( Settings *settings ) { settings->setMultiTouchEnabled( false ); }
 
 	void setup() override;
@@ -20,8 +20,9 @@ class TextureFontApp : public App {
 	void keyDown( KeyEvent event ) override;
 	void draw() override;
 
+private:
 	Font				mFont;
-	gl::TextureFontRef	mTextureFont;
+	vk::TextureFontRef	mTextureFont;
 };
 
 void TextureFontApp::setup()
@@ -37,7 +38,7 @@ void TextureFontApp::setup()
 #elif defined( CINDER_MSW )
 	mFont = Font( "Times New Roman", 24 );
 #endif
-	mTextureFont = gl::TextureFont::create( mFont );
+	mTextureFont = vk::TextureFont::create( mFont );
 }
 
 void TextureFontApp::keyDown( KeyEvent event )
@@ -46,11 +47,11 @@ void TextureFontApp::keyDown( KeyEvent event )
 		case '=':
 		case '+':
 			mFont = Font( mFont.getName(), mFont.getSize() + 1 );
-			mTextureFont = gl::TextureFont::create( mFont );
+			mTextureFont = vk::TextureFont::create( mFont );
 		break;
 		case '-':
 			mFont = Font( mFont.getName(), mFont.getSize() - 1 );
-			mTextureFont = gl::TextureFont::create( mFont );
+			mTextureFont = vk::TextureFont::create( mFont );
 		break;
 	}
 }
@@ -62,21 +63,21 @@ void TextureFontApp::mouseDown( MouseEvent event )
 		if( mFont.getGlyphChar( 'a' ) == 0 )
 			continue;
 		console() << mFont.getName() << std::endl;
-		mTextureFont = gl::TextureFont::create( mFont );
+		mTextureFont = vk::TextureFont::create( mFont );
 		break;
 	}
 }
 
 void TextureFontApp::draw()
 {
-	gl::setMatricesWindow( getWindowSize() );
-	gl::enableAlphaBlending();
-	gl::clear( Color( 0, 0, 0 ) );
+	vk::setMatricesWindow( getWindowSize() );
+	vk::enableAlphaBlending();
+	//vk::clear( Color( 0, 0, 0 ) );
 	
 	std::string str( "Granted, then, that certain transformations do happen, it is essential that we should regard them in the philosophic manner of fairy tales, not in the unphilosophic manner of science and the \"Laws of Nature.\" When we are asked why eggs turn into birds or fruits fall in autumn, we must answer exactly as the fairy godmother would answer if Cinderella asked her why mice turned into horses or her clothes fell from her at twelve o'clock. We must answer that it is MAGIC. It is not a \"law,\" for we do not understand its general formula." );
 	Rectf boundsRect( 40, mTextureFont->getAscent() + 40, getWindowWidth() - 40, getWindowHeight() - 40 );
 
-	gl::color( ColorA( 1, 0.5f, 0.25f, 1.0f ) );
+	vk::color( ColorA( 1, 0.5f, 0.25f, 1.0f ) );
 
 	vec2 offset = vec2( 0 );
 #if defined( CINDER_ANDROID )
@@ -90,7 +91,7 @@ void TextureFontApp::draw()
 #endif
 
 	// Draw FPS
-	gl::color( Color::white() );
+	vk::color( Color::white() );
 	mTextureFont->drawString( toString( floor(getAverageFps()) ) + " FPS", vec2( 10, getWindowHeight() - mTextureFont->getDescent() ) + offset );
 
     // Draw Font Name
@@ -98,4 +99,4 @@ void TextureFontApp::draw()
 	mTextureFont->drawString( mTextureFont->getName(), vec2( getWindowWidth() - fontNameWidth - 10, getWindowHeight() - mTextureFont->getDescent() ) + offset );
 }
 
-CINDER_APP( TextureFontApp, RendererGl, TextureFontApp::prepareSettings )
+CINDER_APP( TextureFontApp, RendererVk, TextureFontApp::prepareSettings )

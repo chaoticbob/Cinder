@@ -125,4 +125,14 @@ const VkAccessFlags AccessFlagsBits =
     VK_ACCESS_MEMORY_READ_BIT |
     VK_ACCESS_MEMORY_WRITE_BIT;
     
+
+enum Vendor {
+	Amd			= 0x1002,
+	Arm			= 0x13B5,
+	Imagination = 0x1010,
+	Intel		= 0x8086,
+	Nvidia		= 0x10DE,
+	Qualcomm	= 0x5143,
+};
+
 } } // namespace ci::vk

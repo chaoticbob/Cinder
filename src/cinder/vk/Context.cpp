@@ -1135,9 +1135,8 @@ std::string	Context::generateVertexShader( const vk::ShaderDef &shader )
 
 	s +=		"} ciBlock0;\n";
 
-	s +=		"\n"
-				"layout(location = 0) in vec4 ciPosition;\n"
-				;
+	s +=		"\n";
+	s +=		"layout(location = 0) in vec4 ciPosition;\n";
 	
 	if( shader.mTextureMapping ) {
 		s +=	"layout(location = 1) in vec2 ciTexCoord0;\n"
@@ -1155,13 +1154,15 @@ std::string	Context::generateVertexShader( const vk::ShaderDef &shader )
 				;
 	}
 
+	s +=		"\n";
 	s +=		"void main( void )\n"
 				"{\n";
-	if( shader.mUniformBasedPosAndTexCoord )
-		s +=	"	gl_Position = ciBlock0.ciModelViewProjection * ( vec4( ciBlock0.uPositionOffset, 0, 0 ) + vec4( ciBlock0.uPositionScale, 1, 1 ) * ciPosition );\n";
-	else
-		s +=	"	gl_Position = ciBlock0.ciModelViewProjection * ciPosition;\n"
-				;
+	if( shader.mUniformBasedPosAndTexCoord ) {
+		s +="		gl_Position = ciBlock0.ciModelViewProjection * ( vec4( ciBlock0.uPositionOffset, 0, 0 ) + vec4( ciBlock0.uPositionScale, 1, 1 ) * ciPosition );\n";
+	}
+	else {
+		s +="		gl_Position = ciBlock0.ciModelViewProjection * ciPosition;\n";
+	}
 
 	if( shader.mTextureMapping ) {
 		if( shader.mUniformBasedPosAndTexCoord )
@@ -1181,7 +1182,7 @@ std::string	Context::generateVertexShader( const vk::ShaderDef &shader )
 	
 	s +=		"}";
 
-	//ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
+//	ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
 	return s;
 }
 
@@ -1228,6 +1229,8 @@ std::string	Context::generateFragmentShader( const vk::ShaderDef &shader )
 
 	if( shader.mTextureMapping ) {
 		s +=	" * texture( uTex0, TexCoord.st )";
+		//s +=	" * vec4( TexCoord.st, 1, 1 )";
+
 		//if( ! Texture::supportsHardwareSwizzle() && ! shader.isTextureSwizzleDefault() )
 		//	s += "." + shader.getTextureSwizzleString();
 	}

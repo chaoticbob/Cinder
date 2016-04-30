@@ -44,6 +44,7 @@
 #include "cinder/vk/Swapchain.h"
 #include "cinder/vk/Texture.h"
 #include "cinder/vk/UniformBuffer.h"
+#include "cinder/vk/VertexBuffer.h"
 
 namespace cinder { namespace vk {
 
@@ -499,6 +500,30 @@ void CommandBuffer::bindDescriptorSet( VkPipelineBindPoint pipelineBindPoint, Vk
 void CommandBuffer::bindIndexBuffer( const IndexBufferRef& indexBuffer, VkDeviceSize offset )
 {
 	bindIndexBuffer( indexBuffer->getBuffer(), offset, indexBuffer->getIndexType() );
+}
+
+void CommandBuffer::bindVertexBuffers( const std::vector<VertexBufferRef>& vertexBuffers, const std::vector<VkDeviceSize>& offsets )
+{	
+	if( vertexBuffers.empty() ) {
+		return;
+	}
+
+	std::vector<VkDeviceSize> bufferOffsets = offsets;
+	bool fillBufferOffsets = vertexBuffers.size() != offsets.size();
+
+	std::vector<VkBuffer> buffers;
+	for( const auto& vertexBuffer : vertexBuffers ) {
+		buffers.push_back( vertexBuffer->getBuffer() );
+		if( fillBufferOffsets ) {
+			bufferOffsets.push_back( 0 );
+		}
+	}
+
+	uint32_t startBinding = 0;
+	uint32_t bindingCount = static_cast<uint32_t>( vertexBuffers.size() );
+	const VkBuffer* pBuffers = buffers.data();
+	const VkDeviceSize* pOffsets = bufferOffsets.empty() ? nullptr : bufferOffsets.data();
+	bindVertexBuffers( startBinding, bindingCount, pBuffers, pOffsets );
 }
 
 void CommandBuffer::pipelineBarrierGlobalMemory( const vk::GlobalMemoryBarrierParams& params )

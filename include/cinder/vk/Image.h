@@ -58,12 +58,12 @@ public:
 	class Format {
 	public:
 		Format() {} 
-		Format( VkFormat format, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkImageTiling tiling = VK_IMAGE_TILING_LINEAR, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT ) 
-			: mInternalFormat( format ), mSamples( samples ), mTiling( tiling ), mUsage( usage ) {}
+		Format( VkFormat internalFormat, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkImageTiling tiling = VK_IMAGE_TILING_LINEAR, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT ) 
+			: mInternalFormat( internalFormat ), mSamples( samples ), mTiling( tiling ), mUsage( usage ) {}
 		virtual ~Format() {}
 
 		// Create an image that is considered "undefined" (mUsage = 0) that is to be filled out by calling code.
-		static Format			createUndefined( VkFormat format = VK_FORMAT_UNDEFINED ) { return Format( format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_LINEAR, 0 ); }
+		static Format			createUndefined( VkFormat internalFormat = VK_FORMAT_UNDEFINED ) { return Format( internalFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_TILING_LINEAR, 0 ); }
 
 		Format&					setInternalFormat( VkFormat value ) { mInternalFormat = value; return *this; }
 		VkFormat				getInternalFormat() const { return mInternalFormat; }

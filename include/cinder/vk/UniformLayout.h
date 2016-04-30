@@ -120,7 +120,7 @@ public:
 
 		const std::string&					getName() const { return mName; }
 		GlslUniformDataType					getDataType() const { return mDataType; }
-		size_t								getOffset() const { return mOffset; }
+		uint32_t							getOffset() const { return mOffset; }
 		uint32_t							getArraySize() const  { return mArraySize; }
 		UniformSemantic						getUniformSemantic() const { return mSemantic; }
 	private:

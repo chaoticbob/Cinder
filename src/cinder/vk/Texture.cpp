@@ -102,6 +102,28 @@ Texture2d::Texture2d( int width, int height, const Texture2d::Format &format, vk
 Texture2d::Texture2d( const void *data, VkFormat dataFormat, int width, int height, const Texture2d::Format &format, vk::Device *device )
 	: TextureBase(), mSize( width, height ), mFormat( format )
 {
+	vk::DataType dataType = vk::formatDataType( dataFormat );
+	switch( dataType ) {
+		case vk::DataType::UINT8: {
+			const uint8_t *srcData = reinterpret_cast<const uint8_t *>( data );
+			size_t srcPixelBytes = vk::formatSizeBytes( dataFormat );
+			size_t srcRowBytes = mSize.x * srcPixelBytes;
+			initialize( srcData, srcRowBytes, srcPixelBytes, device );
+		}
+		break;
+
+		case vk::DataType::UINT16: {
+		}
+		break;
+
+		case vk::DataType::FLOAT16: {
+		}
+		break;
+
+		case vk::DataType::FLOAT32: {
+		}
+		break;
+	}
 }
 
 Texture2d::Texture2d( const Surface8u& surf, const Texture2d::Format &format, vk::Device *device )
@@ -317,7 +339,10 @@ void Texture2d::initialize( vk::Device *device )
 	vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
 	//preMadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );		
 	//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, imageOptions, preMadeImage );
-	mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
+
+	ImageView::Options imageViewOptions = ImageView::Options();
+	imageViewOptions.setSwizzle( mFormat.mSwizzle );
+	mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, imageViewOptions, device );
 
 	initializeFinal( device );
 }
@@ -343,7 +368,10 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 			.setMipLevels( 1 );
 		vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), srcData, srcRowBytes, srcPixelBytes, Area( 0, 0, mSize.x, mSize.y ), imageOptions, device );
 		//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, preMadeImage->getOptions(), preMadeImage );
-		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
+
+		ImageView::Options imageViewOptions = ImageView::Options();
+		imageViewOptions.setSwizzle( mFormat.mSwizzle );
+		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, imageViewOptions, device );
 	}
 	else {
 		// Create image for texture
@@ -356,7 +384,10 @@ void Texture2d::initialize( const T* srcData, size_t srcRowBytes, size_t srcPixe
 			.setMipLevels( mMipLevels );
 		vk::ImageRef preMadeImage = vk::Image::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), imageOptions, device );
 		//ImageView::initialize( VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TYPE_2D, mWidth, mHeight, 1, preMadeImage->getOptions(), preMadeImage );
-		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, device );
+
+		ImageView::Options imageViewOptions = ImageView::Options();
+		imageViewOptions.setSwizzle( mFormat.mSwizzle );
+		mImageView = vk::ImageView::create( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), preMadeImage, imageViewOptions, device );
 		
 		doUpdate( static_cast<uint32_t>( mSize.x ), static_cast<uint32_t>( mSize.y ), srcData, srcRowBytes, srcPixelBytes );
 	}
@@ -453,7 +484,9 @@ void Texture2d::initialize( const ImageSourceRef& imageSource, VkFormat imageSou
 			}
 			// Create image view
 			if( preMadeImage ) {
-				mImageView = vk::ImageView::create( width, height, preMadeImage, device );
+				ImageView::Options imageViewOptions = ImageView::Options();
+				imageViewOptions.setSwizzle( mFormat.mSwizzle );
+				mImageView = vk::ImageView::create( width, height, preMadeImage, imageViewOptions, device );
 			}
 		}
 		else {
@@ -465,7 +498,11 @@ void Texture2d::initialize( const ImageSourceRef& imageSource, VkFormat imageSou
 				.setMemoryPropertyDeviceLocal()
 				.setMipLevels( mMipLevels );
 			vk::ImageRef preMadeImage = vk::Image::create( width, height, imageOptions, device );
-			mImageView = vk::ImageView::create( width, height, preMadeImage, device );
+			if( preMadeImage ) {
+				ImageView::Options imageViewOptions = ImageView::Options();
+				imageViewOptions.setSwizzle( mFormat.mSwizzle );
+				mImageView = vk::ImageView::create( width, height, preMadeImage,imageViewOptions, device );
+			}
 		
 			if( imageSource->getDataType() == ImageIo::UINT8 ) {
 				const uint8_t *srcData = reinterpret_cast<const uint8_t *>( buffer.data() );
@@ -664,6 +701,23 @@ void Texture2d::update( const Surface16u& surf )
 void Texture2d::update( const Surface32f& surf )
 {
 	update( surf.getWidth(), surf.getHeight(), surf.getData(), surf.getRowBytes(), surf.getPixelBytes() );
+}
+
+Rectf Texture2d::getAreaTexCoords( const Area &area ) const
+{
+	Rectf result;
+	
+	if( mFormat.isUnnormalizedCoordinates() )  { // rectangular (pixel) coordinates
+		result = Rectf( area );
+	}
+	else { // normalized 0-1.0 coordinates
+		result.x1 = ( area.x1 ) / static_cast<float>( mSize.x );
+		result.y1 = ( area.y1 ) / static_cast<float>( mSize.y );
+		result.x2 = ( area.x2 ) / static_cast<float>( mSize.x );
+		result.y2 = ( area.y2 ) / static_cast<float>( mSize.y );
+	}
+	
+	return result;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -946,7 +1000,10 @@ void TextureCubeMap::initialize( int width, int height, const T* srcData, size_t
 	vk::ImageRef premadeImage = vk::Image::create( faceSize.x, faceSize.y, imageOptions, device );
 	//premadeImage->setImageLayout( VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
 	//ImageView::initialize( VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_TYPE_2D, premadeImage->getWidth(), premadeImage->getHeight(), 1, premadeImage->getOptions(), premadeImage );
-	mImageView = vk::ImageView::createCube( premadeImage->getWidth(), premadeImage->getHeight(), premadeImage, device );
+
+	ImageView::Options imageViewOptions = ImageView::Options();
+	imageViewOptions.setSwizzle( mFormat.mSwizzle );
+	mImageView = vk::ImageView::createCube( premadeImage->getWidth(), premadeImage->getHeight(), premadeImage, imageViewOptions, device );
 
 	Image::Format stagingOptions = Image::Format( format.getInternalFormat() )
 		.setSamples( VK_SAMPLE_COUNT_1_BIT )

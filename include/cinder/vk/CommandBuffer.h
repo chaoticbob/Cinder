@@ -203,6 +203,7 @@ public:
 	void setScissor( int32_t x, int32_t y, int32_t width, int32_t height );
 	void bindDescriptorSet( VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, const VkDescriptorSet& pDescriptorSets );
 	void bindIndexBuffer( const IndexBufferRef& indexBuffer, VkDeviceSize offset = 0 );
+	void bindVertexBuffers( const std::vector<VertexBufferRef>& vertexBuffers, const std::vector<VkDeviceSize>& offsets = std::vector<VkDeviceSize>() );
 
 	void pipelineBarrierGlobalMemory( const vk::GlobalMemoryBarrierParams& params );
 	void pipelineBarrierBufferMemory( const vk::BufferMemoryBarrierParams& params );

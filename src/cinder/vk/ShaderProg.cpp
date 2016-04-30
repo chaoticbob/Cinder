@@ -89,6 +89,12 @@ ShaderDef& ShaderDef::lambert()
 	return *this;
 }
 
+ShaderDef& ShaderDef::positionDim( uint32_t dim )
+{
+	mPositionDim = std::max<uint32_t>( 2, std::min<uint32_t>( 4, dim ) );
+	return *this;
+}
+
 bool ShaderDef::operator<( const ShaderDef &rhs ) const
 {
 	if( rhs.mColor != mColor )
@@ -1107,6 +1113,23 @@ VkPushConstantRange ShaderProg::getCachedPushConstantRange( const std::string& n
 	if( mCachedNamedPushConstantRanges.end() != it ) {
 		result = it->second;
 	}
+	return result;
+}
+
+uint32_t ShaderProg::getAttributeLocation( geom::Attrib semantic ) const
+{
+	uint32_t result = UINT32_MAX;
+	
+	auto it = std::find_if( std::begin( mAttributes ), std::end( mAttributes ),
+		[semantic]( const ShaderProg::Attribute& elem ) -> bool {
+			return elem.getSemantic() == semantic;
+		}
+	);
+
+	if( std::end( mAttributes ) != it ) {
+		result = it->getLocation();
+	}
+
 	return result;
 }
 

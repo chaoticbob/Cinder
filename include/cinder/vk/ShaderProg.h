@@ -63,6 +63,7 @@ public:
 	// Used by draw(TextureRef&) stock shader; scales ciPosition and ciTexCoord according to
 	// uniform "uPositionScale", "uPositionOffset", "uTexCoord0Scale", "uTexCoord0Offset"
 	ShaderDef&				uniformBasedPosAndTexCoord();
+	ShaderDef&				positionDim( uint32_t dim );
 
 	bool operator<( const ShaderDef &rhs ) const;
 	
@@ -72,6 +73,7 @@ protected:
 	bool					mTextureUnormalizedCoordinates;
 	bool					mLambert;
 	bool					mUniformBasedPosAndTexCoord;
+	uint32_t				mPositionDim = 4;
 	
 	friend class Context;
 };
@@ -244,6 +246,8 @@ public:
 	VkPushConstantRange										getCachedPushConstantRange( const std::string& name ) const;
 
 	const std::vector<Attribute>&		getActiveAttributes() const { return mAttributes; }
+	uint32_t							getAttributeLocation( geom::Attrib semantic ) const;
+
 	const vk::VertexBufferMesh::Layout&	getVertexLayout() const { return mVertexLayout; }
 	const UniformLayout&				getUniformLayout() const { return mUniformLayout; }
 

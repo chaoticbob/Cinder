@@ -166,7 +166,8 @@ void Swapchain::initializeColorBuffers()
 	assert( res == VK_SUCCESS );
 
 	for( uint32_t i = 0; i < mImageCount; ++i ) {
-		ImageViewRef imageView = ImageView::create( swapChainExtent.width, swapChainExtent.height, mSurface->getFormat(), swapchainImages[i], mDevice );
+		ImageView::Options imageViewOptions = ImageView::Options();
+		ImageViewRef imageView = ImageView::create( swapChainExtent.width, swapChainExtent.height, mSurface->getFormat(), swapchainImages[i], imageViewOptions, mDevice );
 		//imageView->setImageLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
 		mColorAttachments.push_back( imageView );
 	}

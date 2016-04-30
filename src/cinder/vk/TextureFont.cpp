@@ -37,7 +37,15 @@
 */
 
 #include "cinder/vk/TextureFont.h"
+#include "cinder/vk/CommandBuffer.h"
 #include "cinder/vk/Context.h"
+#include "cinder/vk/Descriptor.h"
+#include "cinder/vk/Device.h"
+#include "cinder/vk/Pipeline.h"
+#include "cinder/vk/PipelineSelector.h"
+#include "cinder/vk/RenderPass.h"
+#include "cinder/vk/ShaderProg.h"
+#include "cinder/vk/UniformLayout.h"
 #include "cinder/vk/scoped.h"
 
 #include "cinder/Text.h"
@@ -46,14 +54,7 @@
 	#include "cinder/ImageIo.h"
 	#include "cinder/Rand.h"
 	#include "cinder/Utilities.h"
-#if defined( CINDER_COCOA )
-	#include "cinder/cocoa/CinderCocoa.h"
-	#if defined( CINDER_MAC )
-		#include <ApplicationServices/ApplicationServices.h>
-	#else
-		#include <CoreGraphics/CoreGraphics.h>
-	#endif
-#elif defined( CINDER_MSW )
+#if defined( CINDER_MSW )
 	#include <Windows.h>
 #elif defined( CINDER_ANDROID ) || defined( CINDER_LINUX )
 	#include "cinder/linux/FreeTypeUtil.h" 
@@ -66,109 +67,9 @@ using std::unordered_map;
 
 using namespace std;
 
-#if 0
 namespace cinder { namespace vk {
 
-#if defined( CINDER_COCOA )
-TextureFont::TextureFont( const Font &font, const string &supportedChars, const TextureFont::Format &format )
-	: mFont( font ), mFormat( format )
-{
-	// get the glyph indices we'll need
-	vector<Font::Glyph>	tempGlyphs = font.getGlyphs( supportedChars );
-	set<Font::Glyph> glyphs( tempGlyphs.begin(), tempGlyphs.end() );
-	// determine the max glyph extents
-	vec2 glyphExtents;
-	for( set<Font::Glyph>::const_iterator glyphIt = glyphs.begin(); glyphIt != glyphs.end(); ++glyphIt ) {
-		Rectf bb = font.getGlyphBoundingBox( *glyphIt );
-		glyphExtents.x = std::max( glyphExtents.x, bb.getWidth() );
-		glyphExtents.y = std::max( glyphExtents.y, bb.getHeight() );
-	}
-
-	glyphExtents.x = ceil( glyphExtents.x );
-	glyphExtents.y = ceil( glyphExtents.y );
-
-	int glyphsWide = floor( mFormat.getTextureWidth() / (glyphExtents.x+3) );
-	int glyphsTall = floor( mFormat.getTextureHeight() / (glyphExtents.y+5) );	
-	uint8_t curGlyphIndex = 0, curTextureIndex = 0;
-	vec2 curOffset;
-	CGGlyph renderGlyphs[glyphsWide*glyphsTall];
-	CGPoint renderPositions[glyphsWide*glyphsTall];
-	Surface surface( mFormat.getTextureWidth(), mFormat.getTextureHeight(), true );
-	ip::fill( &surface, ColorA8u( 0, 0, 0, 0 ) );
-	ColorA white( 1, 1, 1, 1 );
-	::CGContextRef cgContext = cocoa::createCgBitmapContext( surface );
-	::CGContextSetRGBFillColor( cgContext, 1, 1, 1, 1 );
-	::CGContextSetFont( cgContext, font.getCgFontRef() );
-	::CGContextSetFontSize( cgContext, font.getSize() );
-	::CGContextSetTextMatrix( cgContext, CGAffineTransformIdentity );
-
-	std::unique_ptr<uint8_t[]> lumAlphaData( new uint8_t[mFormat.getTextureWidth()*mFormat.getTextureHeight()*2] );
-
-	for( set<Font::Glyph>::const_iterator glyphIt = glyphs.begin(); glyphIt != glyphs.end(); ) {
-		GlyphInfo newInfo;
-		newInfo.mTextureIndex = curTextureIndex;
-		Rectf bb = font.getGlyphBoundingBox( *glyphIt );
-		vec2 ul = curOffset + vec2( 0, glyphExtents.y - bb.getHeight() );
-		vec2 lr = curOffset + vec2( glyphExtents.x, glyphExtents.y );
-		newInfo.mTexCoords = Area( floor( ul.x ), floor( ul.y ), ceil( lr.x ) + 3, ceil( lr.y ) + 2 );
-		newInfo.mOriginOffset.x = floor(bb.x1) - 1;
-		newInfo.mOriginOffset.y = -(bb.getHeight()-1)-ceil( bb.y1+0.5f );
-		mGlyphMap[*glyphIt] = newInfo;
-		renderGlyphs[curGlyphIndex] = *glyphIt;
-		renderPositions[curGlyphIndex].x = curOffset.x - floor(bb.x1) + 1;
-		renderPositions[curGlyphIndex].y = surface.getHeight() - (curOffset.y + glyphExtents.y) - ceil(bb.y1+0.5f);
-		curOffset += ivec2( glyphExtents.x + 3, 0 );
-		++glyphIt;
-		if( ( ++curGlyphIndex == glyphsWide * glyphsTall ) || ( glyphIt == glyphs.end() ) ) {
-			::CGContextShowGlyphsAtPositions( cgContext, renderGlyphs, renderPositions, curGlyphIndex );
-			
-			// pass premultiply and mipmapping preferences to Texture::Format
-			if( ! mFormat.getPremultiply() )
-				ip::unpremultiply( &surface );
-
-			gl::Texture::Format textureFormat = gl::Texture::Format();
-			textureFormat.enableMipmapping( mFormat.hasMipmapping() );
-			GLint dataFormat;
-#if defined( CINDER_GL_ES )
-			dataFormat = GL_LUMINANCE_ALPHA;
-			textureFormat.setInternalFormat( dataFormat );
-#else
-			dataFormat = GL_RG;
-			textureFormat.setInternalFormat( dataFormat );
-			textureFormat.setSwizzleMask( { GL_RED, GL_RED, GL_RED, GL_GREEN } );
-#endif
-			if( mFormat.hasMipmapping() )
-				textureFormat.setMinFilter( GL_LINEAR_MIPMAP_LINEAR );
-
-			// under iOS format and interalFormat must match, so let's make a block of LUMINANCE_ALPHA data
-			Surface8u::ConstIter iter( surface, surface.getBounds() );
-			size_t offset = 0;
-			while( iter.line() ) {
-				while( iter.pixel() ) {
-					lumAlphaData.get()[offset+0] = iter.r();
-					lumAlphaData.get()[offset+1] = iter.a();
-					offset += 2;
-				}
-			}
-			mTextures.push_back( gl::Texture::create( lumAlphaData.get(), dataFormat, mFormat.getTextureWidth(), mFormat.getTextureHeight(), textureFormat ) );
-			mTextures.back()->setTopDown( true );
-
-			ip::fill( &surface, ColorA8u( 0, 0, 0, 0 ) );			
-			curOffset = vec2();
-			curGlyphIndex = 0;
-			++curTextureIndex;
-		}
-		else if( ( curGlyphIndex ) % glyphsWide == 0 ) { // wrap around
-			curOffset.x = 0;
-			curOffset.y += glyphExtents.y + 2;
-		}
-	}
-
-	::CGContextRelease( cgContext );
-}
-
-#elif defined( CINDER_MSW )
-
+#if defined( CINDER_MSW )
 set<Font::Glyph> getNecessaryGlyphs( const Font &font, const string &supportedChars )
 {
 	set<Font::Glyph> result;
@@ -307,6 +208,8 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 			
 			vk::Texture::Format textureFormat = vk::Texture::Format();
 			textureFormat.mipmap( mFormat.hasMipmapping() );
+
+			writeImage( "TextureFont.png", tempSurface );
 
 			Surface8u::ConstIter iter( tempSurface, tempSurface.getBounds() );
 			size_t offset = 0;
@@ -464,46 +367,44 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 
 #endif
 
-void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2> > &glyphMeasures, const vec2 &baselineIn, const DrawOptions &options, const std::vector<ColorA8u> &colors )
+void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasures, const vec2 &baselineIn, const DrawOptions &options, const std::vector<ColorA8u> &colors )
 {
-#if 0
-	if( mTextures.empty() )
+	if( mTextures.empty() ) {
 		return;
-
-	if( ! colors.empty() )
-		assert( glyphMeasures.size() == colors.size() );
-
-	auto shader = options.getGlslProg();
-	if( ! shader ) {
-		auto shaderDef = ShaderDef().texture( mTextures[0] ).color();
-		shader = gl::getStockShader( shaderDef );
 	}
-	ScopedTextureBind texBindScp( mTextures[0] );
-	ScopedGlslProg glslScp( shader );
+
+	if( ! colors.empty() ) {
+		assert( glyphMeasures.size() == colors.size() );
+	}
+
+	auto shader = options.getShaderProg();
+	if( ! shader ) {
+		//auto shaderDef = ShaderDef().texture().color();
+		auto shaderDef = ShaderDef().texture().positionDim( 4 );
+		shader = vk::getStockShader( shaderDef );
+	}
+
+	auto currentColor = vk::context()->getCurrentColor();
 
 	vec2 baseline = baselineIn;
-
 	const float scale = options.getScale();
 	for( size_t texIdx = 0; texIdx < mTextures.size(); ++texIdx ) {
-		vector<float> verts, texCoords;
-		vector<ColorA8u> vertColors;
-		const gl::TextureRef &curTex = mTextures[texIdx];
-#if defined( CINDER_GL_ES )
-		vector<uint16_t> indices;
-		uint16_t curIdx = 0;
-		GLenum indexType = GL_UNSIGNED_SHORT;
-#else
-		vector<uint32_t> indices;
+		std::vector<float> verts, texCoords;
+		std::vector<ColorA8u> vertColors;
+		const vk::TextureRef &curTex = mTextures[texIdx];
+		std::vector<uint32_t> indices;
 		uint32_t curIdx = 0;
-		GLenum indexType = GL_UNSIGNED_INT;
-#endif
-		if( options.getPixelSnap() )
+		VkIndexType indexType = VK_INDEX_TYPE_UINT32;
+
+		if( options.getPixelSnap() ) {
 			baseline = vec2( floor( baseline.x ), floor( baseline.y ) );
+		}
 			
 		for( vector<pair<Font::Glyph,vec2> >::const_iterator glyphIt = glyphMeasures.begin(); glyphIt != glyphMeasures.end(); ++glyphIt ) {
 			unordered_map<Font::Glyph, GlyphInfo>::const_iterator glyphInfoIt = mGlyphMap.find( glyphIt->first );
-			if( (glyphInfoIt == mGlyphMap.end()) || (mGlyphMap[glyphIt->first].mTextureIndex != texIdx) )
+			if( (glyphInfoIt == mGlyphMap.end()) || (mGlyphMap[glyphIt->first].mTextureIndex != texIdx) ) {
 				continue;
+			}
 				
 			const GlyphInfo &glyphInfo = glyphInfoIt->second;
 			
@@ -514,8 +415,9 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2> > &glyphMeasur
 			destRect += glyphIt->second * scale;
 			destRect += vec2( floor( glyphInfo.mOriginOffset.x + 0.5f ), floor( glyphInfo.mOriginOffset.y ) ) * scale;
 			destRect += vec2( baseline.x, baseline.y - mFont.getAscent() * scale );
-			if( options.getPixelSnap() )
+			if( options.getPixelSnap() ) {
 				destRect -= vec2( destRect.x1 - floor( destRect.x1 ), destRect.y1 - floor( destRect.y1 ) );				
+			}
 			
 			verts.push_back( destRect.getX2() ); verts.push_back( destRect.getY1() );
 			verts.push_back( destRect.getX1() ); verts.push_back( destRect.getY1() );
@@ -528,8 +430,14 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2> > &glyphMeasur
 			texCoords.push_back( srcCoords.getX1() ); texCoords.push_back( srcCoords.getY2() );
 			
 			if( ! colors.empty() ) {
-				for( int i = 0; i < 4; ++i )
+				for( int i = 0; i < 4; ++i ) {
 					vertColors.push_back( colors[glyphIt-glyphMeasures.begin()] );
+				}
+			}
+			else {
+				for( int i = 0; i < 4; ++i ) {
+					vertColors.push_back( currentColor );
+				}
 			}
 
 			indices.push_back( curIdx + 0 ); indices.push_back( curIdx + 1 ); indices.push_back( curIdx + 2 );
@@ -537,54 +445,138 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2> > &glyphMeasur
 			curIdx += 4;
 		}
 		
-		if( curIdx == 0 )
+		if( curIdx == 0 ) {
 			continue;
+		}
+
+		// -------------------------------------------------------------------------------------------------------------------------------------------
 		
-		curTex->bind();
-		auto ctx = gl::context();
-		size_t dataSize = (verts.size() + texCoords.size()) * sizeof(float) + vertColors.size() * sizeof(ColorA8u);
-		gl::ScopedVao vaoScp( ctx->getDefaultVao() );
-		ctx->getDefaultVao()->replacementBindBegin();
-		VboRef defaultElementVbo = ctx->getDefaultElementVbo( indices.size() * sizeof(curIdx) );
-		VboRef defaultArrayVbo = ctx->getDefaultArrayVbo( dataSize );
+		// Index buffer
+		vk::IndexBuffer::Format indexBufferFormat = vk::IndexBuffer::Format( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ).setUsageTransferDestination();
+		vk::IndexBufferRef transientIndexBuffer = vk::IndexBuffer::create( indices.size(), indexType, static_cast<const void *>( indices.data() ), indexBufferFormat );
+		vk::context()->addTransient( transientIndexBuffer );
+		
+		// Vertex buffers
+		vk::VertexBuffer::Format vertexBufferFormat = vk::VertexBuffer::Format( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ).setUsageTransferDestination();
+		vk::VertexBufferRef transientVertexBufferVerts = vk::VertexBuffer::create( static_cast<const void *>( verts.data() ), verts.size()*sizeof( float ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferTexCoords = vk::VertexBuffer::create( static_cast<const void *>( texCoords.data() ), texCoords.size()*sizeof( float ), vertexBufferFormat );
+		vk::VertexBufferRef transientVertexBufferVertColors = vk::VertexBuffer::create( static_cast<const void *>( vertColors.data() ), vertColors.size()*sizeof( float ), vertexBufferFormat );
+		vk::context()->addTransient( transientVertexBufferVerts );
+		vk::context()->addTransient( transientVertexBufferTexCoords );
+		vk::context()->addTransient( transientVertexBufferVertColors );
 
-		ScopedBuffer vboArrayScp( defaultArrayVbo );
-		ScopedBuffer vboElScp( defaultElementVbo );
+		// Uniform layout, uniform set
+		const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
+		vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
+		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+		vk::context()->addTransient( transientUniformSet );
+		
+		// Descriptor view
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+		vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
+		transientDescriptorView->allocateDescriptorSets();
+		vk::context()->addTransient( transientDescriptorView );
 
-		size_t dataOffset = 0;
-		int posLoc = shader->getAttribSemanticLocation( geom::Attrib::POSITION );
-		if( posLoc >= 0 ) {
-			enableVertexAttribArray( posLoc );
-			vertexAttribPointer( posLoc, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
-			defaultArrayVbo->bufferSubData( dataOffset, verts.size() * sizeof(float), verts.data() );
-			dataOffset += verts.size() * sizeof(float);
-		}
-		int texLoc = shader->getAttribSemanticLocation( geom::Attrib::TEX_COORD_0 );
-		if( texLoc >= 0 ) {
-			enableVertexAttribArray( texLoc );
-			vertexAttribPointer( texLoc, 2, GL_FLOAT, GL_FALSE, 0, (void*)dataOffset );
-			defaultArrayVbo->bufferSubData( dataOffset, texCoords.size() * sizeof(float), texCoords.data() );
-			dataOffset += texCoords.size() * sizeof(float);
-		}
-		if( ! vertColors.empty() ) {
-			int colorLoc = shader->getAttribSemanticLocation( geom::Attrib::COLOR );
-			if( colorLoc >= 0 ) {
-				enableVertexAttribArray( colorLoc );
-				vertexAttribPointer( colorLoc, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)dataOffset );
-				defaultArrayVbo->bufferSubData( dataOffset, vertColors.size() * sizeof(ColorA8u), vertColors.data() );
-				dataOffset += vertColors.size() * sizeof(ColorA8u);				
-			}
+		// Pipeline layout
+		VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
+
+		// Pipeline
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		{
+			// Vertex input binding description
+			// Position
+			VkVertexInputBindingDescription viBindingPos = {};
+			viBindingPos.binding			= 0;
+			viBindingPos.inputRate			= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingPos.stride				= 2*sizeof(float);
+			// TexCoord
+			VkVertexInputBindingDescription viBindingTexCoord = {};
+			viBindingTexCoord.binding		= 1;
+			viBindingTexCoord.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingTexCoord.stride		= 2*sizeof(float);
+			// Color
+			VkVertexInputBindingDescription viBindingVertColor = {};
+			viBindingVertColor.binding		= 2;
+			viBindingVertColor.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+			viBindingVertColor.stride		= 4*sizeof(float);
+
+			// Vertex input attribute description
+			// Position
+			VkVertexInputAttributeDescription viAttrPos = {};
+			viAttrPos.binding				= viBindingPos.binding;
+			viAttrPos.format				= VK_FORMAT_R32G32_SFLOAT;
+			viAttrPos.location				= shader->getAttributeLocation( geom::Attrib::POSITION );
+			viAttrPos.offset				= 0;
+			// TexCoord
+			VkVertexInputAttributeDescription viAttrTexCoord = {};
+			viAttrTexCoord.binding			= viBindingVertColor.binding;
+			viAttrTexCoord.format			= VK_FORMAT_R32G32_SFLOAT;
+			viAttrTexCoord.location			= shader->getAttributeLocation( geom::Attrib::TEX_COORD_0 );
+			viAttrTexCoord.offset			= 0;
+			// Color
+			VkVertexInputAttributeDescription viAttrVertColor = {};
+			viAttrVertColor.binding			= viBindingVertColor.binding;
+			viAttrVertColor.format			= VK_FORMAT_R32G32B32A32_SFLOAT;
+			viAttrVertColor.location		= shader->getAttributeLocation( geom::Attrib::COLOR );
+			viAttrVertColor.offset			= 0;
+
+			auto ctx = vk::context();
+			auto& pipelineSelector = ctx->getDevice()->getPipelineSelector();
+			pipelineSelector->setTopology( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST );
+			pipelineSelector->setVertexInputAttributeDescriptions( { viAttrPos, viAttrTexCoord, viAttrVertColor } );
+			pipelineSelector->setVertexInputBindingDescriptions( { viBindingPos, viBindingVertColor, viBindingVertColor } );
+			pipelineSelector->setCullMode( ctx->getCullMode() );
+			pipelineSelector->setFrontFace( ctx->getFrontFace() );
+			pipelineSelector->setDepthBias( ctx->getDepthBiasEnable(), ctx->getDepthBiasSlopeFactor(), ctx->getDepthBiasConstantFactor(), ctx->getDepthBiasClamp() );
+			pipelineSelector->setRasterizationSamples( ctx->getRenderPass()->getSubpassSampleCount( ctx->getSubpass() ) );
+			pipelineSelector->setDepthTest( ctx->getDepthTest() );
+			pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
+			pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
+			pipelineSelector->setShaderStages( shader->getShaderStages() );
+			pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+			pipelineSelector->setSubPass( ctx->getSubpass() );
+			pipelineSelector->setPipelineLayout( pipelineLayout );
+			pipeline = pipelineSelector->getSelectedPipeline();
 		}
 
-		defaultElementVbo->bufferSubData( 0, indices.size() * sizeof(curIdx), indices.data() );
-		ctx->getDefaultVao()->replacementBindEnd();
-		gl::setDefaultShaderVars();
-		ctx->drawElements( GL_TRIANGLES, (GLsizei)indices.size(), indexType, 0 );
+		// -------------------------------------------------------------------------------------------------------------------------------------------
+
+		// Command buffer
+		auto cmdBufRef = vk::context()->getCommandBuffer();
+		auto cmdBuf = cmdBufRef->getCommandBuffer();
+
+		// Fill out uniform vars
+		transientUniformSet->uniform( "uTex0", curTex );
+		transientUniformSet->setDefaultUniformVars( vk::context() );
+		transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+
+		// Update descriptor set
+		transientDescriptorView->updateDescriptorSets();
+
+		// Bind index buffer
+		cmdBufRef->bindIndexBuffer( transientIndexBuffer );
+
+		// Bind vertex buffer
+		cmdBufRef->bindVertexBuffers( { transientVertexBufferVerts, transientVertexBufferTexCoords } );
+
+		// Bind pipeline
+		cmdBufRef->bindPipeline( VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+
+		// Bind descriptor sets
+		const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
+		for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
+			const auto& ds = descriptorSets[i];
+			std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+			cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+		}
+
+		// Draw geometry
+		uint32_t indexCount = transientIndexBuffer->getNumIndices();
+		cmdBufRef->drawIndexed( indexCount, 1, 0, 0, 0 );
 	}
-#endif
 }
 
-void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2> > &glyphMeasures, const Rectf &clip, vec2 offset, const DrawOptions &options, const std::vector<ColorA8u> &colors )
+void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &glyphMeasures, const Rectf &clip, vec2 offset, const DrawOptions &options, const std::vector<ColorA8u> &colors )
 {
 #if 0
 	if( mTextures.empty() )
@@ -759,9 +751,6 @@ void TextureFont::drawStringWrapped( const std::string &str, const Rectf &fitRec
 vec2 TextureFont::measureString( const std::string &str, const DrawOptions &options ) const
 {
 	TextBox tbox = TextBox().font( mFont ).text( str ).size( TextBox::GROW, TextBox::GROW ).ligate( options.getLigate() );
-#if defined( CINDER_COCOA )
-	return tbox.measure();
-#else
 
 #if defined( CINDER_ANDROID ) || defined( CINDER_LINUX )
 	vector<pair<Font::Glyph,vec2> > glyphMeasures = tbox.measureGlyphs( getCachedGlyphMetrics() );
@@ -778,16 +767,7 @@ vec2 TextureFont::measureString( const std::string &str, const DrawOptions &opti
 	else {
 		return vec2();
 	}
-#endif
 }
-
-#if defined( CINDER_COCOA )
-vec2 TextureFont::measureStringWrapped( const std::string &str, const Rectf &fitRect, const DrawOptions &options ) const
-{
-	TextBox tbox = TextBox().font( mFont ).text( str ).size( fitRect.getWidth(), fitRect.getHeight() ).ligate( options.getLigate() );
-	return tbox.measure();
-}
-#endif
 
 vector<pair<Font::Glyph,vec2> > TextureFont::getGlyphPlacements( const std::string &str, const DrawOptions &options ) const
 {
@@ -808,4 +788,3 @@ vector<pair<Font::Glyph,vec2> > TextureFont::getGlyphPlacementsWrapped( const st
 }
 
 } } // namespace cinder::vk
-#endif

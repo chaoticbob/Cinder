@@ -59,14 +59,14 @@ public:
 
 		Format&					setUsageTransferSource() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_TRANSFER_SRC_BIT ); return *this; }
 		Format&					setUsageTransferDestination() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_TRANSFER_DST_BIT ); return *this; }
-		Format&					setUsageUniformTexelBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT ); return *this; }
-		Format&					setUsageStorageTexelBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT ); return *this; }
-		Format&					setUsageUniformBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ); return *this; }
-		Format&					setUsageStorageBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_STORAGE_BUFFER_BIT ); return *this; }
-		Format&					setUsageIndexBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_INDEX_BUFFER_BIT ); return *this; }
-		Format&					setUsageVertexBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT ); return *this; }
-		Format&					setUsageIndirectBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT ); return *this; }
-
+		//Format&					setUsageUniformTexelBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT ); return *this; }
+		//Format&					setUsageStorageTexelBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT ); return *this; }
+		//Format&					setUsageUniformBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ); return *this; }
+		//Format&					setUsageStorageBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_STORAGE_BUFFER_BIT ); return *this; }
+		//Format&					setUsageIndexBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_INDEX_BUFFER_BIT ); return *this; }
+		//Format&					setUsageVertexBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT ); return *this; }
+		//Format&					setUsageIndirectBuffer() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT ); return *this; }
+		
 		Format&					setTransientAllocation( bool value = true ) { vk::Buffer::Format::setTransientAllocation( value ); return *this; }
 	private:
 		friend class IndexBuffer;

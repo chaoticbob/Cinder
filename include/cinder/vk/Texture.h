@@ -144,6 +144,7 @@ public:
 
 		friend class TextureBase;
 		friend class Texture2d;
+		friend class TextureCubeMap;
 	};
 
 	// ---------------------------------------------------------------------------------------------
@@ -188,14 +189,7 @@ public:
 
 	class Format : public TextureBase::Format {
 	public:
-
-		Format( VkFormat format = VK_FORMAT_UNDEFINED ) : TextureBase::Format( format ) {
-			mSwizzle.r = VK_COMPONENT_SWIZZLE_R;
-			mSwizzle.g = VK_COMPONENT_SWIZZLE_G;
-			mSwizzle.b = VK_COMPONENT_SWIZZLE_B;
-			mSwizzle.a = VK_COMPONENT_SWIZZLE_A;
-		}
-
+		Format( VkFormat format = VK_FORMAT_UNDEFINED ) : TextureBase::Format( format ) {}
 		virtual ~Format() {}
 
 		Texture2d::Format&			samples( VkSampleCountFlagBits value ) { TextureBase::Format::setSamples( value ); return *this; }
@@ -266,6 +260,7 @@ public:
 	uint32_t					getHeight() const { return static_cast<uint32_t>( mSize.y ); }
 	const ivec2&				getSize() const { return mSize; }
 	Area						getBounds() const { return Area( 0, 0, getWidth(), getHeight() ); }
+	Rectf						getAreaTexCoords( const Area &area ) const;
 	const Texture2d::Format&	getFormat() const { return mFormat; }
 
 	void					update( int srcWidth, int srcHeight, const uint8_t* srcData, size_t srcRowBytes, size_t srcPixelBytes );
@@ -296,6 +291,21 @@ private:
 //!
 class TextureCubeMap : public TextureBase {
 public:
+
+	class Format : public TextureBase::Format {
+	public:
+		Format( VkFormat format = VK_FORMAT_UNDEFINED ) : TextureBase::Format( format ) {}
+		virtual ~Format() {}
+		TextureCubeMap::Format&			setSwizzle( const VkComponentMapping& value ) { mSwizzle = value; return *this; }
+		TextureCubeMap::Format&			setSwizzle( VkComponentSwizzle r, VkComponentSwizzle g, VkComponentSwizzle b, VkComponentSwizzle a ) { mSwizzle.r = r; mSwizzle.g = g; mSwizzle.b = b; mSwizzle.a = a; return *this; }
+		TextureCubeMap::Format&			setSwizzleR( VkComponentSwizzle r ) { mSwizzle.r = r; return *this; }
+		TextureCubeMap::Format&			setSwizzleG( VkComponentSwizzle g ) { mSwizzle.g = g; return *this; }
+		TextureCubeMap::Format&			setSwizzleB( VkComponentSwizzle b ) { mSwizzle.b = b; return *this; }
+		TextureCubeMap::Format&			setSwizzleA( VkComponentSwizzle a ) { mSwizzle.a = a; return *this; }
+	};
+
+	// ---------------------------------------------------------------------------------------------
+
 	virtual ~TextureCubeMap();
 
 	static TextureCubeMapRef	create( int width, int height, const TextureCubeMap::Format& format = TextureCubeMap::Format(), vk::Device *device = nullptr );
@@ -310,6 +320,8 @@ private:
 	TextureCubeMap( const Surface16u& surf, TextureCubeMap::Format format, vk::Device *device );
 	TextureCubeMap( const Surface32f& surf, TextureCubeMap::Format format, vk::Device *device );
 	//TextureCubeMap( ImageSourceRef imageSource, TextureCubeMap::Format format, vk::Device *device );
+
+	TextureCubeMap::Format		mFormat;
 
 	void						initializeCommon( const TextureCubeMap::Format& format, vk::Device *device  );
 	void						initializeFinal( vk::Device *device );

@@ -65,6 +65,7 @@
 #include "cinder/vk/ShaderProg.h"
 #include "cinder/vk/Swapchain.h"
 #include "cinder/vk/Texture.h"
+#include "cinder/vk/TextureFont.h"
 #include "cinder/vk/UniformBuffer.h"
 #include "cinder/vk/UniformLayout.h"
 #include "cinder/vk/Util.h"
