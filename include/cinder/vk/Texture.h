@@ -68,14 +68,7 @@ public:
 	//!
 	class Format {
 	public:
-
-		Format( VkFormat format = VK_FORMAT_UNDEFINED ) : mInternalFormat( format ) {
-			mSwizzle.r = VK_COMPONENT_SWIZZLE_R;
-			mSwizzle.g = VK_COMPONENT_SWIZZLE_G;
-			mSwizzle.b = VK_COMPONENT_SWIZZLE_B;
-			mSwizzle.a = VK_COMPONENT_SWIZZLE_A;
-		}
-
+		Format( VkFormat format = VK_FORMAT_UNDEFINED );
 		virtual ~Format() {}
 
 		void					setInternalFormat( VkFormat value ) { mInternalFormat = value; }
@@ -112,10 +105,10 @@ public:
 		uint32_t				getMaxMipmapLevels() const { return mMaxMipmapLevels; }
 
 		void					setSwizzle( VkComponentSwizzle r, VkComponentSwizzle g, VkComponentSwizzle b, VkComponentSwizzle a ) { mSwizzle.r = r; mSwizzle.g = g; mSwizzle.b = b; mSwizzle.a = a; }
-		void					setSwizzleR( VkComponentSwizzle r ) { mSwizzle.r = r; }
-		void					setSwizzleG( VkComponentSwizzle g ) { mSwizzle.g = g; }
-		void					setSwizzleB( VkComponentSwizzle b ) { mSwizzle.b = b; }
-		void					setSwizzleA( VkComponentSwizzle a ) { mSwizzle.a = a; }
+		void					swizzleR( VkComponentSwizzle r ) { mSwizzle.r = r; }
+		void					swizzleG( VkComponentSwizzle g ) { mSwizzle.g = g; }
+		void					swizzleB( VkComponentSwizzle b ) { mSwizzle.b = b; }
+		void					swizzleA( VkComponentSwizzle a ) { mSwizzle.a = a; }
 
 		void					setMagFilter( VkFilter value ) { mMagFilter = value; }
 		void					setMinFilter( VkFilter value ) { mMinFilter = value; }
@@ -189,29 +182,31 @@ public:
 
 	class Format : public TextureBase::Format {
 	public:
-		Format( VkFormat format = VK_FORMAT_UNDEFINED ) : TextureBase::Format( format ) {}
-		virtual ~Format() {}
+		Format( VkFormat format = VK_FORMAT_UNDEFINED );
+		virtual ~Format();
 
 		Texture2d::Format&			samples( VkSampleCountFlagBits value ) { TextureBase::Format::setSamples( value ); return *this; }
 
 		Texture2d::Format&			mipmap( bool value = true ) { TextureBase::Format::setMipmapEnabled( value ); return *this; }
 
-		Texture2d::Format&			setSampleAddressModeU( VkSamplerAddressMode uValue, VkSamplerAddressMode vValues ) { mSamplerAddressModeU = uValue; mSamplerAddressModeV = vValues; return *this; }
-		Texture2d::Format&			setSampleAddressModeU( VkSamplerAddressMode value ) { mSamplerAddressModeU = value; return *this; }
-		Texture2d::Format&			setSampleAddressModeV( VkSamplerAddressMode value ) { mSamplerAddressModeV = value; return *this; }
-		Texture2d::Format&			setWrap( VkSamplerAddressMode uValue, VkSamplerAddressMode vValue ) { return setSampleAddressModeU( uValue, vValue ); }
-		Texture2d::Format&			setWrapU( VkSamplerAddressMode value ) { return setSampleAddressModeU( value ); }
-		Texture2d::Format&			setWrapV( VkSamplerAddressMode value ) { return setSampleAddressModeV( value ); }
+		Texture2d::Format&			sampleAddressMode( VkSamplerAddressMode uValue, VkSamplerAddressMode vValues ) { mSamplerAddressModeU = uValue; mSamplerAddressModeV = vValues; return *this; }
+		Texture2d::Format&			sampleAddressMode( VkSamplerAddressMode value ) { sampleAddressMode( value, value ); return *this; }
+		Texture2d::Format&			sampleAddressModeU( VkSamplerAddressMode value ) { mSamplerAddressModeU = value; return *this; }
+		Texture2d::Format&			sampleAddressModeV( VkSamplerAddressMode value ) { mSamplerAddressModeV = value; return *this; }
+		Texture2d::Format&			wrap( VkSamplerAddressMode uValue, VkSamplerAddressMode vValue ) { return sampleAddressMode( uValue, vValue ); }
+		Texture2d::Format&			wrap( VkSamplerAddressMode value ) { return sampleAddressMode( value ); }
+		Texture2d::Format&			wrapU( VkSamplerAddressMode value ) { return sampleAddressModeU( value ); }
+		Texture2d::Format&			wrapV( VkSamplerAddressMode value ) { return sampleAddressModeV( value ); }
 
-		Texture2d::Format&			setUnnormalizedCoordinates( VkBool32 value = VK_TRUE ) { mUnnormalizedCoordinates = value; return *this; }
+		Texture2d::Format&			unnormalizedCoordinates( VkBool32 value = VK_TRUE ) { mUnnormalizedCoordinates = value; return *this; }
 		VkBool32					isUnnormalizedCoordinates() const { return mUnnormalizedCoordinates; }
 
-		Texture2d::Format&			setSwizzle( const VkComponentMapping& value ) { mSwizzle = value; return *this; }
-		Texture2d::Format&			setSwizzle( VkComponentSwizzle r, VkComponentSwizzle g, VkComponentSwizzle b, VkComponentSwizzle a ) { mSwizzle.r = r; mSwizzle.g = g; mSwizzle.b = b; mSwizzle.a = a; return *this; }
-		Texture2d::Format&			setSwizzleR( VkComponentSwizzle r ) { mSwizzle.r = r; return *this; }
-		Texture2d::Format&			setSwizzleG( VkComponentSwizzle g ) { mSwizzle.g = g; return *this; }
-		Texture2d::Format&			setSwizzleB( VkComponentSwizzle b ) { mSwizzle.b = b; return *this; }
-		Texture2d::Format&			setSwizzleA( VkComponentSwizzle a ) { mSwizzle.a = a; return *this; }
+		Texture2d::Format&			swizzle( const VkComponentMapping& value ) { mSwizzle = value; return *this; }
+		Texture2d::Format&			swizzle( VkComponentSwizzle r, VkComponentSwizzle g, VkComponentSwizzle b, VkComponentSwizzle a ) { mSwizzle.r = r; mSwizzle.g = g; mSwizzle.b = b; mSwizzle.a = a; return *this; }
+		Texture2d::Format&			swizzleR( VkComponentSwizzle r ) { mSwizzle.r = r; return *this; }
+		Texture2d::Format&			swizzleG( VkComponentSwizzle g ) { mSwizzle.g = g; return *this; }
+		Texture2d::Format&			swizzleB( VkComponentSwizzle b ) { mSwizzle.b = b; return *this; }
+		Texture2d::Format&			swizzleA( VkComponentSwizzle a ) { mSwizzle.a = a; return *this; }
 
 	private:
 		VkSamplerAddressMode		mSamplerAddressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -227,8 +222,6 @@ public:
 		//  – The functions must not use projection.
 		//  – The functions must not use offsets.
 		VkBool32					mUnnormalizedCoordinates = VK_FALSE;
-
-		VkComponentMapping			mSwizzle;
 
 		friend class Texture2d;
 	};

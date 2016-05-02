@@ -89,9 +89,9 @@ public:
 	//!
 	struct Attribute {
 
-		Attribute( geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type ) 
+		Attribute( geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type ) 
 			: mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ) {}
-		Attribute( const std::string& name, geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type ) 
+		Attribute( const std::string& name, geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type ) 
 			: mName( name ), mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ) {}
 		virtual ~Attribute() {}
 
@@ -198,7 +198,8 @@ public:
 
 		Format&			binding( const std::string& bindingName, uint32_t bindingNumber, uint32_t setNumber = DEFAULT_SET );
 		Format&			set( uint32_t setNumber, uint32_t changeFrequency = CHANGES_DONTCARE );
-		Format&			attribute( geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type );
+		Format&			attribute( geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type = glsl_attr_unknown );
+		Format&			attribute( geom::Attrib semantic, const std::string& attributeName );
 		Format&			uniformLayout( const UniformLayout& layout );
 		bool			userDefinedUniformLayout() const { return mUserDefinedUniformLayout; }
 

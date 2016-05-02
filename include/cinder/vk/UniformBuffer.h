@@ -58,7 +58,9 @@ public:
 		Format( VkMemoryPropertyFlags memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT )
 			: vk::Buffer::Format( VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, memoryProperty ) {}
 		virtual ~Format() {}
-		Format&					setTransientAllocation( bool value = true ) { vk::Buffer::Format::setTransientAllocation( value ); return *this; }
+		Format&	setUsageTransferSource() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_TRANSFER_SRC_BIT ); return *this; }
+		Format&	setUsageTransferDestination() { vk::Buffer::Format::setUsage( VK_BUFFER_USAGE_TRANSFER_DST_BIT ); return *this; }
+		Format&	setTransientAllocation( bool value = true ) { vk::Buffer::Format::setTransientAllocation( value ); return *this; }
 	private:
 		friend class UniformBuffer;
 	};

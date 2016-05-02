@@ -119,12 +119,14 @@ public:
 		virtual ~Uniform() {}
 
 		const std::string&					getName() const { return mName; }
+		const std::string&					getShortName() const  { return mShortName; }
 		GlslUniformDataType					getDataType() const { return mDataType; }
 		uint32_t							getOffset() const { return mOffset; }
 		uint32_t							getArraySize() const  { return mArraySize; }
 		UniformSemantic						getUniformSemantic() const { return mSemantic; }
 	private:
 		std::string							mName;
+		std::string							mShortName;
 		GlslUniformDataType					mDataType	= glsl_unknown;
 		uint32_t							mOffset		= 0;
 		uint32_t							mArraySize	= 1;
@@ -319,6 +321,7 @@ public:
 private:
 	std::vector<Binding>				mBindings;
 	std::vector<Set>					mSets;
+	std::map<std::string, std::string>	mShortNameToBinding;
 
 	Binding*							findBindingObject( const std::string& name, Binding::Type bindingType, bool addIfNotExits = false );
 	void								addUniformImpl( GlslUniformDataType dataType, const std::string& name, uint32_t offset, uint32_t arraySize );
@@ -405,31 +408,32 @@ public:
 	const std::vector<UniformSet::SetRef>&							getSets() const { return mSets; }
 	const std::vector<std::vector<VkDescriptorSetLayoutBinding>>&	getCachedDescriptorSetLayoutBindings() const { return mCachedDescriptorSetLayoutBindings; }
 
-	void							uniform( const std::string& name, const float    value );
-	void							uniform( const std::string& name, const int32_t  value );
-	void							uniform( const std::string& name, const uint32_t value );
-	void							uniform( const std::string& name, const bool     value );
-	void							uniform( const std::string& name, const vec2&    value );
-	void							uniform( const std::string& name, const vec3&    value );
-	void							uniform( const std::string& name, const vec4&    value );
-	void							uniform( const std::string& name, const ivec2&   value );
-	void							uniform( const std::string& name, const ivec3&   value );
-	void							uniform( const std::string& name, const ivec4&   value );
-	void							uniform( const std::string& name, const uvec2&   value );
-	void							uniform( const std::string& name, const uvec3&   value );
-	void							uniform( const std::string& name, const uvec4&   value );
-	void							uniform( const std::string& name, const mat2&    value );
-	void							uniform( const std::string& name, const mat3&    value );
-	void							uniform( const std::string& name, const mat4&    value );
-	void							uniform( const std::string& name, const TextureBaseRef& texture );
+	void								uniform( const std::string& name, const float    value );
+	void								uniform( const std::string& name, const int32_t  value );
+	void								uniform( const std::string& name, const uint32_t value );
+	void								uniform( const std::string& name, const bool     value );
+	void								uniform( const std::string& name, const vec2&    value );
+	void								uniform( const std::string& name, const vec3&    value );
+	void								uniform( const std::string& name, const vec4&    value );
+	void								uniform( const std::string& name, const ivec2&   value );
+	void								uniform( const std::string& name, const ivec3&   value );
+	void								uniform( const std::string& name, const ivec4&   value );
+	void								uniform( const std::string& name, const uvec2&   value );
+	void								uniform( const std::string& name, const uvec3&   value );
+	void								uniform( const std::string& name, const uvec4&   value );
+	void								uniform( const std::string& name, const mat2&    value );
+	void								uniform( const std::string& name, const mat3&    value );
+	void								uniform( const std::string& name, const mat4&    value );
+	void								uniform( const std::string& name, const TextureBaseRef& texture );
 
-	void							setDefaultUniformVars( vk::Context *context );
-	void							bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask );
+	void								setDefaultUniformVars( vk::Context *context );
+	void								bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask );
 
-	void							echoValues( std::ostream& os );
+	void								echoValues( std::ostream& os );
 
 private:
-	UniformSet::Options				mOptions;
+	UniformSet::Options					mOptions;
+	std::map<std::string, std::string>	mShortNameToBinding;
 
 	std::vector<UniformSet::SetRef>							mSets;
 	std::vector<std::vector<VkDescriptorSetLayoutBinding>>	mCachedDescriptorSetLayoutBindings;

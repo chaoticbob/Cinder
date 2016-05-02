@@ -40,6 +40,7 @@
 #include "cinder/vk/Allocator.h"
 #include "cinder/vk/CommandBuffer.h"
 #include "cinder/vk/CommandPool.h"
+#include "cinder/vk/ConstantConversion.h"
 #include "cinder/vk/Context.h"
 #include "cinder/vk/Device.h"
 #include "cinder/vk/Queue.h"
@@ -159,7 +160,10 @@ void Image::initialize()
 
 		// If this assert fires, the device doesn't support an image of the requested format in mOptions.mFormat.
 		// This should probably be an exception, assert seems to break at the wrong place.
-		assert( ( mFormatProperties.linearTilingFeatures > 0 ) || ( mFormatProperties.optimalTilingFeatures > 0 ) );
+		//assert( ( mFormatProperties.linearTilingFeatures > 0 ) || ( mFormatProperties.optimalTilingFeatures > 0 ) );
+		if( ( 0 == mFormatProperties.linearTilingFeatures ) && ( 0 == mFormatProperties.optimalTilingFeatures ) ) {
+			throw std::runtime_error( "Device does not support image format " + toStringVkFormat( mFormat.mInternalFormat ) );
+		}
 
 		if( mFormat.mMipLevels > 1 ) {
 			// @TODO: Add some checks here to make sure the options are compatible with mipmaps.

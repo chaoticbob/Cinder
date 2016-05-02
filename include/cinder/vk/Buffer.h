@@ -57,6 +57,9 @@ public:
 			: mUsage( usage ), mMemoryProperty( memoryProperty ) {}
 		virtual ~Format() {}
 
+		Format&					setResizable( bool value ) { mResizable = value; return *this; }
+		bool					isResizalbe() const { return mResizable; }
+
 		Format&					setUsage( VkBufferUsageFlags value, bool exclusive = false ) { if( exclusive ) { mUsage = value; } else { mUsage |= value; } return *this; }
 		VkImageUsageFlags		getUsage() const { return mUsage; }
 		Format&					setUsageTransferSource() { setUsage( VK_BUFFER_USAGE_TRANSFER_SRC_BIT ); return *this; }
@@ -84,6 +87,7 @@ public:
 		bool					getTransientAllocation() const { return mTransientAllocation; }
 
 	private:
+		bool					mResizable = true;
 		VkBufferUsageFlags		mUsage = 0;
 		VkMemoryPropertyFlags	mMemoryProperty = 0;
 		bool					mTransientAllocation = false;

@@ -196,10 +196,10 @@ class TextureBase {
 		GLenum	getCompareFunc() const { return mCompareFunc; }
 
 		//! Sets the wrapping behavior when a texture coordinate falls outside the range of [0,1]. Possible values are \c GL_REPEAT, \c GL_CLAMP_TO_EDGE, etc. Default is \c GL_CLAMP_TO_EDGE.
-		void	setWrap( GLenum wrapS, GLenum wrapT ) { setWrapS( wrapS ); setWrapT( wrapT ); }
+		void	wrap( GLenum wrapS, GLenum wrapT ) { setWrapS( wrapS ); setWrapT( wrapT ); }
 #if ! defined( CINDER_GL_ES )
         //! Sets the wrapping behavior when a texture coordinate falls outside the range of [0,1]. Possible values are \c GL_REPEAT, \c GL_CLAMP_TO_EDGE, etc. Default is \c GL_CLAMP_TO_EDGE.
-        void	setWrap( GLenum wrapS, GLenum wrapT, GLenum wrapR ) { setWrapS( wrapS ); setWrapT( wrapT ); setWrapR( wrapR ); }
+        void	wrap( GLenum wrapS, GLenum wrapT, GLenum wrapR ) { setWrapS( wrapS ); setWrapT( wrapT ); setWrapR( wrapR ); }
 #endif
 		//! Sets the horizontal wrapping behavior when a texture coordinate falls outside the range of [0,1]. Possible values are \c GL_REPEAT, \c GL_CLAMP_TO_EDGE, etc. Default is \c GL_CLAMP_TO_EDGE.
 		void	setWrapS( GLenum wrapS ) { mWrapS = wrapS; }

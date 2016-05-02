@@ -334,6 +334,12 @@ ShaderProg::Format& ShaderProg::Format::attribute(geom::Attrib semantic, int32_t
 	return *this;
 }
 
+ShaderProg::Format& ShaderProg::Format::attribute( geom::Attrib semantic, const std::string& attributeName )
+{
+	mAttributes.push_back( Attribute( attributeName, semantic, UINT32_MAX, UINT32_MAX, glsl_attr_unknown ) );
+	return *this;
+}
+
 ShaderProg::Format& ShaderProg::Format::uniformLayout( const UniformLayout& layout )
 {
 	mUniformLayout = layout;
@@ -769,8 +775,14 @@ void extractAttributeData( const std::unique_ptr<spir2cross::CompilerGLSL>& back
 			ShaderProg::Attribute& attr = *it;
 			attr.setLocation( attrLocation );
 			attr.setBinding( attrBinding );
-			attr.setType( attrDataType );
-			attr.setSemantic( attrSemantic );
+
+			if( glsl_attr_unknown == attr.getType() ) {
+				attr.setType( attrDataType );
+			}
+
+			if( geom::Attrib::USER_DEFINED == attr.getSemantic() ) {
+				attr.setSemantic( attrSemantic );
+			}
 		}
 		// Add
 		else {

@@ -77,11 +77,35 @@ class ImageTargetVkTexture2d : public ImageTarget {
 // -------------------------------------------------------------------------------------------------
 // TextureBase
 // -------------------------------------------------------------------------------------------------
+TextureBase::Format::Format( VkFormat format ) 
+	: mInternalFormat( format ) 
+{
+	mSwizzle.r = VK_COMPONENT_SWIZZLE_R;
+	mSwizzle.g = VK_COMPONENT_SWIZZLE_G;
+	mSwizzle.b = VK_COMPONENT_SWIZZLE_B;
+	mSwizzle.a = VK_COMPONENT_SWIZZLE_A;
+}
+
+// -------------------------------------------------------------------------------------------------
+// TextureBase
+// -------------------------------------------------------------------------------------------------
 TextureBase::TextureBase()
 {
 }
 
 TextureBase::~TextureBase()
+{
+}
+
+// -------------------------------------------------------------------------------------------------
+// Texture2d::Format
+// -------------------------------------------------------------------------------------------------
+Texture2d::Format::Format( VkFormat format ) 
+	: TextureBase::Format( format ) 
+{
+}
+
+Texture2d::Format::~Format() 
 {
 }
 

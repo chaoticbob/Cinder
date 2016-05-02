@@ -71,7 +71,9 @@ Buffer::~Buffer()
 
 void Buffer::initialize()
 {
-	createBufferAndAllocate( mSize );
+	if( mSize > 0 ) {
+		createBufferAndAllocate( mSize );
+	}
 
 	mDevice->trackedObjectCreated( this );
 }
@@ -99,7 +101,14 @@ BufferRef Buffer::create( VkDeviceSize size, const vk::Buffer::Format& format, v
 
 void Buffer::createBufferAndAllocate( size_t size )
 {
-	assert( ( size > 0 ) && ( 0 != mFormat.mUsage ) );
+	//assert( ( size > 0 ) && ( 0 != mFormat.mUsage ) );
+	if( 0 == size ) {
+		throw std::runtime_error( "Cannot allocate buffer of size 0" );
+	}
+	if( 0 == mFormat.mUsage ) {
+		throw std::runtime_error( "Cannot allocate buffer with undefined usage" );
+	}
+	
 
 	VkResult res = VK_NOT_READY;
 
@@ -217,7 +226,7 @@ void Buffer::unmap()
 	}
 }
 
-void Buffer::bufferDataImpl(  VkDeviceSize size, const void *data  )
+void Buffer::bufferDataImpl( VkDeviceSize size, const void *data  )
 {
 	if( nullptr != data ) {
 		VkDeviceSize offset = 0;
@@ -242,6 +251,10 @@ void Buffer::bufferDataImpl(  VkDeviceSize size, const void *data  )
 
 void Buffer::bufferData( VkDeviceSize size, const void *data )
 {
+	if( ( size > mSize ) && mFormat.mResizable ) {
+		ensureMinimumSize( size );
+	}
+
 	if( mFormat.hasMemoryPropertyHostVisible() ) {
 		bufferDataImpl( size, data );
 	}
@@ -302,8 +315,9 @@ void Buffer::bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *
 
 void Buffer::ensureMinimumSize( size_t minimumSize )
 {
-	if( mSize < minimumSize ) {
-		destroyBufferAndFree();
+	destroyBufferAndFree();
+
+	if( minimumSize > mSize ) {
 		createBufferAndAllocate( minimumSize );
 	}
 }

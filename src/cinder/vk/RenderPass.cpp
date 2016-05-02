@@ -237,9 +237,15 @@ void RenderPass::initialize( const RenderPass::Options& options )
 	// Save this, may need it in a bit.
 	mOptions = options;
 
-	assert( options.mAttachments.size() > 0 );
-	assert( options.mSubpasses.size() > 0 );
-
+	//assert( options.mAttachments.size() > 0 );
+	//assert( options.mSubpasses.size() > 0 );
+	if( options.mAttachments.empty() ) {
+		throw std::runtime_error( "Cannot initialize render pass without attachments" );
+	}
+	if( options.mSubpasses.empty() ) {
+		throw std::runtime_error( "Cannot initialize render pass without subpasses" );
+	}
+	
 	// Populate attachment descriptors
 	const size_t numAttachmentDesc = options.mAttachments.size();
 	mAttachmentDescriptors.resize( numAttachmentDesc );

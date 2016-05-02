@@ -106,6 +106,9 @@ public:
 	static RenderTargetRef		create( const ivec2& size, const RenderTarget::Options& options, vk::Device* device = nullptr );
 
 	const ivec2&				getSize() const { return mSize; }
+	uint32_t					getWidth() const { return static_cast<uint32_t>( mSize.x ); }
+	uint32_t					getHeight() const { return static_cast<uint32_t>( mSize.y ); }
+	const Rectf&				getBounds() const { return mBounds; }
 	float						getAspectRatio() const { return static_cast<float>( mSize.x ) / static_cast<float>( mSize.y ); }
 
 	uint32_t					getSubpassCount() const { return mSubpassCount; }
@@ -128,6 +131,7 @@ private:
 	RenderTarget( const ivec2& size, const RenderTarget::Options& options, vk::Device* device );
 
 	ivec2										mSize;
+	Rectf										mBounds;
 	uint32_t									mSubpassCount = 0;
 	vk::RenderPassRef							mRenderPass;
 	vk::FramebufferRef							mFramebuffer;

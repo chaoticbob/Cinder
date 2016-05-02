@@ -541,9 +541,9 @@ ShaderProgRef& getStockShader( const class ShaderDef &shader )
 	return vk::context()->getStockShader( shader );
 }
 
-void clear( bool color, bool depthStencil )
+void clear( const ColorA &color, bool clearDepthBuffer )
 {
-	vk::context()->clearAttachments( color, depthStencil );
+	//vk::context()->clearAttachments( color, depthStencil );
 }
 
 std::pair<ivec2, ivec2> getViewport()

@@ -84,7 +84,7 @@ RenderTarget::Options::Options( const vk::RenderTarget::Pass& pass, VkSampleCoun
 // RenderTarget
 // ------------------------------------------------------------------------------------------------ 
 RenderTarget::RenderTarget( const ivec2& size, const RenderTarget::Options& options, vk::Device* device )
-	: mSize( size )
+	: mSize( size ), mBounds( 0, 0, static_cast<float>( size.x ), static_cast<float>( size.y ) )
 {
 	initialize( options, device );
 }
@@ -138,53 +138,21 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 		}
 
 		VkFormat depthStencilAttachment = pass.mDepthStencilAttachment;
-		// Process depth attachment(s)
-		if( options.mPerSubpassDepthStencil ) {
-			// Add depth attachment to attachment list
-			attachmentList.push_back( depthStencilAttachment );
-
-			// Add color attachment to render pass
-			vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachment );
-			renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
-			renderPassOptions.addAttachment( renderPassAttachment );
-
-			// Add attachment to subpass
-			depthStencilAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
-			subpass.addDepthStencilAttachment( depthStencilAttachmentIndex );
-
-			// Add attachment to framebuffer
-			vk::Texture2d::Format textureParams = options.mDepthStencilTextureParams;
-			textureParams.setSamples( options.mSamples );
-			framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachment, textureParams ) );
-
-			// Add to lookup
-			uint32_t key = subpassIndex;
-			std::pair<uint32_t, uint32_t> keyValue = std::make_pair( key, depthStencilAttachmentIndex );
-			mDepthStencilAttachmentMap.push_back( keyValue );
-		}
-		else {
-			if( UINT32_MAX != depthStencilAttachmentIndex ) {
-				// Add attachment to subpass
-				subpass.addDepthStencilAttachment( depthStencilAttachmentIndex );
-
-				// Add to lookup
-				uint32_t key = subpassIndex;
-				std::pair<uint32_t, uint32_t> keyValue = std::make_pair( key, depthStencilAttachmentIndex );
-				mDepthStencilAttachmentMap.push_back( keyValue );
-			}
-			else {
+		if( VK_FORMAT_UNDEFINED != depthStencilAttachment ) {
+			// Process depth attachment(s)
+			if( options.mPerSubpassDepthStencil ) {
 				// Add depth attachment to attachment list
 				attachmentList.push_back( depthStencilAttachment );
-				
+
 				// Add color attachment to render pass
 				vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachment );
 				renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
 				renderPassOptions.addAttachment( renderPassAttachment );
-				
+
 				// Add attachment to subpass
 				depthStencilAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
 				subpass.addDepthStencilAttachment( depthStencilAttachmentIndex );
-				
+
 				// Add attachment to framebuffer
 				vk::Texture2d::Format textureParams = options.mDepthStencilTextureParams;
 				textureParams.setSamples( options.mSamples );
@@ -194,6 +162,40 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 				uint32_t key = subpassIndex;
 				std::pair<uint32_t, uint32_t> keyValue = std::make_pair( key, depthStencilAttachmentIndex );
 				mDepthStencilAttachmentMap.push_back( keyValue );
+			}
+			else {
+				if( UINT32_MAX != depthStencilAttachmentIndex ) {
+					// Add attachment to subpass
+					subpass.addDepthStencilAttachment( depthStencilAttachmentIndex );
+
+					// Add to lookup
+					uint32_t key = subpassIndex;
+					std::pair<uint32_t, uint32_t> keyValue = std::make_pair( key, depthStencilAttachmentIndex );
+					mDepthStencilAttachmentMap.push_back( keyValue );
+				}
+				else {
+					// Add depth attachment to attachment list
+					attachmentList.push_back( depthStencilAttachment );
+				
+					// Add color attachment to render pass
+					vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachment );
+					renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
+					renderPassOptions.addAttachment( renderPassAttachment );
+				
+					// Add attachment to subpass
+					depthStencilAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
+					subpass.addDepthStencilAttachment( depthStencilAttachmentIndex );
+				
+					// Add attachment to framebuffer
+					vk::Texture2d::Format textureParams = options.mDepthStencilTextureParams;
+					textureParams.setSamples( options.mSamples );
+					framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachment, textureParams ) );
+
+					// Add to lookup
+					uint32_t key = subpassIndex;
+					std::pair<uint32_t, uint32_t> keyValue = std::make_pair( key, depthStencilAttachmentIndex );
+					mDepthStencilAttachmentMap.push_back( keyValue );
+				}
 			}
 		}
 
@@ -227,7 +229,16 @@ RenderTargetRef RenderTarget::create( const ivec2& size, VkFormat colorAttachmen
 RenderTargetRef RenderTarget::create( const ivec2& size, const RenderTarget::Options& options, vk::Device* device )
 {
 	device = ( nullptr != device ) ? device : vk::Context::getCurrent()->getDevice();
-	RenderTargetRef result = RenderTargetRef( new RenderTarget( size, options, device ) );
+	RenderTarget::Options updatedOptions = options;
+	if( updatedOptions.mPasses.empty() ) {
+		VkFormat colorAttachment = options.mColorTextureParams.getInternalFormat();
+		VkFormat depthStencilAttachment = options.mDepthStencilTextureParams.getInternalFormat();
+		if( ( VK_FORMAT_UNDEFINED == colorAttachment ) && ( VK_FORMAT_UNDEFINED == depthStencilAttachment ) ) {
+			throw std::runtime_error( "Cannot create empty render target" );
+		}
+		updatedOptions.addPass( RenderTarget::Pass( colorAttachment, depthStencilAttachment ) );
+	}
+	RenderTargetRef result = RenderTargetRef( new RenderTarget( size, updatedOptions, device ) );
 	return result;
 }
 

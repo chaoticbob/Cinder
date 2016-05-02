@@ -223,7 +223,7 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 
 			textureFormat.setInternalFormat( VK_FORMAT_R8G8_UNORM );
 			VkComponentMapping swizzle = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G };
-			textureFormat.setSwizzle( swizzle );
+			textureFormat.swizzle( swizzle );
 
 			auto texture = vk::Texture::create( lumAlphaData.get(), textureFormat.getInternalFormat(), mFormat.getTextureWidth(), mFormat.getTextureHeight(), textureFormat );
 			mTextures.push_back( texture );

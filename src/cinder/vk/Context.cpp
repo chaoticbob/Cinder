@@ -407,9 +407,13 @@ bool Context::getStackState( std::vector<T> &stack, T *result )
 void Context::viewport( const std::pair<ivec2, ivec2> &viewport )
 {
 	if( setStackState( mViewportStack, viewport ) ) {
-		//glViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
 		if( hasCommandBuffer() ) {
-			getCommandBuffer()->setViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
+			getCommandBuffer()->setViewport( 
+				static_cast<float>( viewport.first.x  ), 
+				static_cast<float>( viewport.first.y  ), 
+				static_cast<float>( viewport.second.x ), 
+				static_cast<float>( viewport.second.y )
+			);
 		}
 	}
 }
@@ -417,9 +421,13 @@ void Context::viewport( const std::pair<ivec2, ivec2> &viewport )
 void Context::pushViewport( const std::pair<ivec2, ivec2> &viewport )
 {
 	if( pushStackState( mViewportStack, viewport ) ) {
-		//glViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
 		if( hasCommandBuffer() ) {
-			getCommandBuffer()->setViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
+			getCommandBuffer()->setViewport( 
+				static_cast<float>( viewport.first.x  ), 
+				static_cast<float>( viewport.first.y  ), 
+				static_cast<float>( viewport.second.x ), 
+				static_cast<float>( viewport.second.y )
+			);
 		}
 	}
 }
@@ -436,9 +444,13 @@ void Context::popViewport( bool forceRestore )
 	}
 	else if( popStackState( mViewportStack ) || forceRestore ) {
 		auto viewport = getViewport();
-		//glViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
 		if( hasCommandBuffer() ) {
-			getCommandBuffer()->setViewport( viewport.first.x, viewport.first.y, viewport.second.x, viewport.second.y );
+			getCommandBuffer()->setViewport( 
+				static_cast<float>( viewport.first.x  ), 
+				static_cast<float>( viewport.first.y  ), 
+				static_cast<float>( viewport.second.x ), 
+				static_cast<float>( viewport.second.y )
+			);
 		}
 	}
 }
@@ -1182,7 +1194,7 @@ std::string	Context::generateVertexShader( const vk::ShaderDef &shader )
 	
 	s +=		"}";
 
-ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
+//ci::app::console() << "Vertex shader: " << "\n" << s << "\n" << std::endl;
 	return s;
 }
 
@@ -1245,7 +1257,7 @@ std::string	Context::generateFragmentShader( const vk::ShaderDef &shader )
 
 	s +=	"}";
 
-ci::app::console() << "Fragment shader: " << "\n" << s << "\n" << std::endl;
+//ci::app::console() << "Fragment shader: " << "\n" << s << "\n" << std::endl;
 	return s;
 }
 

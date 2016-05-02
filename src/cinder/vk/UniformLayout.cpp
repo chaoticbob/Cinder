@@ -120,17 +120,17 @@ const vk::AttribSemanticMap& getDefaultAttribNameToSemanticMap()
 {
 	static bool initialized = false;
 	if( ! initialized ) {
-		sDefaultAttribNameToSemanticMap["ciPosition"] = geom::Attrib::POSITION;
-		sDefaultAttribNameToSemanticMap["ciNormal"] = geom::Attrib::NORMAL;
-		sDefaultAttribNameToSemanticMap["ciTangent"] = geom::Attrib::TANGENT;
-		sDefaultAttribNameToSemanticMap["ciBitangent"] = geom::Attrib::BITANGENT;
-		sDefaultAttribNameToSemanticMap["ciTexCoord0"] = geom::Attrib::TEX_COORD_0;
-		sDefaultAttribNameToSemanticMap["ciTexCoord1"] = geom::Attrib::TEX_COORD_1;
-		sDefaultAttribNameToSemanticMap["ciTexCoord2"] = geom::Attrib::TEX_COORD_2;
-		sDefaultAttribNameToSemanticMap["ciTexCoord3"] = geom::Attrib::TEX_COORD_3;
-		sDefaultAttribNameToSemanticMap["ciColor"] = geom::Attrib::COLOR;
-		sDefaultAttribNameToSemanticMap["ciBoneIndex"] = geom::Attrib::BONE_INDEX;
-		sDefaultAttribNameToSemanticMap["ciBoneWeight"] = geom::Attrib::BONE_WEIGHT;
+		sDefaultAttribNameToSemanticMap["ciPosition"]	= geom::Attrib::POSITION;
+		sDefaultAttribNameToSemanticMap["ciNormal"]		= geom::Attrib::NORMAL;
+		sDefaultAttribNameToSemanticMap["ciTangent"]	= geom::Attrib::TANGENT;
+		sDefaultAttribNameToSemanticMap["ciBitangent"]	= geom::Attrib::BITANGENT;
+		sDefaultAttribNameToSemanticMap["ciTexCoord0"]	= geom::Attrib::TEX_COORD_0;
+		sDefaultAttribNameToSemanticMap["ciTexCoord1"]	= geom::Attrib::TEX_COORD_1;
+		sDefaultAttribNameToSemanticMap["ciTexCoord2"]	= geom::Attrib::TEX_COORD_2;
+		sDefaultAttribNameToSemanticMap["ciTexCoord3"]	= geom::Attrib::TEX_COORD_3;
+		sDefaultAttribNameToSemanticMap["ciColor"]		= geom::Attrib::COLOR;
+		sDefaultAttribNameToSemanticMap["ciBoneIndex"]	= geom::Attrib::BONE_INDEX;
+		sDefaultAttribNameToSemanticMap["ciBoneWeight"]	= geom::Attrib::BONE_WEIGHT;
 		initialized = true;
 	}
 	
@@ -159,8 +159,8 @@ UniformLayout::Uniform::Uniform( const std::string& name, GlslUniformDataType da
 		throw std::runtime_error( msg );
 	}
 
-	std::string uniformName = tokens[1];
-	mSemantic = uniformNameToSemantic( uniformName );
+	mShortName = tokens[1];
+	mSemantic = uniformNameToSemantic( mShortName );
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -301,6 +301,7 @@ void UniformLayout::addUniformImpl( GlslUniformDataType dataType, const std::str
 	}
 
 	std::string bindingName = tokens[0];
+	std::string shortName = tokens[1];
 
 	auto bindingRef = findBindingObject( bindingName, Binding::Type::ANY_BLOCK, true );
 	if( bindingRef ) {
@@ -319,6 +320,8 @@ void UniformLayout::addUniformImpl( GlslUniformDataType dataType, const std::str
 				std::memset( elem.data(), 0, elem.size()*sizeof( UniformLayout::Value ) );
 			}
 		}
+		// Add short name to binding name map
+		mShortNameToBinding[shortName] = bindingName;
 	}
 }
 
@@ -337,8 +340,23 @@ void UniformLayout::setUniformValue( GlslUniformDataType dataType, const std::st
 		throw std::runtime_error( msg );
 	}
 
-	// Find the binding that contains the block we need
+	// Binding name
+	const std::string& bindingName = tokens[0];
+	
+	/*
+	// Parse out binding name
+	std::vector<std::string> tokens = ci::split( name, "." );
 	std::string bindingName = tokens[0];
+	// If there's only 1 token, that means a short name was used and a binding name needs to be looked up.
+	if( 1 == tokens.size() ) {
+		auto it = mShortNameToBinding.find( tokens[0] );
+		if( mShortNameToBinding.end() != it ) {
+			bindingName = it->second;
+		}
+	}
+	*/
+
+	// Find the binding that contains the block we need	
 	auto bindingRef = findBindingObject( bindingName, Binding::Type::ANY_BLOCK, false );
 	if( ! bindingRef ) {
 		return;
@@ -829,6 +847,10 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 			uniformBufferFormat.setTransientAllocation( mOptions.getTransientAllocation() );
 			UniformBufferRef buffer = UniformBuffer::create( srcBinding.getBlock(), uniformBufferFormat, device );
 			binding.setUniformBuffer( buffer );
+			// Parse short names
+			for( const auto& uniformVar : binding.getBlock().getUniforms() ) {
+
+			}
 		}
 		// Get set
 		auto& set = *it;
@@ -1057,6 +1079,19 @@ void UniformSet::updateUniform( const std::string& name, const T& value )
 
 	// Binding name
 	const std::string& bindingName = tokens[0];
+
+	/*
+	// Parse out binding name
+	std::vector<std::string> tokens = ci::split( name, "." );
+	std::string bindingName = tokens[0];
+	// If there's only 1 token, that means a short name was used and a binding name needs to be looked up.
+	if( 1 == tokens.size() ) {
+		auto it = mShortNameToBinding.find( tokens[0] );
+		if( mShortNameToBinding.end() != it ) {
+			bindingName = it->second;
+		}
+	}
+	*/
 
 	// Find binding and update
 	UniformSet::Binding* binding = this->findBindingObject( bindingName, Binding::Type::ANY );

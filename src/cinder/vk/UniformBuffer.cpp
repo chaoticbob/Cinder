@@ -171,7 +171,7 @@ void UniformBuffer::setValue( const std::string& name, const T& value )
 			std::begin( mUniforms ),
 			std::end( mUniforms ),
 			[&uniformName]( const UniformLayout::Uniform& elem ) -> bool {
-				return uniformName == elem.getName();
+				return ( elem.getName() == uniformName ) || ( elem.getShortName() == uniformName );
 			}
 		);
 
