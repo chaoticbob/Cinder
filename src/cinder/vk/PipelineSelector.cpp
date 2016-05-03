@@ -163,7 +163,7 @@ void PipelineSelector::initializeDefaultValues()
 	depthStencilStateCreateInfo.flags					= 0;
 	depthStencilStateCreateInfo.depthTestEnable			= VK_TRUE;
 	depthStencilStateCreateInfo.depthWriteEnable		= VK_TRUE;
-	depthStencilStateCreateInfo.depthCompareOp			= VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencilStateCreateInfo.depthCompareOp			= VK_COMPARE_OP_LESS;//VK_COMPARE_OP_LESS_OR_EQUAL;
 	depthStencilStateCreateInfo.depthBoundsTestEnable	= VK_FALSE;
 	depthStencilStateCreateInfo.stencilTestEnable		= VK_FALSE;
 	depthStencilStateCreateInfo.back.failOp				= VK_STENCIL_OP_KEEP;
