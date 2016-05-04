@@ -86,10 +86,12 @@ public:
 
 	UniformBuffer();
 	UniformBuffer( const UniformLayout::Block& block, const vk::UniformBuffer::Format& format, vk::Device *device );
+	UniformBuffer( VkDeviceSize size, const vk::UniformBuffer::Format& format, vk::Device *device );
 	virtual ~UniformBuffer();
 
 	//! Returns a single uniform buffer corresponding to a block
-	static UniformBufferRef		create( const UniformLayout::Block& block, const vk::UniformBuffer::Format& format, vk::Device *device = nullptr );
+	static UniformBufferRef		create( const UniformLayout::Block& block, const vk::UniformBuffer::Format& format = vk::UniformBuffer::Format(), vk::Device *device = nullptr );
+	static UniformBufferRef		create( VkDeviceSize size, const vk::UniformBuffer::Format& format = vk::UniformBuffer::Format(), vk::Device *device = nullptr );
 
 	bool						isDirty() const { return mDirty; }
 
@@ -127,6 +129,7 @@ private:
 	void setValue( const std::string& name, const T& value );
 	
 	void initialize( const UniformLayout::Block& block );
+	void initialize( VkDeviceSize size );
 	void destroy( bool removeFromTracking = true );
 	friend class Device;
 };

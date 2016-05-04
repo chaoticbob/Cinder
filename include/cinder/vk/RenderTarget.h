@@ -83,7 +83,9 @@ public:
 		virtual ~Options() {}
 		Options&						setSamples( VkSampleCountFlagBits value ) { mSamples = value; mColorTextureParams.setSamples( mSamples ); mDepthStencilTextureParams.setSamples( mSamples ); return *this; }
 		Options&						setColorTextureParams( const vk::Texture2d::Format& value ) { mColorTextureParams = value; mColorTextureParams.setSamples( mSamples ); return *this; }
+		Options&						setColorTextureParams( VkFormat internalFormat ) { mColorTextureParams = vk::Texture2d::Format( internalFormat ); mColorTextureParams.setSamples( mSamples ); return *this; }
 		Options&						setDepthStencilTextureParams( const vk::Texture2d::Format& value ) { mDepthStencilTextureParams = value; mDepthStencilTextureParams.setSamples( mSamples ); return *this; }
+		Options&						setDepthStencilTextureParams( VkFormat internalFormat ) { mDepthStencilTextureParams = vk::Texture2d::Format( internalFormat ); mDepthStencilTextureParams.setSamples( mSamples ); return *this; }
 		Options&						addPass( const vk::RenderTarget::Pass& pass ) { mPasses.push_back( pass ); return *this; }
 		Options&						setPerSubpassDepthStencilAttachment( bool value ) { mPerSubpassDepthStencil = value; return *this; }
 		Options&						setTransitionToShaderReadOnly( bool value ) { mTransitionToShaderReadOnly = value; return *this; }

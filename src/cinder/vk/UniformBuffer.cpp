@@ -56,6 +56,12 @@ UniformBuffer::UniformBuffer( const UniformLayout::Block& block, const vk::Unifo
 	initialize( block );
 }
 
+UniformBuffer::UniformBuffer( VkDeviceSize size, const vk::UniformBuffer::Format& format, vk::Device *device )
+	: Buffer( false, size, format, device )
+{
+	initialize( size );
+}
+
 UniformBuffer::~UniformBuffer()
 {
 	destroy();
@@ -102,10 +108,31 @@ void UniformBuffer::initialize( const UniformLayout::Block& block )
 		}
 	}
 
+	// Map and copy
 	auto dst = map();
 	std::memcpy( dst, static_cast<const void *>( mValues.data() ), mValues.size() );
 	unmap();
 
+	// Track
+	mDevice->trackedObjectCreated( this );
+}
+
+void UniformBuffer::initialize( VkDeviceSize size )
+{
+	Buffer::initialize();
+
+	// Allocate client buffer
+	mValues.resize( size );
+
+	// Zero buffer
+	std::fill( std::begin( mValues ), std::end( mValues ), 0 );
+
+	// Map and copy
+	auto dst = map();
+	std::memcpy( dst, static_cast<const void *>( mValues.data() ), mValues.size() );
+	unmap();
+
+	// Track
 	mDevice->trackedObjectCreated( this );
 }
 
@@ -128,6 +155,14 @@ UniformBufferRef UniformBuffer::create( const UniformLayout::Block& block, const
 	UniformBufferRef result = UniformBufferRef( new UniformBuffer( block, format, device ) );
 	return result;
 }
+
+UniformBufferRef UniformBuffer::create( VkDeviceSize size, const vk::UniformBuffer::Format& format, vk::Device *device )
+{
+	device = ( nullptr != device ) ? device : vk::Context::getCurrent()->getDevice();
+	UniformBufferRef result = UniformBufferRef( new UniformBuffer( size, format, device ) );
+	return result;
+}
+
 
 template <typename T> 
 void UniformBuffer::setValue( const std::string& name, const T& value ) 
