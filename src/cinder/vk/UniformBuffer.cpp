@@ -91,7 +91,7 @@ void UniformBuffer::initialize( const UniformLayout::Block& block )
 		size_t arraySize = uniform.getArraySize();
 		size_t startOffset = uniform.getOffset();
 		size_t arrayStride = glslUniformDataTypeSizeBytesStd140( dataType);
-		size_t columnCount = glslUniformDataTypeColumnCount( dataType );
+		size_t columnCount = glslUniformDataTypeColumns( dataType );
 		size_t dstColumnStrideBytes = glslUniformDataTypeColumnSizeBytesStd140( dataType );
 		size_t srcColumnStrideBytes = glslUniformDataTypeColumnSizeBytes( dataType );
 
@@ -230,7 +230,7 @@ void UniformBuffer::setValue( const std::string& name, const T& value )
 	// Update value
 	GlslUniformDataType dataType = entry->getDataType();
 	size_t arrayStride = glslUniformDataTypeSizeBytesStd140( dataType );
-	size_t columnCount = glslUniformDataTypeColumnCount( dataType );
+	size_t columnCount = glslUniformDataTypeColumns( dataType );
 	size_t dstColumnStrideBytes = glslUniformDataTypeColumnSizeBytesStd140( dataType );
 	size_t srcColumnStrideBytes = glslUniformDataTypeColumnSizeBytes( dataType );
 	uint8_t* dst = mValues.data() + entry->getOffset() + ( arrayIndex * arrayStride );

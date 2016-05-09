@@ -53,6 +53,7 @@ class DescriptorSet;
 class DescriptorSetLayout;
 class DescriptorSetLayoutSelector;
 class Environment;
+class Fence;
 class Framebuffer;
 class Image;
 class ImageView;
@@ -64,6 +65,7 @@ class PipelineLayoutSelector;
 class PipelineSelector;
 class Presenter;
 class RenderPass;
+class Semaphore;
 class ShaderProg;
 class Surface;
 class Swapchain;
@@ -72,11 +74,13 @@ class VertexBuffer;
 using AllocatorRef = std::shared_ptr<Allocator>;
 using ContextRef = std::shared_ptr<Context>;
 using DescriptorSetLayoutSelectorRef = std::shared_ptr<DescriptorSetLayoutSelector>;
+using FenceRef = std::shared_ptr<Fence>;
 using PipelineCacheRef = std::shared_ptr<PipelineCache>;
 using PipelineLayoutSelectorRef = std::shared_ptr<PipelineLayoutSelector>;
 using PipelineSelectorRef = std::shared_ptr<PipelineSelector>;
 using PresenterRef = std::shared_ptr<Presenter>;
 using RenderPassRef = std::shared_ptr<RenderPass>;
+using SemaphoreRef = std::shared_ptr<Semaphore>;
 
 class Device;
 using DeviceRef = std::shared_ptr<Device>;
@@ -228,6 +232,8 @@ private:
 	vk::util::TrackedObject<vk::ShaderProg>				mTrackedShaderProgs;
 	vk::util::TrackedObject<vk::Swapchain>				mTrackedSwapchains;
 	vk::util::TrackedObject<vk::Surface>				mTrackedSurfaces;
+	vk::util::TrackedObject<vk::Fence>					mTrackedFences;
+	vk::util::TrackedObject<vk::Semaphore>				mTrackedSemaphores;
 	vk::util::TrackedObject<vk::Context>				mTrackedContexts;
 
 public:
@@ -263,6 +269,10 @@ public:
 	void trackedObjectDestroyed( vk::ShaderProg *obj );
 	void trackedObjectCreated(   vk::Swapchain *obj );
 	void trackedObjectDestroyed( vk::Swapchain *obj );
+	void trackedObjectCreated(   vk::Fence *obj );
+	void trackedObjectDestroyed( vk::Fence *obj );
+	void trackedObjectCreated(   vk::Semaphore *obj );
+	void trackedObjectDestroyed( vk::Semaphore *obj );
 	void trackedObjectCreated(   vk::Surface *obj );
 	void trackedObjectDestroyed( vk::Surface *obj );
 	void trackedObjectCreated(   vk::Context *obj );

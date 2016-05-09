@@ -108,11 +108,13 @@ public:
 	VkDeviceSize			getAllocationSize() const { return mAllocationSize; }
 
 	void*					map( VkDeviceSize offset = 0 );
-	void					unmap();
+	void					unmap( bool doFlush = true );
+
+	void					flush();
 
 	//! Buffers 'data' to GPU. 'size' and 'offset' are in bytes.
-	void					bufferData( VkDeviceSize size, const void *data );
-	void					bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *data );
+	void					bufferData( VkDeviceSize size, const void *data, bool doFlush = true );
+	void					bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *data, bool doFlush = true );
 
 	//! Reallocates the buffer if its size is smaller than \a minimumSize. This destroys the contents of the buffer if it must be reallocated.
 	void					ensureMinimumSize( size_t minimumSize );
@@ -139,8 +141,8 @@ protected:
 	void					createBufferAndAllocate( size_t size );
 	void					destroyBufferAndFree();
 
-	void					bufferDataImpl( VkDeviceSize size, const void *data  );
-	void					bufferSubDataImpl( VkDeviceSize offset, VkDeviceSize size, const void *data );
+	void					bufferDataImpl( VkDeviceSize size, const void *data, bool doFlush  );
+	void					bufferSubDataImpl( VkDeviceSize offset, VkDeviceSize size, const void *data, bool doFlush );
 
 	void*					mMappedAddress = nullptr;
 

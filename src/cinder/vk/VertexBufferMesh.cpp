@@ -140,7 +140,7 @@ std::vector<geom::Attrib> VertexInputDescription::getSemanticAttributes() const
 	return result;
 }
 
-void VertexInputDescription::setAttributeLocationsAndBindings(const ShaderProgRef& shader)
+void VertexInputDescription::setAttributeLocations( const ShaderProgRef& shader )
 {
 	for( const auto& shaderAttr : shader->getActiveAttributes() ) {
 		auto semantic = shaderAttr.getSemantic();
@@ -155,13 +155,41 @@ void VertexInputDescription::setAttributeLocationsAndBindings(const ShaderProgRe
 
 		if( std::end( mSemanticAttributes ) != it ) {
 			it->second.location = shaderAttr.getLocation();
-			it->second.binding  = shaderAttr.getBinding();
-
 			size_t index = std::distance( std::begin( mSemanticAttributes ), it );
 			mAttributes[index].location = shaderAttr.getLocation();
-			mAttributes[index].binding  = shaderAttr.getBinding();
+
+			//uint32_t columns = shaderAttr.getColumns();
+			//if( columns > 1 ) {
+			//	for( uint32_t i = 1; i < columns; ++i ) {
+			//		auto attr = mAttributes[index];
+			//		attr.location = mAttributes[index].location + i;
+			//		attr.offset	= mAttributes[index].offset + i * static_cast<uint32_t>( vk::formatSizeBytes( mAttributes[index].format ) );
+			//		mAttributes.push_back( attr );
+			//	}
+			//}
 		}
 	}
+}
+
+void VertexInputDescription::removeUnusedAttributes()
+{
+	mSemanticAttributes.erase(
+		std::remove_if( std::begin( mSemanticAttributes ), std::end( mSemanticAttributes ),
+			[]( const VertexInputDescription::SemanticAttribute& elem ) -> bool {
+				return UINT32_MAX == elem.second.location;
+			}
+		),
+		mSemanticAttributes.end()
+	);
+
+	mAttributes.erase(
+		std::remove_if( std::begin( mAttributes ), std::end( mAttributes ),
+			[]( const VkVertexInputAttributeDescription& elem ) -> bool {
+				return UINT32_MAX == elem.location;
+			}
+		),
+		mAttributes.end()
+	);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -692,21 +720,36 @@ const VertexInputDescription& VertexBufferMesh::getVertexInputDescription() cons
 			const auto& buffer = it.second;
 
 			size_t totalStride = 0;
+			uint32_t instanceDivisor = UINT32_MAX;
 			for( const auto& attrib : layout.getAttribs() ) {
 				VkVertexInputAttributeDescription viad = {};
-				viad.location = 0;
-				viad.binding  = 0;
+				viad.location = UINT32_MAX;
+				viad.binding  = bindingId;
 				viad.format   = toVkFormat( attrib );
 				viad.offset   = static_cast<uint32_t>( totalStride );
 				mVertexInputDescription.addAttribute( attrib.getAttrib(), viad );
 
 				size_t sizeBytes =  attrib.getByteSize();
 				totalStride += sizeBytes;
+
+				if( UINT32_MAX != instanceDivisor ) {
+					if(  attrib.getInstanceDivisor() != instanceDivisor ) {
+						std::string msg = "Invalid attribute instance divisor value for VertexBufferMesh. All interleaved attributes must use the same instance divisor value.";
+						throw std::runtime_error( msg );
+					}
+				}
+				else {
+					instanceDivisor = attrib.getInstanceDivisor();
+				}
+			}
+
+			if( UINT32_MAX == instanceDivisor ) {
+				throw std::runtime_error( "Invalid configuration for attribute divisor" );
 			}
 
 			VkVertexInputBindingDescription binding = {};
 			binding.binding   = bindingId;
-			binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			binding.inputRate = ( instanceDivisor > 0 ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX );
 			binding.stride    = static_cast<uint32_t>( totalStride );
 			mVertexInputDescription.addBinding( buffer, binding );
 

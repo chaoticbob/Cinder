@@ -763,6 +763,26 @@ void Device::trackedObjectDestroyed( vk::Surface *obj )
 	mTrackedSurfaces.objectDestroyed( obj );
 }
 
+void Device::trackedObjectCreated( vk::Fence *obj )
+{
+	mTrackedFences.objectCreated( obj );
+}
+
+void Device::trackedObjectDestroyed( vk::Fence *obj )
+{
+	mTrackedFences.objectDestroyed( obj );
+}
+
+void Device::trackedObjectCreated( vk::Semaphore *obj )
+{
+	mTrackedSemaphores.objectCreated( obj );
+}
+
+void Device::trackedObjectDestroyed( vk::Semaphore *obj )
+{
+	mTrackedSemaphores.objectDestroyed( obj );
+}
+
 void Device::trackedObjectCreated( vk::Context *obj )
 {
 	mTrackedContexts.objectCreated( obj );

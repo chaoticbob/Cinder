@@ -328,15 +328,17 @@ ShaderProg::Format& ShaderProg::Format::set( uint32_t setNumber, uint32_t change
 	return *this;
 }
 
-ShaderProg::Format& ShaderProg::Format::attribute(geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type)
+ShaderProg::Format& ShaderProg::Format::attribute( geom::Attrib semantic, int32_t location, int32_t binding, GlslAttributeDataType type )
 {
-	mAttributes.push_back( Attribute( semantic, location, binding, type ) );
+	uint32_t columns = static_cast<uint32_t>( glslAttributeTypeColumns( type ) );
+	uint32_t vecSize = static_cast<uint32_t>( glslAttributeTypeVecSize( type ) );
+	mAttributes.push_back( Attribute( semantic, location, binding, type, columns, vecSize ) );
 	return *this;
 }
 
 ShaderProg::Format& ShaderProg::Format::attribute( geom::Attrib semantic, const std::string& attributeName )
 {
-	mAttributes.push_back( Attribute( attributeName, semantic, UINT32_MAX, UINT32_MAX, glsl_attr_unknown ) );
+	mAttributes.push_back( Attribute( attributeName, semantic, UINT32_MAX, UINT32_MAX, glsl_attr_unknown, 0, 0 ) );
 	return *this;
 }
 
@@ -630,11 +632,43 @@ GlslAttributeDataType spirTypeToGlslAttributeDataType( const spir2cross::SPIRTyp
 		break;
 
 		case spir2cross::SPIRType::Float: {
-			switch( spirType.vecsize ) {
-				case 1: result = glsl_attr_float; break;
-				case 2: result = glsl_attr_vec2; break;
-				case 3: result = glsl_attr_vec3; break;
-				case 4: result = glsl_attr_vec4; break;
+			switch( spirType.columns ) {
+				case 1: {
+					switch( spirType.vecsize ) {
+						case 1: result = glsl_attr_float; break;
+						case 2: result = glsl_attr_vec2; break;
+						case 3: result = glsl_attr_vec3; break;
+						case 4: result = glsl_attr_vec4; break;
+					}
+				}
+				break;
+
+				case 2: {
+					switch( spirType.vecsize ) {
+						case 2: result = glsl_attr_mat2; break;
+						case 3: result = glsl_attr_mat2x3; break;
+						case 4: result = glsl_attr_mat2x4; break;
+					}
+				}
+				break;
+
+				case 3: {
+					switch( spirType.vecsize ) {
+						case 2: result = glsl_attr_mat3x2; break;
+						case 3: result = glsl_attr_mat3; break;
+						case 4: result = glsl_attr_mat3x4; break;
+					}
+				}
+				break;
+
+				case 4: {
+					switch( spirType.vecsize ) {
+						case 2: result = glsl_attr_mat4x2; break;
+						case 3: result = glsl_attr_mat4x3; break;
+						case 4: result = glsl_attr_mat4; break;
+					}
+				}
+				break;
 			}
 		}
 		break;
@@ -775,6 +809,8 @@ void extractAttributeData( const std::unique_ptr<spir2cross::CompilerGLSL>& back
 			ShaderProg::Attribute& attr = *it;
 			attr.setLocation( attrLocation );
 			attr.setBinding( attrBinding );
+			attr.setColumns( spirType.columns );
+			attr.setVecSize( spirType.vecsize );
 
 			if( glsl_attr_unknown == attr.getType() ) {
 				attr.setType( attrDataType );
@@ -786,7 +822,9 @@ void extractAttributeData( const std::unique_ptr<spir2cross::CompilerGLSL>& back
 		}
 		// Add
 		else {
-			ShaderProg::Attribute attr = ShaderProg::Attribute( attrName, attrSemantic, static_cast<int32_t>( attrLocation ), static_cast<int32_t>( attrBinding ), attrDataType );
+			uint32_t columns = spirType.columns;
+			uint32_t vecSize = spirType.vecsize;
+			ShaderProg::Attribute attr = ShaderProg::Attribute( attrName, attrSemantic, static_cast<int32_t>( attrLocation ), static_cast<int32_t>( attrBinding ), attrDataType, columns, vecSize );
 			outShaderAttributes->push_back( attr );
 		}
 	}
@@ -1046,7 +1084,7 @@ void ShaderProg::initialize( const ShaderProg::Format &format )
 	// Build a preferred vertex layout
 	for( const auto &attrib : mAttributes ) {
 		geom::Attrib semantic = attrib.getSemantic();
-		uint8_t dim = glslAttributeTypeDim( attrib.getType() );
+		uint8_t dim = glslAttributeTypeDims( attrib.getType() );
 		if( dim ) {
 			mVertexLayout.attrib( semantic, dim );
 		}

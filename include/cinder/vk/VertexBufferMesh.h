@@ -74,7 +74,8 @@ public:
 	const VkVertexInputAttributeDescription*	getAttribute( geom::Attrib semantic ) const;
 	std::vector<geom::Attrib>					getSemanticAttributes() const;
 
-	void										setAttributeLocationsAndBindings( const ShaderProgRef& shader );
+	void										setAttributeLocations( const ShaderProgRef& shader );
+	void										removeUnusedAttributes();
 
 private:
 	using BufferToBindingMap = std::map<VertexBufferRef, VkVertexInputBindingDescription>;

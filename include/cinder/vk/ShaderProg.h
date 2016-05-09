@@ -89,10 +89,10 @@ public:
 	//!
 	struct Attribute {
 
-		Attribute( geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type ) 
-			: mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ) {}
-		Attribute( const std::string& name, geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type ) 
-			: mName( name ), mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ) {}
+		Attribute( geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type, uint32_t columns, uint32_t vecSize ) 
+			: mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ), mColumns( columns ), mVecSize( vecSize ) {}
+		Attribute( const std::string& name, geom::Attrib semantic, uint32_t location, uint32_t binding, GlslAttributeDataType type, uint32_t columns, uint32_t vecSize ) 
+			: mName( name ), mSemantic( semantic ), mLocation( location ), mBinding( binding ), mType( type ), mColumns( columns ), mVecSize( vecSize ) {}
 		virtual ~Attribute() {}
 
 		//! Returns a const reference of the name as defined in the Vertex Shader.
@@ -124,6 +124,11 @@ public:
 		//! Returns the semantic associated with this attribute.
 		geom::Attrib			getSemantic() const { return mSemantic; }
 
+		void					setColumns( uint32_t value ) { mColumns = value; }
+		uint32_t				getColumns() const { return mColumns; }
+		void					setVecSize( uint32_t value ) { mVecSize = value; }
+		uint32_t				getVecSize() const { return mVecSize; }
+
 	  private:
 		std::string				mName;
 		uint32_t				mCount = 0;
@@ -131,6 +136,8 @@ public:
 		uint32_t				mBinding = UINT32_MAX;
 		GlslAttributeDataType	mType = glsl_attr_unknown;
 		geom::Attrib			mSemantic = geom::Attrib::USER_DEFINED;
+		uint32_t				mColumns = 0;
+		uint32_t				mVecSize = 0;
 
 		friend class ShaderProg;
 	};

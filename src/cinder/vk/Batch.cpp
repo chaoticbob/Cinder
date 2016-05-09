@@ -83,7 +83,7 @@ Batch::Batch( const geom::Source &source, const vk::ShaderProgRef &shader, const
 	// and then the attributes references by the GLSL
 	for( const auto &attrib : shader->getActiveAttributes() ) {
 		geom::Attrib semantic = attrib.getSemantic();
-		uint8_t dim = glslAttributeTypeDim( attrib.getType() );
+		uint8_t dim = glslAttributeTypeDims( attrib.getType() );
 		if( dim ) {
 			vertexLayout.attrib( semantic, dim );
 		}
@@ -110,8 +110,11 @@ void Batch::initPipeline( const AttributeMapping &attributeMapping )
 		}
 	}
 	else {
-		mVertexInputDescription.setAttributeLocationsAndBindings( mShader );
+		mVertexInputDescription.setAttributeLocations( mShader );
 	}
+
+	// Remove any unused attributes so they're not unintentionally passed into the pipeline.
+	mVertexInputDescription.removeUnusedAttributes();
 
 	// Uniform buffer
 	mUniformSet = vk::UniformSet::create( mShader->getUniformLayout() );

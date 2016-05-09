@@ -48,10 +48,14 @@
 
 namespace cinder { namespace vk {
 
+class Buffer;
 class CommandBuffer;
 class ImageView;
+class Semaphore;
+using BufferRef = std::shared_ptr<Buffer>;
 using CommandBufferRef = std::shared_ptr<CommandBuffer>;
 using ImageViewRef = std::shared_ptr<ImageView>;
+using SemaphoreRef = std::shared_ptr<Semaphore>;
 
 class Texture2d;
 class TextureCubeMap;
@@ -240,14 +244,14 @@ public:
 	virtual ~Texture2d();
 
 	// Parameter 'format' will override the format in options
-	static Texture2dRef		create( int width, int height, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const void *data, VkFormat dataFormat, int width, int height, const Texture2d::Format &format = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const Surface8u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const Surface16u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const Surface32f& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( ImageSourceRef imageSource, const Format &format = Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat = Texture2d::Format(), vk::Device *device = nullptr );
-	static Texture2dRef		create( const vk::ImageViewRef& imageView, const Texture2d::Format& format = Texture2d::Format() );
+	static Texture2dRef			create( int width, int height, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const void *data, VkFormat dataFormat, int width, int height, const Texture2d::Format &format = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const Surface8u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const Surface16u& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const Surface32f& surf, const Texture2d::Format& format = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( ImageSourceRef imageSource, const Format &format = Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const gl::TextureData& textureData, const Texture2d::Format& initialFormat = Texture2d::Format(), vk::Device *device = nullptr );
+	static Texture2dRef			create( const vk::ImageViewRef& imageView, const Texture2d::Format& format = Texture2d::Format() );
 
 	uint32_t					getWidth() const { return static_cast<uint32_t>( mSize.x ); }
 	uint32_t					getHeight() const { return static_cast<uint32_t>( mSize.y ); }
@@ -256,16 +260,18 @@ public:
 	Rectf						getAreaTexCoords( const Area &area ) const;
 	const Texture2d::Format&	getFormat() const { return mFormat; }
 
-	void					update( int srcWidth, int srcHeight, const uint8_t* srcData, size_t srcRowBytes, size_t srcPixelBytes );
-	void					update( int srcWidth, int srcHeight, const uint16_t* srcData, size_t srcRowBytes, size_t srcPixelBytes );
-	void					update( int srcWidth, int srcHeight, const float* srcData, size_t srcRowBytes, size_t srcPixelBytes );
-	void					update( const Surface8u& surf );
-	void					update( const Surface16u& surf );
-	void					update( const Surface32f& surf );
+	void						update( int srcWidth, int srcHeight, const uint8_t* srcData, size_t srcRowBytes, size_t srcPixelBytes );
+	void						update( int srcWidth, int srcHeight, const uint16_t* srcData, size_t srcRowBytes, size_t srcPixelBytes );
+	void						update( int srcWidth, int srcHeight, const float* srcData, size_t srcRowBytes, size_t srcPixelBytes );
+	void						update( const Surface8u& surf );
+	void						update( const Surface16u& surf );
+	void						update( const Surface32f& surf );
+
+	static void					update( vk::Context *context, const vk::CommandBufferRef& cmdBuf, const vk::Texture2dRef& tex, const vk::BufferRef& buffer,  const Area& region, vk::SemaphoreRef* updateCompleteSemaphore = nullptr );
 
 private:
-	ivec2					mSize = ivec2( 0 );
-	Texture2d::Format		mFormat;
+	ivec2						mSize = ivec2( 0 );
+	Texture2d::Format			mFormat;
 
 	void						initializeCommon( vk::Device *device );
 	void						initializeFinal( vk::Device *device );

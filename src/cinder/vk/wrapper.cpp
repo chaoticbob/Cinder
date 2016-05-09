@@ -165,6 +165,13 @@ VkFormat toVkFormat( const geom::AttribInfo& info )
 				case 2: result = VK_FORMAT_R32G32_SFLOAT; break;
 				case 3: result = VK_FORMAT_R32G32B32_SFLOAT; break;
 				case 4: result = VK_FORMAT_R32G32B32A32_SFLOAT; break;
+
+				// Ambiguous cases
+				//case 6: break;
+				//case 8: break;
+				//case 12: break;
+
+				case 16: result = VK_FORMAT_R32G32B32A32_SFLOAT; break;
 			}
 		}
 		break;

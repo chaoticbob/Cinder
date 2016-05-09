@@ -313,7 +313,7 @@ void UniformLayout::addUniformImpl( GlslUniformDataType dataType, const std::str
 			// Set size of the array
 			uniformRef->second.resize( arraySize );
 			// Set size of the each array element
-			size_t dim = glslUniformDataTypeDim( dataType );
+			size_t dim = glslUniformDataTypeDims( dataType );
 			for( auto& elem : uniformRef->second ) {
 				elem.resize( dim );
 				// Zero it out
@@ -415,7 +415,7 @@ void UniformLayout::setUniformValue( GlslUniformDataType dataType, const std::st
 	}
 
 	// UNUSED: size_t arrayStride = glslUniformDataTypeSizeBytesStd140( dataType );
-	size_t columnCount = glslUniformDataTypeColumnCount( dataType );
+	size_t columnCount = glslUniformDataTypeColumns( dataType );
 	size_t dstColumnStrideBytes = glslUniformDataTypeColumnSizeBytesStd140( dataType );
 	size_t srcColumnStrideBytes = glslUniformDataTypeColumnSizeBytes( dataType );
 	// UNUSED: size_t startOffset = uniform.getOffset();

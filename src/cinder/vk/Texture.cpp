@@ -45,6 +45,7 @@
 #include "cinder/vk/Image.h"
 #include "cinder/vk/ImageView.h"
 #include "cinder/vk/Queue.h"
+#include "cinder/vk/Sync.h"
 #include "cinder/vk/wrapper.h"
 
 namespace cinder { namespace vk {
@@ -725,6 +726,40 @@ void Texture2d::update( const Surface16u& surf )
 void Texture2d::update( const Surface32f& surf )
 {
 	update( surf.getWidth(), surf.getHeight(), surf.getData(), surf.getRowBytes(), surf.getPixelBytes() );
+}
+
+void Texture2d::update( vk::Context *context, const vk::CommandBufferRef& cmdBuf, const vk::Texture2dRef& tex, const vk::BufferRef& buffer, const Area& region, vk::SemaphoreRef* updateCompleteSemaphore )
+{
+	const auto& dstImage = tex->getImage();
+	uint32_t width = static_cast<uint32_t>( region.getWidth() );
+	uint32_t height = static_cast<uint32_t>( region.getHeight() );
+
+	cmdBuf->begin();
+	{
+		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT ) );
+
+		VkBufferImageCopy copyRegion = {};
+		copyRegion.bufferOffset						= 0;
+		copyRegion.bufferRowLength					= width;
+		copyRegion.bufferImageHeight				= height;
+		copyRegion.imageSubresource.aspectMask		= dstImage->getAspectMask();
+		copyRegion.imageSubresource.mipLevel		= 0;
+		copyRegion.imageSubresource.baseArrayLayer	= 0;
+		copyRegion.imageSubresource.layerCount		= 1;
+		copyRegion.imageOffset						= { 0, 0, 0 };
+		copyRegion.imageExtent						= { width, height, 1 };
+		cmdBuf->copyBufferToImage( buffer->getBuffer(), dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
+
+		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT ) );
+	}
+	cmdBuf->end();
+
+	VkSemaphore signalSemaphore = ( nullptr != updateCompleteSemaphore ) ?  (*updateCompleteSemaphore)->getVkObject() : VK_NULL_HANDLE;
+	context->getGraphicsQueue()->submit( cmdBuf, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, signalSemaphore );
+	
+	if( nullptr == updateCompleteSemaphore ) {
+		context->getGraphicsQueue()->waitIdle();
+	} 
 }
 
 Rectf Texture2d::getAreaTexCoords( const Area &area ) const

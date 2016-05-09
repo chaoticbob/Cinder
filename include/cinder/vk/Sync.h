@@ -38,37 +38,59 @@
 
 #pragma once
 
-#include "cinder/vk/platform.h"
-#include "cinder/vk/draw.h"
-#include "cinder/vk/func.h"
-#include "cinder/vk/scoped.h"
-#include "cinder/vk/wrapper.h"
+#include "cinder/vk/BaseVkObject.h"
 
-#include "cinder/vk/Allocator.h"
-#include "cinder/vk/Batch.h"
-#include "cinder/vk/Buffer.h"
-#include "cinder/vk/CommandBuffer.h"
-#include "cinder/vk/CommandPool.h"
-#include "cinder/vk/ConstantConversion.h"
-#include "cinder/vk/Context.h"
-#include "cinder/vk/Descriptor.h"
-#include "cinder/vk/Environment.h"
-#include "cinder/vk/Framebuffer.h"
-#include "cinder/vk/ImageView.h"
-#include "cinder/vk/IndexBuffer.h"
-#include "cinder/vk/Pipeline.h"
-#include "cinder/vk/PipelineSelector.h"
-#include "cinder/vk/Presenter.h"
-#include "cinder/vk/Queue.h"
-#include "cinder/vk/RenderPass.h"
-#include "cinder/vk/RenderTarget.h"
-#include "cinder/vk/ShaderProg.h"
-#include "cinder/vk/Swapchain.h"
-#include "cinder/vk/Sync.h"
-#include "cinder/vk/Texture.h"
-#include "cinder/vk/TextureFont.h"
-#include "cinder/vk/UniformBuffer.h"
-#include "cinder/vk/UniformLayout.h"
-#include "cinder/vk/Util.h"
-#include "cinder/vk/VertexBuffer.h"
-#include "cinder/vk/VertexBufferMesh.h"
+namespace cinder { namespace vk { 
+
+class Fence;
+class Semaphore;
+using FenceRef = std::shared_ptr<Fence>;
+using SemaphoreRef = std::shared_ptr<Semaphore>;
+
+//! \class Fence
+//!
+//!
+class Fence : public vk::BaseDeviceObject {
+public:
+
+	virtual ~Fence();
+
+	static FenceRef		create( vk::Device* device = nullptr );
+
+	VkFence				getVkObject() const { return mVkObject; }
+
+	VkResult 			waitForFence( uint64_t timeout );
+
+private:
+	Fence( vk::Device* device );
+
+	VkFence				mVkObject = VK_NULL_HANDLE;
+
+	void initialize();
+	void destroy( bool removeFromTracking = true );
+	friend class vk::Device;
+};
+
+//! \class Semaphore
+//!
+//!
+class Semaphore : public vk::BaseDeviceObject {
+public:
+
+	virtual ~Semaphore();
+
+	static SemaphoreRef	create( vk::Device* device = nullptr );
+
+	VkSemaphore			getVkObject() const { return mVkObject; }
+
+private:
+	Semaphore( vk::Device* device );
+
+	VkSemaphore			mVkObject = VK_NULL_HANDLE;
+
+	void initialize();
+	void destroy( bool removeFromTracking = true );
+	friend class vk::Device;
+};
+
+}} // namespace cinder::vk

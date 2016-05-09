@@ -38,6 +38,7 @@
 
 #include "cinder/vk/func.h"
 #include "cinder/vk/Device.h"
+#include "cinder/vk/Sync.h"
 
 VkResult vkCreateFence( const ci::vk::Device* device, const VkFenceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFence* pFence )
 {
@@ -62,6 +63,16 @@ VkResult vkGetFenceStatus( const ci::vk::Device* device, VkFence fence )
 VkResult vkWaitForFences( const ci::vk::Device* device, uint32_t fenceCount, const VkFence* pFences, VkBool32 waitAll, uint64_t timeout )
 {
 	return vkWaitForFences( device->getDevice(), fenceCount, pFences, waitAll, timeout );
+}
+
+VkResult vkWaitForFences( const ci::vk::Device* device, const std::vector<ci::vk::FenceRef>& fences, VkBool32 waitAll, uint64_t timeout )
+{
+	std::vector<VkFence> fencesVk;
+	for( const auto& fence : fences ) {
+		fencesVk.push_back( fence->getVkObject() );
+	}
+
+	return vkWaitForFences( device, static_cast<uint32_t>( fencesVk.size() ), fencesVk.data(), waitAll, timeout );
 }
 
 VkResult vkCreateSemaphore( const ci::vk::Device* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSemaphore* pSemaphore )

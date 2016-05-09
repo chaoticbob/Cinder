@@ -161,9 +161,10 @@ enum GlslUniformDataType {
 GlslUniformDataType glslUniformDataTypeFromConstant( int32_t typeConstant );
 std::string			glslUniformDataTypeStr( GlslUniformDataType dataType );
 std::string			glslUniformDataTypeStrFromConstant( int32_t typeConstant );
-size_t				glslUniformDataTypeDim( GlslUniformDataType dataType );
+size_t				glslUniformDataTypeDims( GlslUniformDataType dataType );
 bool				glslUniformDataTypeIsMathType( GlslUniformDataType dataType );
-size_t				glslUniformDataTypeColumnCount( GlslUniformDataType dataType );
+size_t				glslUniformDataTypeColumns( GlslUniformDataType dataType );
+size_t				glslUniformDataTypeVecSize( GlslUniformDataType dataType );
 size_t				glslUniformDataTypeSizeBytes( GlslUniformDataType dataType );
 size_t				glslUniformDataTypeColumnSizeBytes( GlslUniformDataType dataType );
 size_t				glslUniformDataTypeColumnSizeBytesStd140( GlslUniformDataType dataType );
@@ -212,7 +213,8 @@ enum GlslAttributeDataType {
 	glsl_attr_dmat4x3,
 };
 
-uint8_t glslAttributeTypeDim( GlslAttributeDataType dataType );
-
+size_t	glslAttributeTypeDims( GlslAttributeDataType dataType );
+size_t	glslAttributeTypeColumns( GlslAttributeDataType dataType );
+size_t	glslAttributeTypeVecSize( GlslAttributeDataType dataType );
 
 }} // namespace cinder::vk

@@ -218,45 +218,52 @@ void* Buffer::map( VkDeviceSize offset )
 	return mMappedAddress;
 }
 
-void Buffer::unmap()
+void Buffer::unmap( bool doFlush )
 {
 	if( nullptr != mMappedAddress ) {
 		vkUnmapMemory( mDevice->getDevice(), mMemory );
 		mMappedAddress = nullptr;
 	}
+
+	if( doFlush ) {
+		flush();
+	}
 }
 
-void Buffer::bufferDataImpl( VkDeviceSize size, const void *data  )
+void Buffer::flush()
+{
+	if( VK_MEMORY_PROPERTY_HOST_COHERENT_BIT != ( mFormat.getMemoryProperty() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) {
+		VkMappedMemoryRange range = {};
+		range.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		range.pNext  = nullptr;
+		range.memory = mMemory;
+		range.offset = mAllocationOffset;
+		range.size   = mAllocationSize;
+		VkResult res = vkFlushMappedMemoryRanges( mDevice->getDevice(), 1, &range );
+		assert( VK_SUCCESS == res );
+	}
+}
+
+void Buffer::bufferDataImpl( VkDeviceSize size, const void *data, bool doFlush )
 {
 	if( nullptr != data ) {
 		VkDeviceSize offset = 0;
 		void* dst = map( offset );
 		if( nullptr != dst ) {
 			std::memcpy( dst, data, size );
-			unmap();
-
-			if( VK_MEMORY_PROPERTY_HOST_COHERENT_BIT == ( mFormat.getMemoryProperty() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) {
-				VkMappedMemoryRange range = {};
-				range.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-				range.pNext  = nullptr;
-				range.memory = mMemory;
-				range.offset = mAllocationOffset;
-				range.size   = mAllocationSize;
-				VkResult res = vkFlushMappedMemoryRanges( mDevice->getDevice(), 1, &range );
-				assert( VK_SUCCESS == res );
-			}
+			unmap( doFlush );
 		}
 	}
 }
 
-void Buffer::bufferData( VkDeviceSize size, const void *data )
+void Buffer::bufferData( VkDeviceSize size, const void *data, bool doFlush )
 {
 	if( ( size > mSize ) && mFormat.mResizable ) {
 		ensureMinimumSize( size );
 	}
 
 	if( mFormat.hasMemoryPropertyHostVisible() ) {
-		bufferDataImpl( size, data );
+		bufferDataImpl( size, data, doFlush );
 	}
 	else {
 		if( ( size > 0 ) && ( nullptr != data ) ) {
@@ -266,7 +273,7 @@ void Buffer::bufferData( VkDeviceSize size, const void *data )
 			vk::BufferRef stagingBuffer = vk::Buffer::create( size, stagingFormat );
 			if( stagingBuffer ) {
 				// Buffer data to staging
-				stagingBuffer->bufferDataImpl( size, data );
+				stagingBuffer->bufferDataImpl( size, data, doFlush );
 				// Copy to current buffer
 				vk::Buffer::copy( vk::context(), stagingBuffer->getBuffer(), 0, mBuffer, 0, size );
 			}
@@ -274,14 +281,15 @@ void Buffer::bufferData( VkDeviceSize size, const void *data )
 	}
 }
 
-void Buffer::bufferSubDataImpl( VkDeviceSize offset, VkDeviceSize size, const void *data )
+void Buffer::bufferSubDataImpl( VkDeviceSize offset, VkDeviceSize size, const void *data, bool doFlush )
 {
 	if( nullptr != data ) {
 		void* dst = map( offset );
 		if( nullptr != dst ) {
 			std::memcpy( dst, data, size );
-			unmap();
+			unmap( doFlush );
 
+			/*
 			if( VK_MEMORY_PROPERTY_HOST_COHERENT_BIT != ( mFormat.getMemoryProperty() & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) {
 				VkMappedMemoryRange range = {};
 				range.sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -292,21 +300,22 @@ void Buffer::bufferSubDataImpl( VkDeviceSize offset, VkDeviceSize size, const vo
 				VkResult res = vkFlushMappedMemoryRanges( mDevice->getDevice(), 1, &range );
 				assert( VK_SUCCESS == res );
 			}
+			*/
 		}
 	}
 }
 
-void Buffer::bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *data )
+void Buffer::bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *data, bool doFlush )
 {
 	if( mFormat.hasMemoryPropertyHostVisible() ) {
-		bufferSubDataImpl( offset, size, data );
+		bufferSubDataImpl( offset, size, data, doFlush );
 	}
 	else {
 		vk::Buffer::Format stagingFormat = vk::Buffer::Format( mFormat.mUsage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ).setTransientAllocation();
 		vk::BufferRef stagingBuffer = vk::Buffer::create( size, stagingFormat );
 		if( stagingBuffer ) {
 			// Buffer data to staging
-			stagingBuffer->bufferDataImpl( size, data );
+			stagingBuffer->bufferDataImpl( size, data, doFlush );
 			// Copy to current buffer
 			vk::Buffer::copy( vk::context(), stagingBuffer->getBuffer(), 0, mBuffer, offset, size );
 		}

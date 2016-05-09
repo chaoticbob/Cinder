@@ -272,7 +272,7 @@ std::string glslUniformDataTypeStrFromConstant( int32_t typeConstant )
 	return glslUniformDataTypeStr( glslUniformDataTypeFromConstant( typeConstant ) );
 }
 
-size_t glslUniformDataTypeDim( GlslUniformDataType dataType )
+size_t glslUniformDataTypeDims( GlslUniformDataType dataType )
 {
 	size_t result = 0;
 	switch( dataType ) {
@@ -404,7 +404,7 @@ bool glslUniformDataTypeIsMathType(GlslUniformDataType dataType)
 	return result;
 }
 
-size_t glslUniformDataTypeColumnCount( GlslUniformDataType dataType )
+size_t glslUniformDataTypeColumns( GlslUniformDataType dataType )
 {
 	size_t result = 0;
 	switch( dataType ) {
@@ -470,10 +470,94 @@ size_t glslUniformDataTypeColumnCount( GlslUniformDataType dataType )
 	return result;
 }
 
+size_t glslUniformDataTypeVecSize( GlslUniformDataType dataType )
+{
+	size_t result = 0;
+	switch( dataType ) {
+		case glsl_float:
+		case glsl_double:
+		case glsl_int:
+		case glsl_unsigned_int:
+		case glsl_bool:
+			result = 1;
+			break;
+
+		case glsl_vec2:
+		case glsl_dvec2:
+		case glsl_ivec2:
+		case glsl_uvec2:
+		case glsl_bvec2:
+			result = 2;
+			break;
+
+		case glsl_vec3:
+		case glsl_dvec3:
+		case glsl_ivec3:
+		case glsl_uvec3:
+		case glsl_bvec3:
+			result = 3;
+			break;
+
+		case glsl_vec4:
+		case glsl_dvec4:
+		case glsl_ivec4:
+		case glsl_uvec4:
+		case glsl_bvec4:
+			result = 4;
+			break;
+
+		case glsl_mat2:
+		case glsl_dmat2:
+			result = 2;
+			break;
+
+		case glsl_mat3:
+		case glsl_dmat3:
+			result = 3;
+			break;
+
+		case glsl_mat4:
+		case glsl_dmat4:
+			result = 4;
+			break;
+
+		case glsl_mat2x3:
+		case glsl_dmat2x3:
+			result = 3;
+			break;
+
+		case glsl_mat2x4:
+		case glsl_dmat2x4:
+			result = 4;
+			break;
+
+		case glsl_mat3x2:
+		case glsl_dmat3x2:
+			result = 2;
+			break;
+
+		case glsl_mat3x4:
+		case glsl_dmat3x4:
+			result = 4;
+			break;
+
+		case glsl_mat4x2:
+		case glsl_dmat4x2:
+			result = 2;
+			break;
+
+		case glsl_mat4x3:
+		case glsl_dmat4x3:
+			result = 3;
+			break;
+	}
+	return result;
+}
+
 size_t glslUniformDataTypeSizeBytes( GlslUniformDataType dataType )
 {
 	// 4 bytes is the size of the basic machine type
-	return 4*glslUniformDataTypeDim( dataType );
+	return 4*glslUniformDataTypeDims( dataType );
 }
 
 size_t glslUniformDataTypeColumnSizeBytes( GlslUniformDataType dataType )
@@ -633,12 +717,12 @@ size_t glslUniformDataTypeColumnSizeBytesStd140( GlslUniformDataType dataType )
 
 size_t glslUniformDataTypeSizeBytesStd140( GlslUniformDataType dataType )
 {
-	size_t columnCount = glslUniformDataTypeColumnCount( dataType );
+	size_t columnCount = glslUniformDataTypeColumns( dataType );
 	size_t columnSizeBytes = glslUniformDataTypeColumnSizeBytesStd140( dataType );
 	return columnCount*columnSizeBytes;
 }
 
-uint8_t glslAttributeTypeDim(GlslAttributeDataType dataType)
+size_t glslAttributeTypeDims( GlslAttributeDataType dataType )
 {
 	uint8_t result  = 0;
 	switch( dataType ) {
@@ -717,6 +801,156 @@ uint8_t glslAttributeTypeDim(GlslAttributeDataType dataType)
 		case glsl_attr_mat4x3:
 		case glsl_attr_dmat4x3:
 			result = 12;
+			break;
+	}
+	return result;
+}
+
+size_t glslAttributeTypeColumns( GlslAttributeDataType dataType )
+{
+	size_t result = 0;
+	switch( dataType ) {
+		case glsl_attr_float:
+		case glsl_attr_double:
+		case glsl_attr_int:
+		case glsl_attr_unsigned_int:
+		case glsl_attr_bool:
+		case glsl_attr_vec2:
+		case glsl_attr_dvec2:
+		case glsl_attr_ivec2:
+		case glsl_attr_uvec2:
+		case glsl_attr_bvec2:
+		case glsl_attr_vec3:
+		case glsl_attr_dvec3:
+		case glsl_attr_ivec3:
+		case glsl_attr_uvec3:
+		case glsl_attr_bvec3:
+		case glsl_attr_vec4:
+		case glsl_attr_dvec4:
+		case glsl_attr_ivec4:
+		case glsl_attr_uvec4:
+		case glsl_attr_bvec4:
+			result = 1;
+			break;
+
+		case glsl_attr_mat2:
+		case glsl_attr_dmat2:
+			result = 2;
+			break;
+
+		case glsl_attr_mat3:
+		case glsl_attr_dmat3:
+			result = 3;
+			break;
+
+		case glsl_attr_mat4:
+		case glsl_attr_dmat4:
+			result = 4;
+			break;
+
+		case glsl_attr_mat2x3:
+		case glsl_attr_dmat2x3:
+		case glsl_attr_mat2x4:
+		case glsl_attr_dmat2x4:
+			result = 2;
+			break;
+
+		case glsl_attr_mat3x2:
+		case glsl_attr_dmat3x2:
+		case glsl_attr_mat3x4:
+		case glsl_attr_dmat3x4:
+			result = 3;
+			break;
+
+		case glsl_attr_mat4x2:
+		case glsl_attr_dmat4x2:
+		case glsl_attr_mat4x3:
+		case glsl_attr_dmat4x3:
+			result = 4;
+			break;
+	}
+	return result;
+}
+
+size_t glslAttributeTypeVecSize( GlslAttributeDataType dataType )
+{
+	size_t result = 0;
+	switch( dataType ) {
+		case glsl_attr_float:
+		case glsl_attr_double:
+		case glsl_attr_int:
+		case glsl_attr_unsigned_int:
+		case glsl_attr_bool:
+			result = 1;
+			break;
+
+		case glsl_attr_vec2:
+		case glsl_attr_dvec2:
+		case glsl_attr_ivec2:
+		case glsl_attr_uvec2:
+		case glsl_attr_bvec2:
+			result = 2;
+			break;
+
+		case glsl_attr_vec3:
+		case glsl_attr_dvec3:
+		case glsl_attr_ivec3:
+		case glsl_attr_uvec3:
+		case glsl_attr_bvec3:
+			result = 3;
+			break;
+
+		case glsl_attr_vec4:
+		case glsl_attr_dvec4:
+		case glsl_attr_ivec4:
+		case glsl_attr_uvec4:
+		case glsl_attr_bvec4:
+			result = 4;
+			break;
+
+		case glsl_attr_mat2:
+		case glsl_attr_dmat2:
+			result = 2;
+			break;
+
+		case glsl_attr_mat3:
+		case glsl_attr_dmat3:
+			result = 3;
+			break;
+
+		case glsl_attr_mat4:
+		case glsl_attr_dmat4:
+			result = 4;
+			break;
+
+		case glsl_attr_mat2x3:
+		case glsl_attr_dmat2x3:
+			result = 3;
+			break;
+
+		case glsl_attr_mat2x4:
+		case glsl_attr_dmat2x4:
+			result = 4;
+			break;
+
+		case glsl_attr_mat3x2:
+		case glsl_attr_dmat3x2:
+			result = 2;
+			break;
+
+		case glsl_attr_mat3x4:
+		case glsl_attr_dmat3x4:
+			result = 4;
+			break;
+
+		case glsl_attr_mat4x2:
+		case glsl_attr_dmat4x2:
+			result = 2;
+			break;
+
+		case glsl_attr_mat4x3:
+		case glsl_attr_dmat4x3:
+			result = 3;
 			break;
 	}
 	return result;

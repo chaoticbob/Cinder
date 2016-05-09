@@ -624,8 +624,8 @@ Rect& Rect::rect( const Rectf &r )
 {
 	if( mUpperLeftOrigin ) {
 		mPositions[0] = r.getUpperLeft();
-		mPositions[1] = r.getLowerLeft();
 		mPositions[2] = r.getUpperRight();
+		mPositions[1] = r.getLowerLeft();
 		mPositions[3] = r.getLowerRight();
 	}
 	else {
