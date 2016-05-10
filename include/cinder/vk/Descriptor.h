@@ -185,7 +185,7 @@ class DescriptorSetView {
 public:
 	virtual ~DescriptorSetView();
 
-	static DescriptorSetViewRef					create( const vk::UniformSetRef& uniformSet, vk::Device *device = nullptr );
+	static DescriptorSetViewRef					create( const vk::UniformViewRef& uniformSet, vk::Device *device = nullptr );
 	
 	const std::vector<VkDescriptorSetLayout>	getCachedDescriptorSetLayouts() const { return mCachedDescriptorSetLayouts; }
 	const std::vector<vk::DescriptorSetRef>		getDescriptorSets() const { return mDescriptorSets; }
@@ -195,10 +195,10 @@ public:
 	void										updateDescriptorSets();
 
 private:
-	DescriptorSetView( const vk::UniformSetRef& uniformSet, vk::Device *device );
+	DescriptorSetView( const vk::UniformViewRef& uniformSet, vk::Device *device );
 
 	vk::Device									*mDevice = nullptr;
-	vk::UniformSetRef							mUniformSet;
+	vk::UniformViewRef							mUniformSet;
 	std::vector<vk::DescriptorSetLayoutRef>		mDescriptorSetLayouts;
 	vk::DescriptorPoolRef						mDescriptorPool;
 	std::vector<vk::DescriptorSetRef>			mDescriptorSets;

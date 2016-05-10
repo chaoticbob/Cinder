@@ -70,7 +70,7 @@ class RenderPass;
 class ShaderDef;
 class ShaderProg;
 class UniformBuffer;
-class UniformSet;
+class UniformView;
 class VertexBuffer;
 using BatchRef = std::shared_ptr<Batch>;
 using CommandBufferRef = std::shared_ptr<CommandBuffer>;
@@ -85,7 +85,7 @@ using RenderPassRef = std::shared_ptr<RenderPass>;
 using QueueRef = std::shared_ptr<Queue>;
 using ShaderProgRef = std::shared_ptr<ShaderProg>;
 using UniformBufferRef = std::shared_ptr<UniformBuffer>;
-using UniformSetRef = std::shared_ptr<UniformSet>;
+using UniformViewRef = std::shared_ptr<UniformView>;
 using VertexBufferRef = std::shared_ptr<VertexBuffer>;
 
 class Context;
@@ -258,7 +258,7 @@ public:
 	
 
 	void						setDefaultUniformVars( const vk::UniformBufferRef& uniformBuffer );
-	void						setDefaultUniformVars( const vk::UniformSetRef& uniformSet );
+	void						setDefaultUniformVars( const vk::UniformViewRef& uniformSet );
 	void						setDefaultUniformVars( const vk::BatchRef& batch );
 
 	const ColorAf&				getCurrentColor() const { return mColor; }
@@ -412,7 +412,7 @@ private:
 	std::vector<vk::DescriptorPoolRef>			mTransientDescriptorPools;
 	std::vector<vk::DescriptorLayoutRef>		mTransientDescriptorLayouts;
 	std::vector<vk::DescriptorSetViewRef>		mTransientDescriptorSetViews;
-	std::vector<vk::UniformSetRef>				mTransientUniformSets;
+	std::vector<vk::UniformViewRef>				mTransientUniformSets;
 
 public:
 	void	addTransient( const vk::UniformBufferRef& obj );
@@ -422,7 +422,7 @@ public:
 	void	addTransient( const vk::DescriptorSetRef& obj );
 	void	addTransient( const vk::DescriptorLayoutRef& obj );
 	void	addTransient( const vk::DescriptorSetViewRef& obj );
-	void	addTransient( const vk::UniformSetRef& obj );
+	void	addTransient( const vk::UniformViewRef& obj );
 	void	clearTransients();
 };
 

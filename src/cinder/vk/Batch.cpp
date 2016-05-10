@@ -117,7 +117,7 @@ void Batch::initPipeline( const AttributeMapping &attributeMapping )
 	mVertexInputDescription.removeUnusedAttributes();
 
 	// Uniform buffer
-	mUniformSet = vk::UniformSet::create( mShader->getUniformLayout() );
+	mUniformSet = vk::UniformView::create( mShader->getUniformLayout() );
 
 	// Descriptor layouts, pool, set
 	mDescriptorSetView = vk::DescriptorSetView::create( mUniformSet );

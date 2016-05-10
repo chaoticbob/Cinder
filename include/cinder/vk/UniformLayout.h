@@ -54,11 +54,11 @@ class Context;
 class Device;
 class TextureBase;
 class UniformBuffer;
-class UniformSet;
+class UniformView;
 using CommandBufferRef = std::shared_ptr<CommandBuffer>;
 using TextureBaseRef = std::shared_ptr<TextureBase>;
 using UniformBufferRef = std::shared_ptr<UniformBuffer>;
-using UniformSetRef = std::shared_ptr<UniformSet>;
+using UniformViewRef = std::shared_ptr<UniformView>;
 
 // Uniform semantics
 enum UniformSemantic {
@@ -334,7 +334,7 @@ private:
 //! \class UniformSet
 //!
 //!
-class UniformSet { 
+class UniformView { 
 public:
 
 	//! \class Binding
@@ -375,38 +375,76 @@ public:
 		uint32_t											mChangeFrequency = CHANGES_DONTCARE;
 		std::vector<Binding>								mBindings;
 		std::vector<VkDescriptorSetLayoutBinding>			mDescriptorSetLayoutBindings;
-		friend class UniformSet;
+		friend class UniformView;
 	};
 	
-	using SetRef = std::shared_ptr<UniformSet::Set>;
+	using SetRef = std::shared_ptr<UniformView::Set>;
 
 	// ---------------------------------------------------------------------------------------------
 
-	//! \class Binding
+	class BufferStore {
+	public:
+		BufferStore( uint32_t setNumber, uint32_t bindingNumber, const UniformBufferRef& uniformBuffer )
+			: mSetNumber( setNumber ), mBindingNumber( bindingNumber ), mUniformBuffer( uniformBuffer ) {}
+		virtual ~BufferStore() {}
+		uint32_t				getSetNumber() const { return mSetNumber; }
+		uint32_t				getBindingNumber() const { return mBindingNumber; }
+		const UniformBufferRef&	getUniformBuffer() const { return mUniformBuffer; }
+	private:
+		uint32_t				mSetNumber = UINT32_MAX;
+		uint32_t				mBindingNumber = UINT32_MAX;
+		UniformBufferRef		mUniformBuffer;
+		friend class UniformView;
+	};
+
+	using BufferStoreRef = std::shared_ptr<UniformView::BufferStore>;
+
+	class BufferGroup {
+	public:
+		BufferGroup( std::vector<UniformView::BufferStoreRef> bufferStores = std::vector<UniformView::BufferStoreRef>() ) 
+			: mBufferStores( bufferStores ) {}
+		virtual ~BufferGroup() {}
+		size_t											getBufferStoreCount() const { return mBufferStores; }
+		const UniformView::BufferStoreRef&				getBufferStore( size_t n )const { return mBufferStores[n]; }
+		const std::vector<UniformView::BufferStoreRef>&	getBufferStores() const { return mBufferStores; }
+	private:
+		std::vector<UniformView::BufferStoreRef>		mBufferStores;
+		void addBufferStore( const UniformView::BufferStoreRef& bufferStore ) { mBufferStores.push_back( bufferStore ); }
+		friend class UniformView;
+	};
+
+	using BufferGroupRef = std::shared_ptr<BufferGroup>;
+
+	// ---------------------------------------------------------------------------------------------
+
+	//! \class Options
 	//!
 	//!
 	class Options {
 	public:
 		Options() {}
 		virtual ~Options() {}
-		Options&	setTransientAllocation( bool value = true ) { mTransientAllocation = value; return *this; }
+		Options&	setAllocateInitialBuffers( bool value = true ) { mAllocateInitialBuffers = value; return *this; }
+		bool		getAllocateInitialBuffers() const { return mAllocateInitialBuffers; }
+		Options&	setTransientAllocation( bool value = true ) { mTransientAllocation = value; if( value ) { mAllocateInitialBuffers = true; } return *this; }
 		bool		getTransientAllocation() const { return mTransientAllocation; }
 	private:
+		bool		mAllocateInitialBuffers = true;
 		bool		mTransientAllocation = false;
-		friend class UniformSet;
+		friend class UniformView;
 	};
 
 	// ---------------------------------------------------------------------------------------------
 
-	UniformSet( const UniformLayout& layout, const UniformSet::Options& options, vk::Device *device );
-	virtual ~UniformSet();
+	UniformView( const UniformLayout& layout, const UniformView::Options& options, vk::Device *device );
+	virtual ~UniformView();
 
-	static UniformSetRef				create( const UniformLayout& layout, const UniformSet::Options& options = UniformSet::Options(), vk::Device *device = nullptr );
+	static UniformViewRef				create( const UniformLayout& layout, const UniformView::Options& options = UniformView::Options(), vk::Device *device = nullptr );
 
 	std::vector<UniformLayout::PushConstant>						getPushConstants() const;
 
-	const std::vector<UniformSet::SetRef>&							getSets() const { return mSets; }
-	const std::vector<std::vector<VkDescriptorSetLayoutBinding>>&	getCachedDescriptorSetLayoutBindings() const { return mCachedDescriptorSetLayoutBindings; }
+	const std::vector<UniformView::SetRef>&							getSets() const { return mSets; }
+	const std::vector<std::vector<VkDescriptorSetLayoutBinding>>&	getDescriptorSetLayoutBindings() const { return mDescriptorSetLayoutBindings; }
 
 	void								uniform( const std::string& name, const float    value );
 	void								uniform( const std::string& name, const int32_t  value );
@@ -432,11 +470,11 @@ public:
 	void								echoValues( std::ostream& os );
 
 private:
-	UniformSet::Options					mOptions;
+	UniformView::Options				mOptions;
 	std::map<std::string, std::string>	mShortNameToBinding;
 
-	std::vector<UniformSet::SetRef>							mSets;
-	std::vector<std::vector<VkDescriptorSetLayoutBinding>>	mCachedDescriptorSetLayoutBindings;
+	std::vector<UniformView::SetRef>						mSets;
+	std::vector<std::vector<VkDescriptorSetLayoutBinding>>	mDescriptorSetLayoutBindings;
 
 	Binding*						findBindingObject( const std::string& name, Binding::Type bindingType );
 

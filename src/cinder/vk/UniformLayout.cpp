@@ -750,7 +750,7 @@ void UniformLayout::uniform( const std::string& name, const vk::TextureBaseRef& 
 // -------------------------------------------------------------------------------------------------
 // UniformSet::Binding
 // -------------------------------------------------------------------------------------------------
-void UniformSet::Binding::setUniformBuffer( const UniformBufferRef& buffer )
+void UniformView::Binding::setUniformBuffer( const UniformBufferRef& buffer )
 {
 	mUniformBuffer = buffer;
 	setDirty();
@@ -759,7 +759,7 @@ void UniformSet::Binding::setUniformBuffer( const UniformBufferRef& buffer )
 // -------------------------------------------------------------------------------------------------
 // UniformSet::Set
 // -------------------------------------------------------------------------------------------------
-std::vector<VkWriteDescriptorSet> UniformSet::Set::getBindingUpdates( VkDescriptorSet parentDescriptorSet )
+std::vector<VkWriteDescriptorSet> UniformView::Set::getBindingUpdates( VkDescriptorSet parentDescriptorSet )
 {
 	std::vector<VkWriteDescriptorSet> result;
 
@@ -817,12 +817,12 @@ std::vector<VkWriteDescriptorSet> UniformSet::Set::getBindingUpdates( VkDescript
 // -------------------------------------------------------------------------------------------------
 // UniformSet
 // -------------------------------------------------------------------------------------------------
-UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& options, vk::Device *device )
+UniformView::UniformView( const UniformLayout& layout, const UniformView::Options& options, vk::Device *device )
 	: mOptions( options )
 {
 	// Copy sets
 	for( const auto& srcSet : layout.getSets() ) {
-		UniformSet::SetRef set( new UniformSet::Set( srcSet.getSet(), srcSet.getChangeFrequency() ) );
+		UniformView::SetRef set( new UniformView::Set( srcSet.getSet(), srcSet.getChangeFrequency() ) );
 		mSets.push_back( set ); 
 	}
 
@@ -832,7 +832,7 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 		auto it = std::find_if(
 			std::begin( mSets ),
 			std::end( mSets ),
-			[srcBinding]( const UniformSet::SetRef& elem ) -> bool {
+			[srcBinding]( const UniformView::SetRef& elem ) -> bool {
 				return srcBinding.getSet() == elem->getSet();
 			}
 		);
@@ -841,15 +841,16 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 		assert( std::end( mSets ) != it );
 
 		// Create binding
-		UniformSet::Binding binding = UniformSet::Binding( srcBinding );
+		UniformView::Binding binding = UniformView::Binding( srcBinding );
 		if( binding.isBlock() ) {
-			vk::UniformBuffer::Format uniformBufferFormat = vk::UniformBuffer::Format();
-			uniformBufferFormat.setTransientAllocation( mOptions.getTransientAllocation() );
-			UniformBufferRef buffer = UniformBuffer::create( srcBinding.getBlock(), uniformBufferFormat, device );
-			binding.setUniformBuffer( buffer );
+			if( options.getAllocateUniformBuffer() ) {
+				vk::UniformBuffer::Format uniformBufferFormat = vk::UniformBuffer::Format();
+				uniformBufferFormat.setTransientAllocation( mOptions.getTransientAllocation() );
+				UniformBufferRef buffer = UniformBuffer::create( srcBinding.getBlock(), uniformBufferFormat, device );
+				binding.setUniformBuffer( buffer );
+			}
 			// Parse short names
 			for( const auto& uniformVar : binding.getBlock().getUniforms() ) {
-
 			}
 		}
 		// Get set
@@ -911,11 +912,6 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 	// Cache - not as straight forward as it should be. To work around the implementation
 	// differences, bindings *should* be densely populated and grouped by type. 
 	for( auto& set : mSets ) {
-		//std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
-		//for( const auto& obj : set->mDescriptorSetLayoutBindings ) {
-		//	descriptorSetLayoutBindings.push_back( obj );
-		//}
-
 		const auto& srcBindings = set->mDescriptorSetLayoutBindings;
 		if( srcBindings.empty() ) {
 			continue;
@@ -955,16 +951,6 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 			}
 		}
 
-/*
-		// Sort by type so the entries are grouped by type
-		std::sort( 
-			std::begin( dstBindings ), std::end( dstBindings ),
-			[]( const VkDescriptorSetLayoutBinding& a, const VkDescriptorSetLayoutBinding& b ) -> bool {
-				return a.descriptorType < b.descriptorType;
-			}
-		);
-*/
-
 		// If entry N doesn't have a type use N-1's type...if N > 0
 		for( size_t i = 1; i < dstBindings.size(); ++i ) {
 			if( VK_DESCRIPTOR_TYPE_MAX_ENUM == dstBindings[i].descriptorType ) {
@@ -973,59 +959,22 @@ UniformSet::UniformSet( const UniformLayout& layout, const UniformSet::Options& 
 		}
 
 		// Finally cache it
-		mCachedDescriptorSetLayoutBindings.push_back( dstBindings );
+		mDescriptorSetLayoutBindings.push_back( dstBindings );
 	}
-
-/*
-	// Create bindings
-	const auto& srcBindings = layout.getBindings();
-	mBindings.resize( srcBindings.size() );
-	for( size_t i = 0; i < srcBindings.size(); ++i ) {
-		const auto& srcBinding = srcBindings[i];
-		mBindings[i] = UniformSet::Binding( srcBinding );
-		if( mBindings[i].isBlock() ) {
-			UniformBufferRef buffer = UniformBuffer::create( srcBinding.getBlock(), vk::UniformBuffer::Format(), device );
-			mBindings[i].mUniformBuffer = buffer;
-		}
-	}
-
-	// Create DescriptorSetLayoutBindings
-	for( const auto& binding : mBindings ) {
-		VkDescriptorSetLayoutBinding layoutBinding = {};
-		layoutBinding.binding            = binding.getBinding();
-		layoutBinding.descriptorCount    = 1;
-		layoutBinding.pImmutableSamplers = nullptr;
-		switch( binding.getType() ) {
-			case UniformLayout::Binding::Type::BLOCK: {
-				layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				layoutBinding.stageFlags     = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-			}
-			break;
-
-			case UniformLayout::Binding::Type::SAMPLER: {
-				layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				layoutBinding.stageFlags     = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-			}
-			break;		
-		}
-
-		mDescriptorSetLayoutBindings.push_back( layoutBinding );
-	}
-*/
 }
 
-UniformSet::~UniformSet()
+UniformView::~UniformView()
 {
 }
 
-UniformSetRef UniformSet::create( const UniformLayout& layout, const UniformSet::Options& options, vk::Device *device )
+UniformViewRef UniformView::create( const UniformLayout& layout, const UniformView::Options& options, vk::Device *device )
 {
 	device = ( nullptr != device ) ? device : vk::Context::getCurrent()->getDevice();
-	UniformSetRef result = UniformSetRef( new UniformSet( layout, options, device ) );
+	UniformViewRef result = UniformViewRef( new UniformView( layout, options, device ) );
 	return result;
 }
 
-std::vector<UniformLayout::PushConstant> UniformSet::getPushConstants() const
+std::vector<UniformLayout::PushConstant> UniformView::getPushConstants() const
 {
 	std::vector<UniformLayout::PushConstant> result;
 	for( const auto& set : mSets ) {
@@ -1037,15 +986,15 @@ std::vector<UniformLayout::PushConstant> UniformSet::getPushConstants() const
 	return result;
 }
 
-UniformSet::Binding* UniformSet::findBindingObject( const std::string& name, Binding::Type bindingType )
+UniformView::Binding* UniformView::findBindingObject( const std::string& name, Binding::Type bindingType )
 {
-	UniformSet::Binding* result = nullptr;
+	UniformView::Binding* result = nullptr;
 
 	for( const auto& set : mSets ) {
 		auto it = std::find_if(
 			std::begin( set->mBindings ),
 			std::end( set->mBindings ),
-			[&name]( const UniformSet::Binding& elem ) -> bool {
+			[&name]( const UniformView::Binding& elem ) -> bool {
 				return ( elem.getName() == name );
 			}
 		);
@@ -1068,7 +1017,7 @@ UniformSet::Binding* UniformSet::findBindingObject( const std::string& name, Bin
 }
 
 template <typename T>
-void UniformSet::updateUniform( const std::string& name, const T& value )
+void UniformView::updateUniform( const std::string& name, const T& value )
 {
 	// Parse out binding name
 	std::vector<std::string> tokens = ci::split( name, "." );
@@ -1094,93 +1043,93 @@ void UniformSet::updateUniform( const std::string& name, const T& value )
 	*/
 
 	// Find binding and update
-	UniformSet::Binding* binding = this->findBindingObject( bindingName, Binding::Type::ANY );
+	UniformView::Binding* binding = this->findBindingObject( bindingName, Binding::Type::ANY );
 	if( ( nullptr != binding ) && binding->isBlock() ) {
 		binding->getUniformBuffer()->uniform( name, value );
 	}
 }
 
-void UniformSet::uniform( const std::string& name, const float value )
+void UniformView::uniform( const std::string& name, const float value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const int32_t value )
+void UniformView::uniform( const std::string& name, const int32_t value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const uint32_t value )
+void UniformView::uniform( const std::string& name, const uint32_t value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const bool value )
+void UniformView::uniform( const std::string& name, const bool value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const vec2& value )
+void UniformView::uniform( const std::string& name, const vec2& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const vec3& value )
+void UniformView::uniform( const std::string& name, const vec3& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const vec4& value )
+void UniformView::uniform( const std::string& name, const vec4& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const ivec2& value )
+void UniformView::uniform( const std::string& name, const ivec2& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const ivec3& value )
+void UniformView::uniform( const std::string& name, const ivec3& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const ivec4& value )
+void UniformView::uniform( const std::string& name, const ivec4& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const uvec2& value )
+void UniformView::uniform( const std::string& name, const uvec2& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const uvec3& value )
+void UniformView::uniform( const std::string& name, const uvec3& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const uvec4& value )
+void UniformView::uniform( const std::string& name, const uvec4& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const mat2& value )
+void UniformView::uniform( const std::string& name, const mat2& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const mat3& value )
+void UniformView::uniform( const std::string& name, const mat3& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const mat4& value )
+void UniformView::uniform( const std::string& name, const mat4& value )
 {
 	updateUniform( name, value );
 }
 
-void UniformSet::uniform( const std::string& name, const TextureBaseRef& texture )
+void UniformView::uniform( const std::string& name, const TextureBaseRef& texture )
 {
 	auto bindingRef = findBindingObject( name, Binding::Type::SAMPLER );
 	if( bindingRef ) {
@@ -1188,7 +1137,7 @@ void UniformSet::uniform( const std::string& name, const TextureBaseRef& texture
 	}
 }
 
-void UniformSet::setDefaultUniformVars( vk::Context *context )
+void UniformView::setDefaultUniformVars( vk::Context *context )
 {
 	for( auto& set : mSets ) {
 		for( auto& binding : set->getBindings() ) {
@@ -1200,7 +1149,7 @@ void UniformSet::setDefaultUniformVars( vk::Context *context )
 	}
 }
 
-void UniformSet::bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask )
+void UniformView::bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask )
 {
 	bool addBarrier = false;
 	for( auto& set : mSets ) {
@@ -1218,7 +1167,7 @@ void UniformSet::bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlag
 	}
 }
 
-void UniformSet::echoValues( std::ostream& os )
+void UniformView::echoValues( std::ostream& os )
 {
 }
 

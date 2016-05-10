@@ -382,11 +382,11 @@ void DescriptorSet::update( const std::vector<VkWriteDescriptorSet>& writes )
 // ------------------------------------------------------------------------------------------------ 
 // DescriptorSetView
 // ------------------------------------------------------------------------------------------------ 
-DescriptorSetView::DescriptorSetView( const vk::UniformSetRef& uniformSet, vk::Device *device )
+DescriptorSetView::DescriptorSetView( const vk::UniformViewRef& uniformSet, vk::Device *device )
 	: mDevice( device ), mUniformSet( uniformSet )
 {
-	mDescriptorPool = vk::DescriptorPool::create( mUniformSet->getCachedDescriptorSetLayoutBindings(), vk::DescriptorPool::Options(), mDevice );
-	mDescriptorSetLayouts = vk::DescriptorSetLayout::create( mUniformSet->getCachedDescriptorSetLayoutBindings(), mDevice );
+	mDescriptorPool = vk::DescriptorPool::create( mUniformSet->getDescriptorSetLayoutBindings(), vk::DescriptorPool::Options(), mDevice );
+	mDescriptorSetLayouts = vk::DescriptorSetLayout::create( mUniformSet->getDescriptorSetLayoutBindings(), mDevice );
 
 	for( const auto& dsl : mDescriptorSetLayouts ) {
 		mCachedDescriptorSetLayouts.push_back( dsl->vkObject() );
@@ -403,7 +403,7 @@ DescriptorSetView::~DescriptorSetView()
 	mDescriptorPool.reset();
 }
 
-vk::DescriptorSetViewRef DescriptorSetView::create( const vk::UniformSetRef& uniformSet, vk::Device *device )
+vk::DescriptorSetViewRef DescriptorSetView::create( const vk::UniformViewRef& uniformSet, vk::Device *device )
 {
 	device = ( nullptr != device ) ? device : vk::Context::getCurrent()->getDevice();
 	vk::DescriptorSetViewRef result = vk::DescriptorSetViewRef( new vk::DescriptorSetView( uniformSet, device ) );

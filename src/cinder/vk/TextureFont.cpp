@@ -369,7 +369,7 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 
 static void drawGlyphsBuffers( 
 	const vk::ShaderProgRef&		shader, 
-	const vk::UniformSetRef&		transientUniformSet, 
+	const vk::UniformViewRef&		transientUniformSet, 
 	const vk::DescriptorSetViewRef&	transientDescriptorSetView,
 	const vk::TextureRef&			curTex,
 	const vk::IndexBufferRef&		transientIndexBuffer, 
@@ -379,7 +379,7 @@ static void drawGlyphsBuffers(
 )
 {
 	// Descriptor set layouts
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getDescriptorSetLayoutBindings() );
 
 	// Pipeline layout
 	VkPipelineLayout pipelineLayout = vk::context()->getDevice()->getPipelineLayoutSelector()->getSelectedLayout( descriptorSetLayouts );
@@ -583,8 +583,8 @@ void TextureFont::drawGlyphs( const vector<pair<Font::Glyph,vec2>> &glyphMeasure
 
 		// Uniform layout, uniform set
 		const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
-		vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
-		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+		vk::UniformView::Options uniformSetOptions = vk::UniformView::Options().setTransientAllocation();
+		vk::UniformViewRef transientUniformSet = vk::UniformView::create( uniformLayout, uniformSetOptions );
 		vk::context()->addTransient( transientUniformSet );
 		
 		// Descriptor set view
@@ -713,8 +713,8 @@ void TextureFont::drawGlyphs( const std::vector<std::pair<Font::Glyph,vec2>> &gl
 
 		// Uniform layout, uniform set
 		const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
-		vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
-		vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+		vk::UniformView::Options uniformSetOptions = vk::UniformView::Options().setTransientAllocation();
+		vk::UniformViewRef transientUniformSet = vk::UniformView::create( uniformLayout, uniformSetOptions );
 		vk::context()->addTransient( transientUniformSet );
 		
 		// Descriptor view		

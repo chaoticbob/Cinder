@@ -1055,7 +1055,7 @@ void Context::setDefaultUniformVars( const UniformBufferRef& uniformBuffer )
 	}
 }
 
-void Context::setDefaultUniformVars( const vk::UniformSetRef& uniformSet )
+void Context::setDefaultUniformVars( const vk::UniformViewRef& uniformSet )
 {
 	const auto& sets = uniformSet->getSets();
 	for( auto& set : sets ) {
@@ -1432,7 +1432,7 @@ void Context::addTransient( const vk::DescriptorSetViewRef& obj )
 	addTransientObject( obj, mTransientDescriptorSetViews );
 }
 
-void Context::addTransient( const vk::UniformSetRef& obj )
+void Context::addTransient( const vk::UniformViewRef& obj )
 {
 	addTransientObject( obj, mTransientUniformSets );
 }

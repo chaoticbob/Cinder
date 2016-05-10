@@ -73,12 +73,12 @@ void draw( const Texture2dRef &texture, const Rectf &dstRect, const std::string&
 
 	// Uniform layout, uniform set
 	const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
-	vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
-	vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+	vk::UniformView::Options uniformSetOptions = vk::UniformView::Options().setTransientAllocation();
+	vk::UniformViewRef transientUniformSet = vk::UniformView::create( uniformLayout, uniformSetOptions );
 	vk::context()->addTransient( transientUniformSet );
 
 	// Descriptor view
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getDescriptorSetLayoutBindings() );
 	vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
 	transientDescriptorView->allocateDescriptorSets();
 	vk::context()->addTransient( transientDescriptorView );
@@ -184,12 +184,12 @@ void drawSolidRect( const Rectf &r, const vec2 &upperLeftTexCoord, const vec2 &l
 
 	// Uniform layout, uniform set
 	const vk::UniformLayout& uniformLayout = shader->getUniformLayout();
-	vk::UniformSet::Options uniformSetOptions = vk::UniformSet::Options().setTransientAllocation();
-	vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout, uniformSetOptions );
+	vk::UniformView::Options uniformSetOptions = vk::UniformView::Options().setTransientAllocation();
+	vk::UniformViewRef transientUniformSet = vk::UniformView::create( uniformLayout, uniformSetOptions );
 	vk::context()->addTransient( transientUniformSet );
 
 	// Descriptor view
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getDescriptorSetLayoutBindings() );
 	vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
 	transientDescriptorView->allocateDescriptorSets();
 	vk::context()->addTransient( transientDescriptorView );

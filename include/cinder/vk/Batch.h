@@ -133,7 +133,7 @@ class Batch {
 	void						samplerCube( const std::string& name, const TextureBaseRef& texture );
 */
 
-	const vk::UniformSetRef&	getUniformSet() const { return mUniformSet; }
+	const vk::UniformViewRef&	getUniformSet() const { return mUniformSet; }
 	void						setDefaultUniformVars( vk::Context *context );
 
 	//void						setCullMode( VkCullModeFlagBits cullMode ) { mPipelineSelection = cullMode; }
@@ -154,7 +154,7 @@ class Batch {
 	VertexInputDescription		mVertexInputDescription;
 
 	// Not the most efficient way, placeholder for now.
-	vk::UniformSetRef							mUniformSet;
+	vk::UniformViewRef							mUniformSet;
 	//std::vector<vk::DescriptorSetLayoutRef>		mDescriptorSetLayouts;
 	//vk::DescriptorPoolRef						mDescriptorPool;
 	//std::vector<vk::DescriptorSetRef>			mDescriptorSets;
