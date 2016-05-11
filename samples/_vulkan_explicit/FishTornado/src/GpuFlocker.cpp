@@ -84,10 +84,10 @@ GpuFlocker::GpuFlocker( FishTornadoApp *app )
 	texFormat.setInternalFormat( textureFormat );
 	texFormat.setUsageColorAttachment();
 	texFormat.setUsageTransferDestination();
-	texFormat.setUnnormalizedCoordinates();
+	texFormat.unnormalizedCoordinates();
 	texFormat.setMagFilter( VK_FILTER_NEAREST );
 	texFormat.setMinFilter( VK_FILTER_NEAREST );
-	texFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+	texFormat.wrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
 	texFormat.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
 	mPositionTextures[0] = vk::Texture2d::create( FBO_RES, FBO_RES, texFormat );
 	mPositionTextures[1] = vk::Texture2d::create( FBO_RES, FBO_RES, texFormat );

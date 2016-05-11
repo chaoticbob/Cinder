@@ -60,7 +60,7 @@ Ocean::Ocean( FishTornadoApp *app )
 	
 	// Textures
 	vk::Texture::Format format;
-	format.setWrap( VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+	format.wrap( VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT );
 	format.mipmap();
 	
 	try {

@@ -57,6 +57,7 @@ void UniformView::Binding::setUniformBuffer( const UniformBufferRef& buffer )
 // -------------------------------------------------------------------------------------------------
 // UniformSet::Set
 // -------------------------------------------------------------------------------------------------
+/*
 std::vector<VkWriteDescriptorSet> UniformView::Set::getBindingUpdates( VkDescriptorSet parentDescriptorSet )
 {
 	std::vector<VkWriteDescriptorSet> result;
@@ -110,6 +111,80 @@ std::vector<VkWriteDescriptorSet> UniformView::Set::getBindingUpdates( VkDescrip
 	}
 
 	return result;
+}
+*/
+
+bool UniformView::Set::getBindingUpdates( VkDescriptorSet parentDescriptorSet, uint32_t *writeCount, VkWriteDescriptorSet **writes )
+{
+	*writeCount = 9;
+	*writes = nullptr;
+
+	if( mDescriptorSetWrites.empty() ) {
+		mDescriptorSetWrites.resize( mBindings.size() );
+	}
+
+	bool hasUpdates = false;
+
+	if( ! mDescriptorSetWrites.empty() ) {
+		uint32_t entryCount = 0;		
+		for( auto& binding : mBindings ) {
+			if( ! binding.isDirty() ) {
+				continue;
+			}
+
+			VkWriteDescriptorSet& entry = mDescriptorSetWrites[entryCount];
+			entry = {};
+			entry.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			entry.pNext				= NULL;
+			entry.dstSet			= parentDescriptorSet;
+			entry.descriptorCount	= 1;
+			entry.dstArrayElement	= 0;
+			entry.dstBinding		= binding.getBinding();
+			switch( binding.getType() ) {
+				case UniformLayout::Binding::Type::BLOCK: {
+					if( binding.getUniformBuffer() ) {
+						entry.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+						entry.pBufferInfo    = &(binding.getUniformBuffer()->getBufferInfo());
+					}
+				}
+				break;
+
+				case UniformLayout::Binding::Type::SAMPLER: {
+					if( binding.getTexture() ) {
+						entry.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						entry.pImageInfo     = &(binding.getTexture()->getImageInfo());
+					}
+				}
+				break;
+
+				case UniformLayout::Binding::Type::STORAGE_IMAGE: {
+					if( binding.getTexture() ) {
+						entry.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+						entry.pImageInfo     = &(binding.getTexture()->getImageInfo());
+					}
+				}
+				break;
+
+				default: {
+					// Probably means a new descriptor type got added and needs handling code.
+					assert( false );
+				}
+				break;
+			}
+
+			binding.clearDirty();
+			hasUpdates = true;
+
+			++entryCount;
+		}
+
+		if( hasUpdates ) {
+			*writeCount = entryCount;
+			*writes = mDescriptorSetWrites.data();
+		}
+	}
+
+	return hasUpdates;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -317,6 +392,20 @@ UniformView::Binding* UniformView::findBindingObject( const std::string& name, B
 UniformView::BufferGroupRef UniformView::allocateBuffers() const
 {
 	std::vector<UniformView::BufferStoreRef> bufferStores;
+	for( uint32_t setIndex = 0; setIndex < mSets.size(); ++setIndex ) {
+		const auto& bindings = mSets[setIndex]->mBindings;
+		for( uint32_t bindingIndex = 0; bindingIndex < bindings.size(); ++bindingIndex ) {
+			const auto& binding = bindings[bindingIndex];
+			if( ! binding.isBlock() ) {
+				continue;
+			}
+			vk::UniformBuffer::Format uniformBufferFormat = vk::UniformBuffer::Format();
+			UniformBufferRef buffer = UniformBuffer::create( binding.getBlock(), uniformBufferFormat, mDevice );
+			UniformView::BufferStoreRef bindingStore( new UniformView::BufferStore( setIndex, bindingIndex, buffer ) );
+			bufferStores.push_back( bindingStore );
+		}
+	}
+	/*
 	for( auto& set : mSets ) {
 		for( auto& binding : set->mBindings ) {
 			if( ! binding.isBlock() ) {
@@ -330,11 +419,25 @@ UniformView::BufferGroupRef UniformView::allocateBuffers() const
 			bufferStores.push_back( bindingStore );
 		}
 	}	
+	*/
 	return UniformView::BufferGroupRef( new UniformView::BufferGroup( bufferStores ) );
 }
 
-void UniformView::setBuffers(const UniformView::BufferGroupRef& bufferGroups)
+void UniformView::setBuffers( const UniformView::BufferGroupRef& bufferGroups )
 {
+	const auto& bufferStores = bufferGroups->getBufferStores();
+	for( const auto& bufferStore : bufferStores ) {
+		uint32_t setIndex = bufferStore->getSetIndex();
+		auto& set = mSets[setIndex];
+
+		auto& bindings = set->mBindings;
+		uint32_t bindingIndex = bufferStore->getBindingIndex();
+		auto& binding = bindings[bindingIndex];
+
+		binding.setUniformBuffer( bufferStore->getUniformBuffer() );
+	}
+
+	/*
 	// Clear any buffers referenced
 	for( auto& set : mSets ) {
 		for( auto& binding : set->mBindings ) {
@@ -375,6 +478,7 @@ void UniformView::setBuffers(const UniformView::BufferGroupRef& bufferGroups)
 		// Set buffer
 		bindingIt->setUniformBuffer( bufferStore->getUniformBuffer() );
 	}
+	*/
 }
 
 template <typename T>
@@ -510,23 +614,36 @@ void UniformView::setDefaultUniformVars( vk::Context *context )
 	}
 }
 
-void UniformView::bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask )
+//void UniformView::bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask )
+//{
+//	bool addBarrier = false;
+//	for( auto& set : mSets ) {
+//		for( auto& binding : set->mBindings ) {
+//			if( ! binding.isBlock() ) {
+//				continue;
+//			}
+//			binding.getUniformBuffer()->transferPending();
+//			addBarrier = true;
+//		}
+//	}
+//
+//	if( addBarrier ) {
+//		//cmdBuf->pipelineBarrierGlobalMemory( vk::GlobalMemoryBarrierParams( srcAccessMask, dstAccessMask, srcStageMask, dstStageMask ) );
+//	}
+//}
+
+void UniformView::bufferPending( const vk::CommandBufferRef& cmdBuf )
 {
-	bool addBarrier = false;
 	for( auto& set : mSets ) {
 		for( auto& binding : set->mBindings ) {
 			if( ! binding.isBlock() ) {
 				continue;
 			}
 			binding.getUniformBuffer()->transferPending();
-			addBarrier = true;
 		}
 	}
-
-	if( addBarrier ) {
-		cmdBuf->pipelineBarrierGlobalMemory( vk::GlobalMemoryBarrierParams( srcAccessMask, dstAccessMask, srcStageMask, dstStageMask ) );
-	}
 }
+
 
 void UniformView::echoValues( std::ostream& os )
 {

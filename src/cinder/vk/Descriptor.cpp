@@ -371,6 +371,7 @@ void DescriptorSet::update( const vk::UniformSet::SetRef& uniformSet )
 }
 */
 
+/*
 void DescriptorSet::update( const std::vector<VkWriteDescriptorSet>& writes )
 {
 	if( writes.empty() ) {
@@ -378,6 +379,16 @@ void DescriptorSet::update( const std::vector<VkWriteDescriptorSet>& writes )
 	}
 
 	vkUpdateDescriptorSets( mDevice->getDevice(), static_cast<uint32_t>( writes.size() ), writes.data(), 0, nullptr );
+}
+*/
+
+void DescriptorSet::update( uint32_t writeCount, const VkWriteDescriptorSet *writes )
+{
+	if( ( 0 == writeCount ) || ( nullptr == writes ) ) {
+		return;
+	}
+
+	vkUpdateDescriptorSets( mDevice->getDevice(), writeCount, writes, 0, nullptr );
 }
 
 // ------------------------------------------------------------------------------------------------ 
@@ -439,15 +450,15 @@ void DescriptorSetView::updateDescriptorSets()
 {
 	auto& uniformSets = mUniformSet->getSets();
 	for( size_t i = 0; i < mDescriptorSets.size(); ++i ) {
-		auto writes = uniformSets[i]->getBindingUpdates( mDescriptorSets[i]->vkObject() );
-		mDescriptorSets[i]->update( writes );
-	}
+		//auto writes = uniformSets[i]->getBindingUpdates( mDescriptorSets[i]->vkObject() );
+		//mDescriptorSets[i]->update( writes );
 
-/*
-	for( const auto& ds : mDescriptorSets ) {
-		ds->update();
+		uint32_t writeCount = 0;
+		VkWriteDescriptorSet *writes = nullptr;
+		if( uniformSets[i]->getBindingUpdates( mDescriptorSets[i]->vkObject(), &writeCount, &writes ) ) {
+			mDescriptorSets[i]->update( writeCount, writes );
+		}
 	}
-*/
 }
 
 }} // namespace cinder::vk

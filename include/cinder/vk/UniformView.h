@@ -80,13 +80,15 @@ public:
 		const std::vector<Binding>&							getBindings() const { return mBindings; }
 		const std::vector<VkDescriptorSetLayoutBinding>&	getDescriptorSetlayoutBindings() const { return mDescriptorSetLayoutBindings; } 
 
-		std::vector<VkWriteDescriptorSet>					getBindingUpdates( VkDescriptorSet parentDescriptorSet );
+		//std::vector<VkWriteDescriptorSet>					getBindingUpdates( VkDescriptorSet parentDescriptorSet );
+		bool												getBindingUpdates( VkDescriptorSet parentDescriptorSet, uint32_t *writeCount, VkWriteDescriptorSet **writes );
 
 	private:
 		uint32_t											mSetNumber = DEFAULT_SET;
 		uint32_t											mChangeFrequency = CHANGES_DONTCARE;
 		std::vector<Binding>								mBindings;
 		std::vector<VkDescriptorSetLayoutBinding>			mDescriptorSetLayoutBindings;
+		std::vector<VkWriteDescriptorSet>					mDescriptorSetWrites;
 		friend class UniformView;
 	};
 	
@@ -96,15 +98,16 @@ public:
 
 	class BufferStore {
 	public:
-		BufferStore( uint32_t setNumber, uint32_t bindingNumber, const UniformBufferRef& uniformBuffer )
-			: mSetNumber( setNumber ), mBindingNumber( bindingNumber ), mUniformBuffer( uniformBuffer ) {}
+		// NOTE: Buffer store uses indices for sets and bindings - not numbers! They're two different things!
+		BufferStore( uint32_t setIndex, uint32_t bindingIndex, const UniformBufferRef& uniformBuffer )
+			: mSetIndex( setIndex ), mBindingIndex( bindingIndex ), mUniformBuffer( uniformBuffer ) {}
 		virtual ~BufferStore() {}
-		uint32_t				getSetNumber() const { return mSetNumber; }
-		uint32_t				getBindingNumber() const { return mBindingNumber; }
+		uint32_t				getSetIndex() const { return mSetIndex; }
+		uint32_t				getBindingIndex() const { return mBindingIndex; }
 		const UniformBufferRef&	getUniformBuffer() const { return mUniformBuffer; }
 	private:
-		uint32_t				mSetNumber = UINT32_MAX;
-		uint32_t				mBindingNumber = UINT32_MAX;
+		uint32_t				mSetIndex = UINT32_MAX;
+		uint32_t				mBindingIndex = UINT32_MAX;
 		UniformBufferRef		mUniformBuffer;
 		friend class UniformView;
 	};
@@ -180,7 +183,8 @@ public:
 	void								uniform( const std::string& name, const TextureBaseRef& texture );
 
 	void								setDefaultUniformVars( vk::Context *context );
-	void								bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask );
+	//void								bufferPending( const vk::CommandBufferRef& cmdBuf, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask );
+	void								bufferPending( const vk::CommandBufferRef& cmdBuf );
 
 	void								echoValues( std::ostream& os );
 

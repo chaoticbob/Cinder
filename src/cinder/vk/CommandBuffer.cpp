@@ -604,4 +604,9 @@ void CommandBuffer::pipelineBarrierImageMemory( const vk::ImageMemoryBarrierPara
 	pipelineBarrier( params.mSrcStageMask, params.mDstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier );
 }
 
+void CommandBuffer::pipelineBarrierGlobalMemoryUniformTransfer()
+{
+	pipelineBarrierGlobalMemory( vk::GlobalMemoryBarrierParams( VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT ) );
+}
+
 }} // namespace cinder::vk

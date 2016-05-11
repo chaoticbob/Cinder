@@ -457,7 +457,8 @@ static void drawGlyphsBuffers(
 	// Fill out uniform vars
 	transientUniformSet->uniform( "uTex0", curTex );
 	transientUniformSet->setDefaultUniformVars( vk::context() );
-	transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+	transientUniformSet->bufferPending( cmdBufRef );
+	cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
 
 	// Update descriptor set
 	transientDescriptorSetView->updateDescriptorSets();

@@ -78,6 +78,10 @@ class Batch {
 	//! Builds a Batch from a geom::Source and a GlslProg. Attributes defined in \a attributeMapping override the default mapping
 	static BatchRef		create( const geom::Source &source, const vk::ShaderProgRef &shader, const AttributeMapping &attributeMapping = AttributeMapping() );
 	
+	//! Only for drawing the same geometry multiple times with different uniforms
+	void				bind();
+	void				unbind();
+
 	//! Draws the Batch. Optionally specify a \a first vertex/element and a \a count. Otherwise the entire geometry will be drawn.
 	void				draw( int32_t first = 0, int32_t count = -1 );
 
@@ -154,20 +158,16 @@ class Batch {
 	VertexInputDescription		mVertexInputDescription;
 
 	// Not the most efficient way, placeholder for now.
-	vk::UniformViewRef							mUniformSet;
-	//std::vector<vk::DescriptorSetLayoutRef>		mDescriptorSetLayouts;
-	//vk::DescriptorPoolRef						mDescriptorPool;
-	//std::vector<vk::DescriptorSetRef>			mDescriptorSets;
-	vk::DescriptorSetViewRef					mDescriptorSetView;
-	vk::PipelineLayoutRef						mPipelineLayout;
-
-	//// Temporary solution for back/front face culling
-	//VkCullModeFlagBits								mPipelineSelection = VK_CULL_MODE_NONE;
-	//std::map<VkCullModeFlagBits, vk::PipelineRef>	mPipelines;
+	vk::UniformViewRef			mUniformSet;
+	vk::DescriptorSetViewRef	mDescriptorSetView;
+	vk::PipelineLayoutRef		mPipelineLayout;
 
 	vk::ShaderProgRef			mShader;
 	AttributeMapping			mAttribMapping;
-	
+
+	bool						mBound = false;
+	void						singleBind();
+
 	friend class BatchGeomTarget;
 };
 

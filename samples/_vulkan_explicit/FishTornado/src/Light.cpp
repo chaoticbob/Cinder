@@ -73,7 +73,7 @@ Light::Light()
 	depthFormat.setUsageDepthStencilAttachment();
 	depthFormat.setMagFilter( VK_FILTER_LINEAR );
 	depthFormat.setMinFilter( VK_FILTER_LINEAR );
-	depthFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+	depthFormat.wrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
 	depthFormat.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
 	mShadowMapTex = vk::Texture2d::create( shadowMapSize, shadowMapSize, depthFormat );
 	ci::vk::transitionToFirstUse( mShadowMapTex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, vk::context() );

@@ -209,6 +209,8 @@ public:
 	void pipelineBarrierBufferMemory( const vk::BufferMemoryBarrierParams& params );
 	void pipelineBarrierImageMemory( const vk::ImageMemoryBarrierParams& params );
 
+	void pipelineBarrierGlobalMemoryUniformTransfer();
+
 private:
 	CommandBuffer( VkCommandPool commandPool, vk::Context *context );
 

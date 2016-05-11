@@ -140,7 +140,7 @@ private:
 
 	vk::CommandPoolRef			mCommandPool;
 	vk::CommandBufferRef		mCommandBuffer;
-	vk::UniformSetRef			mUniformSet;
+	vk::UniformViewRef			mUniformSet;
 	vk::DescriptorSetLayoutRef	mDescriptorSetLayout;
 	vk::PipelineLayoutRef		mPipelineLayout;
 	vk::DescriptorPoolRef		mDescriptorPool;
@@ -242,7 +242,7 @@ console() << "Asset size: " << ci::app::android::AssetFileSystem_flength( asset 
 		mCommandBuffer = vk::CommandBuffer::create( mCommandPool->getCommandPool() );
 
 		// Uniform buffer
-		mUniformSet = vk::UniformSet::create( mShaderNormalMapping->getUniformLayout() );
+		mUniformSet = vk::UniformView::create( mShaderNormalMapping->getUniformLayout() );
 		mUniformSet->uniform( "uDiffuseMap",  mDiffuseMap  );
 		mUniformSet->uniform( "uSpecularMap", mSpecularMap );
 		mUniformSet->uniform( "uNormalMap",   mNormalMap   );
@@ -254,8 +254,8 @@ console() << "Asset size: " << ci::app::android::AssetFileSystem_flength( asset 
 		mUniformSet->uniform( "ciBlock2.lightSource1_specular", mLightAmbient.specular );
 
 		// Descriptor layout, pool, set
-		mDescriptorPool = vk::DescriptorPool::create( mUniformSet->getCachedDescriptorSetLayoutBindings() );
-		mDescriptorSetLayout = vk::DescriptorSetLayout::create( mUniformSet->getCachedDescriptorSetLayoutBindings()[0] );
+		mDescriptorPool = vk::DescriptorPool::create( mUniformSet->getDescriptorSetLayoutBindings() );
+		mDescriptorSetLayout = vk::DescriptorSetLayout::create( mUniformSet->getDescriptorSetLayoutBindings()[0] );
 
 		// Pipeline layout
 		mPipelineLayout = vk::PipelineLayout::create( mDescriptorSetLayout );
@@ -319,8 +319,11 @@ void NormalMappingApp::drawModel( const vk::CommandBufferRef& cmdBufRef )
 	}
 
 	// Update descriptor set
-	auto descriptorSetWrites = mUniformSet->getSets()[0]->getBindingUpdates( mDescriptorSet->vkObject() );
-	mDescriptorSet->update( descriptorSetWrites );
+	uint32_t writeCount = 0;
+	VkWriteDescriptorSet *writes = nullptr;
+	if( mUniformSet->getSets()[0]->getBindingUpdates( mDescriptorSet->vkObject(), &writeCount, &writes ) ) {
+		mDescriptorSet->update( writeCount, writes );
+	}
 
 	// Bind index buffer
 	auto indexBuffer = mMesh->getIndexVbo()->getBuffer();
@@ -355,7 +358,7 @@ void NormalMappingApp::draw()
 		{
 			if( ! mPipeline ) {
 				auto vertexInputDesc = mMesh->getVertexInputDescription();
-				vertexInputDesc.setAttributeLocationsAndBindings( mShaderNormalMapping );
+				vertexInputDesc.setAttributeLocations( mShaderNormalMapping );
 
 				// Pipeline
 				vk::Pipeline::Options pipelineOptions;
@@ -394,7 +397,8 @@ void NormalMappingApp::draw()
 				vk::multModelMatrix( mMeshTransform );
 				{
 					mUniformSet->setDefaultUniformVars( vk::context() );
-					mUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+					mUniformSet->bufferPending( cmdBufRef );
+					cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
 
 					drawModel( cmdBufRef );
 				}				

@@ -164,7 +164,8 @@ public:
 	
 	VkDescriptorSet							vkObject() const { return mDescriptorSet; }
 	
-	void									update( const std::vector<VkWriteDescriptorSet>& writes );
+	//void									update( const std::vector<VkWriteDescriptorSet>& writes );
+	void									update( uint32_t writeCount, const VkWriteDescriptorSet *writes );
 
 private:
 	DescriptorSet( vk::DescriptorPool *descriptorPool, VkDescriptorSetLayout layout, vk::Device *device );
@@ -187,8 +188,8 @@ public:
 
 	static DescriptorSetViewRef					create( const vk::UniformViewRef& uniformSet, vk::Device *device = nullptr );
 	
-	const std::vector<VkDescriptorSetLayout>	getCachedDescriptorSetLayouts() const { return mCachedDescriptorSetLayouts; }
-	const std::vector<vk::DescriptorSetRef>		getDescriptorSets() const { return mDescriptorSets; }
+	const std::vector<VkDescriptorSetLayout>&	getCachedDescriptorSetLayouts() const { return mCachedDescriptorSetLayouts; }
+	const std::vector<vk::DescriptorSetRef>&	getDescriptorSets() const { return mDescriptorSets; }
 
 	bool										hasDescriptorSets() const { return mDescriptorSets.empty() ? false : true; }
 	void										allocateDescriptorSets();

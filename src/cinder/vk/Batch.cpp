@@ -84,7 +84,7 @@ Batch::Batch( const geom::Source &source, const vk::ShaderProgRef &shader, const
 	// and then the attributes references by the GLSL
 	for( const auto &attrib : shader->getActiveAttributes() ) {
 		geom::Attrib semantic = attrib.getSemantic();
-		uint8_t dim = glslAttributeTypeDims( attrib.getType() );
+		uint8_t dim = static_cast<uint8_t>( glslAttributeTypeDims( attrib.getType() ) );
 		if( dim ) {
 			vertexLayout.attrib( semantic, dim );
 		}
@@ -295,7 +295,7 @@ void Batch::setDefaultUniformVars( vk::Context *context )
 	mUniformSet->setDefaultUniformVars( vk::context() );
 }
 
-void Batch::draw( int32_t first, int32_t count )
+void Batch::singleBind()
 {
 	// Allocate descriptor set here in case uniforms get set before first draw
 	if( ! mDescriptorSetView->hasDescriptorSets() ) {
@@ -305,13 +305,6 @@ void Batch::draw( int32_t first, int32_t count )
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
 	auto cmdBuf = cmdBufRef->getCommandBuffer();
-
-	// Fill out uniform vars
-	mUniformSet->setDefaultUniformVars( vk::context() );
-	mUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
-
-	// Update descriptor set
-	mDescriptorSetView->updateDescriptorSets();
 
 	// Bind index buffer
 	bool useIndexBuffer = mVboMesh->getIndexVbo() ? true : false;
@@ -329,7 +322,10 @@ void Batch::draw( int32_t first, int32_t count )
 		offsets.push_back( 0 );
 	}
 	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
-	
+
+	// Update descriptor set
+	mDescriptorSetView->updateDescriptorSets();
+
 	// Bind descriptor sets
 	const auto& descriptorSets = mDescriptorSetView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
@@ -357,8 +353,58 @@ void Batch::draw( int32_t first, int32_t count )
 	pipelineSelector->setPipelineLayout( mPipelineLayout->getPipelineLayout() );
 	auto pipeline = pipelineSelector->getSelectedPipeline();
 	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+}
+
+void Batch::bind()
+{
+	if( mBound ) {
+		return;
+	}
+
+	singleBind();
+
+	mBound = true;
+}
+
+void Batch::unbind()
+{
+	mBound = false;
+}
+
+void Batch::draw( int32_t first, int32_t count )
+{
+	// Get current command buffer
+	auto& cmdBufRef = vk::context()->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->getCommandBuffer();
+
+	if( mBound ) {
+		// Update descriptor set
+		mDescriptorSetView->updateDescriptorSets();
+
+		// Bind descriptor sets
+		const auto& descriptorSets = mDescriptorSetView->getDescriptorSets();
+		for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
+			//const auto& ds = descriptorSets[i];
+			//std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+			//vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+
+			VkDescriptorSet descSet = descriptorSets[i]->vkObject();
+			vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, 1, &descSet, 0, nullptr );
+		}
+	}
+	else {
+		// Fill out uniform vars
+		mUniformSet->setDefaultUniformVars( vk::context() );
+		mUniformSet->bufferPending( cmdBufRef );
+		// Add pipeline barrier for global memory read
+		cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
+
+		// Bind descriptors and pipelines
+		singleBind();
+	}
 
 	// Draw geometry
+	bool useIndexBuffer = mVboMesh->getIndexVbo() ? true : false;
 	if( useIndexBuffer ) {
 		int32_t indexCount = mVboMesh->getNumIndices();
 		vkCmdDrawIndexed( cmdBuf, count < 0 ? indexCount : count, 1, 0, 0, 0 );	
@@ -382,7 +428,8 @@ void Batch::drawInstanced( uint32_t instanceCount )
 
 	//// Fill out uniform vars
 	mUniformSet->setDefaultUniformVars( vk::context() );
-	mUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+	mUniformSet->bufferPending( cmdBufRef );
+	cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
 
 	// Update descriptor set
 	mDescriptorSetView->updateDescriptorSets();

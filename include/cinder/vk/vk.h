@@ -68,7 +68,7 @@
 #include "cinder/vk/Texture.h"
 #include "cinder/vk/TextureFont.h"
 #include "cinder/vk/UniformBuffer.h"
-#include "cinder/vk/UniformLayout.h"
+#include "cinder/vk/UniformView.h"
 #include "cinder/vk/Util.h"
 #include "cinder/vk/VertexBuffer.h"
 #include "cinder/vk/VertexBufferMesh.h"

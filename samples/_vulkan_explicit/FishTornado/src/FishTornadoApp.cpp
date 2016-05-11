@@ -319,7 +319,7 @@ void FishTornadoApp::setup()
 	mMainBatch = vk::Batch::create( rect, mMainShader );
 
 	vk::Texture::Format texFormat = vk::Texture::Format();
-	texFormat.setWrap( VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT );
+	texFormat.wrap( VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT );
 	mNoiseNormalsTex = vk::Texture::create( *ci::Surface::create( loadImage( loadAsset( "noiseNormals.png" ) ) ), texFormat );
 	CI_LOG_I( "NoiseNormals texture created" );
 	
