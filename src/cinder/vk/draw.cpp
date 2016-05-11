@@ -47,7 +47,7 @@
 #include "cinder/vk/ShaderProg.h"
 #include "cinder/vk/Texture.h"
 #include "cinder/vk/UniformBuffer.h"
-#include "cinder/vk/UniformLayout.h"
+#include "cinder/vk/UniformView.h"
 #include "cinder/vk/VertexBuffer.h"
 #include "cinder/vk/wrapper.h"
 

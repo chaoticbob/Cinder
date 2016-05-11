@@ -46,6 +46,7 @@
 #include "cinder/vk/RenderPass.h"
 #include "cinder/vk/ShaderProg.h"
 #include "cinder/vk/UniformBuffer.h"
+#include "cinder/vk/UniformView.h"
 #include "cinder/vk/wrapper.h"
 
 namespace cinder { namespace vk { 

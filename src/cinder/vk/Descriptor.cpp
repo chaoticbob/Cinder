@@ -41,6 +41,7 @@
 #include "cinder/vk/Device.h"
 #include "cinder/vk/Texture.h"
 #include "cinder/vk/UniformBuffer.h"
+#include "cinder/vk/UniformView.h"
 #include "util/farmhash.h"
 
 namespace cinder { namespace vk {

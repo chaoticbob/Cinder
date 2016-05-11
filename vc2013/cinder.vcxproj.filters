@@ -930,6 +930,9 @@
     <ClCompile Include="..\src\cinder\vk\Sync.cpp">
       <Filter>Source Files\vk</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cinder\vk\UniformView.cpp">
+      <Filter>Source Files\vk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\AntTweakBar\AntPerfTimer.h">
@@ -1941,6 +1944,9 @@
       <Filter>Header Files\vk</Filter>
     </ClInclude>
     <ClInclude Include="..\include\cinder\vk\Sync.h">
+      <Filter>Header Files\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\cinder\vk\UniformView.h">
       <Filter>Header Files\vk</Filter>
     </ClInclude>
   </ItemGroup>

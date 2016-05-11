@@ -45,7 +45,7 @@
 #include "cinder/vk/PipelineSelector.h"
 #include "cinder/vk/RenderPass.h"
 #include "cinder/vk/ShaderProg.h"
-#include "cinder/vk/UniformLayout.h"
+#include "cinder/vk/UniformView.h"
 #include "cinder/vk/scoped.h"
 
 #include "cinder/Text.h"
