@@ -396,6 +396,7 @@ void Batch::draw( int32_t first, int32_t count )
 		// Fill out uniform vars
 		mUniformSet->setDefaultUniformVars( vk::context() );
 		mUniformSet->bufferPending( cmdBufRef );
+
 		// Add pipeline barrier for global memory read
 		cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
 

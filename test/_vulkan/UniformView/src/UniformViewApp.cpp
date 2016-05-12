@@ -34,12 +34,12 @@ void UniformViewAppApp::setup()
 	mShader = vk::getStockShader( vk::ShaderDef().color() );
 	mBatch = vk::Batch::create( geom::Cube(), mShader );
 
-	size_t n = 100;
-	size_t m = 100;
+	size_t n = 25;
+	size_t m = 25;
 	for( size_t j = 0; j < m; ++j ) {
 		for( size_t i = 0; i < n; ++i ) {
 			Transform xform;
-			xform.pos = 2.0f*vec3 ( i - n/2.0f, j - m/2.0f, -35 ) + vec3( 1, 1, 0 );
+			xform.pos = 2.0f*vec3 ( i - n/2.0f, j - m/2.0f, -75 ) + vec3( 1, 1, 0 );
 			xform.rot = 0.0f;
 			xform.inc = ci::randFloat( 1.0f, 4.0f );
 			mTransforms.push_back( xform );
