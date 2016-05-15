@@ -110,42 +110,83 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 		// Process color attachments
 		const uint32_t colorAttachmentCount = static_cast<uint32_t>( pass.mColorAttachments.size() );
 		for( uint32_t subpassColorAttachmentIndex = 0; subpassColorAttachmentIndex < colorAttachmentCount; ++subpassColorAttachmentIndex ) {
-			const auto& colorAttachment = pass.mColorAttachments[subpassColorAttachmentIndex];
+			const auto& colorAttachmentInternalFormat = pass.mColorAttachments[subpassColorAttachmentIndex];
 
-			// Add color attachment to attachment list
-			attachmentList.push_back( colorAttachment );
+			if( options.isMultiSample() ) {
+				// Add color attachment to attachment list
+				attachmentList.push_back( colorAttachmentInternalFormat );
 
-			// Add color attachment to render pass
-			vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( colorAttachment );
-			renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
-			renderPassOptions.addAttachment( renderPassAttachment );
-			
-			// Add attachment to subpass
-			uint32_t colorAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
-			subpass.addColorAttachment( colorAttachmentIndex );
+				// Add resolve attachment to attachment list
+				attachmentList.push_back( colorAttachmentInternalFormat );
 
-			// Add attachment to framebuffer
-			vk::Texture2d::Format textureParams = options.mColorTextureParams;
-			textureParams.setSamples( options.mSamples );
-			framebufferFormat.addAttachment( vk::Framebuffer::Attachment( colorAttachment, textureParams ) );
+				// Add color attachment to render pass
+				vk::RenderPass::Attachment renderPassColorAttachment = vk::RenderPass::Attachment( colorAttachmentInternalFormat, options.mSamples );
+				renderPassColorAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+				renderPassOptions.addAttachment( renderPassColorAttachment );
 
-			// Add to lookup
-			uint64_t high = ( static_cast<uint64_t>( subpassIndex ) << 32 ) & 0xFFFFFFFF00000000ULL;
-			uint64_t low = ( static_cast<uint64_t>( colorAttachmentIndex ) << 0 ) & 0xFFFFFFFF00000000ULL;
-			uint64_t key = high | low;
-			std::pair<uint64_t, uint32_t> keyValue = std::make_pair( key, colorAttachmentIndex );
-			mColorAttachmentMap.push_back( keyValue );
+				// Add resolve attachment to render pass
+				vk::RenderPass::Attachment renderPassResolveAttachment = vk::RenderPass::Attachment( colorAttachmentInternalFormat, options.mSamples );
+				renderPassResolveAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+				renderPassOptions.addAttachment( renderPassResolveAttachment );
+
+				// Add attachment to subpass
+				uint32_t colorAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 2 );
+				uint32_t resolveAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
+				subpass.addColorAttachment( colorAttachmentIndex, resolveAttachmentIndex );
+
+				// Add color attachment to framebuffer
+				vk::Texture2d::Format colorTextureParams = options.mColorTextureParams;
+				colorTextureParams.setSamples( options.mSamples );
+				framebufferFormat.addAttachment( vk::Framebuffer::Attachment( colorAttachmentInternalFormat, colorTextureParams ) );
+
+				// Add resolve attachment to framebuffer
+				vk::Texture2d::Format resolveTextureParams = options.mColorTextureParams;
+				resolveTextureParams.setSamples( VK_SAMPLE_COUNT_1_BIT );
+				framebufferFormat.addAttachment( vk::Framebuffer::Attachment( colorAttachmentInternalFormat, resolveTextureParams ) );
+
+				// Add to lookup
+				uint64_t high = ( static_cast<uint64_t>( subpassIndex ) << 32 ) & 0xFFFFFFFF00000000ULL;
+				uint64_t low = ( static_cast<uint64_t>( resolveAttachmentIndex ) << 0 ) & 0xFFFFFFFF00000000ULL;
+				uint64_t key = high | low;
+				std::pair<uint64_t, uint32_t> keyValue = std::make_pair( key, resolveAttachmentIndex );
+				mColorAttachmentMap.push_back( keyValue );
+			}
+			else {
+				// Add color attachment to attachment list
+				attachmentList.push_back( colorAttachmentInternalFormat );
+
+				// Add color attachment to render pass
+				vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( colorAttachmentInternalFormat, options.mSamples );
+				renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+				renderPassOptions.addAttachment( renderPassAttachment );
+
+				// Add attachment to subpass
+				uint32_t colorAttachmentIndex = static_cast<uint32_t>( attachmentList.size() - 1 );
+				subpass.addColorAttachment( colorAttachmentIndex );
+
+				// Add attachment to framebuffer
+				vk::Texture2d::Format textureParams = options.mColorTextureParams;
+				textureParams.setSamples( options.mSamples );
+				framebufferFormat.addAttachment( vk::Framebuffer::Attachment( colorAttachmentInternalFormat, textureParams ) );
+
+				// Add to lookup
+				uint64_t high = ( static_cast<uint64_t>( subpassIndex ) << 32 ) & 0xFFFFFFFF00000000ULL;
+				uint64_t low = ( static_cast<uint64_t>( colorAttachmentIndex ) << 0 ) & 0xFFFFFFFF00000000ULL;
+				uint64_t key = high | low;
+				std::pair<uint64_t, uint32_t> keyValue = std::make_pair( key, colorAttachmentIndex );
+				mColorAttachmentMap.push_back( keyValue );
+			}
 		}
 
-		VkFormat depthStencilAttachment = pass.mDepthStencilAttachment;
-		if( VK_FORMAT_UNDEFINED != depthStencilAttachment ) {
+		VkFormat depthStencilAttachmentInternalFormat = pass.mDepthStencilAttachment;
+		if( VK_FORMAT_UNDEFINED != depthStencilAttachmentInternalFormat ) {
 			// Process depth attachment(s)
 			if( options.mPerSubpassDepthStencil ) {
 				// Add depth attachment to attachment list
-				attachmentList.push_back( depthStencilAttachment );
+				attachmentList.push_back( depthStencilAttachmentInternalFormat );
 
 				// Add color attachment to render pass
-				vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachment );
+				vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachmentInternalFormat, options.mSamples );
 				renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
 				renderPassOptions.addAttachment( renderPassAttachment );
 
@@ -156,7 +197,7 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 				// Add attachment to framebuffer
 				vk::Texture2d::Format textureParams = options.mDepthStencilTextureParams;
 				textureParams.setSamples( options.mSamples );
-				framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachment, textureParams ) );
+				framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachmentInternalFormat, textureParams ) );
 
 				// Add to lookup
 				uint32_t key = subpassIndex;
@@ -175,10 +216,10 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 				}
 				else {
 					// Add depth attachment to attachment list
-					attachmentList.push_back( depthStencilAttachment );
+					attachmentList.push_back( depthStencilAttachmentInternalFormat );
 				
 					// Add color attachment to render pass
-					vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachment );
+					vk::RenderPass::Attachment renderPassAttachment = vk::RenderPass::Attachment( depthStencilAttachmentInternalFormat, options.mSamples );
 					renderPassAttachment.setInitialAndFinalLayout( VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
 					renderPassOptions.addAttachment( renderPassAttachment );
 				
@@ -189,7 +230,7 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 					// Add attachment to framebuffer
 					vk::Texture2d::Format textureParams = options.mDepthStencilTextureParams;
 					textureParams.setSamples( options.mSamples );
-					framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachment, textureParams ) );
+					framebufferFormat.addAttachment( vk::Framebuffer::Attachment( depthStencilAttachmentInternalFormat, textureParams ) );
 
 					// Add to lookup
 					uint32_t key = subpassIndex;

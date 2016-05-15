@@ -89,6 +89,7 @@ public:
 		Options&						addPass( const vk::RenderTarget::Pass& pass ) { mPasses.push_back( pass ); return *this; }
 		Options&						setPerSubpassDepthStencilAttachment( bool value ) { mPerSubpassDepthStencil = value; return *this; }
 		Options&						setTransitionToShaderReadOnly( bool value ) { mTransitionToShaderReadOnly = value; return *this; }
+		bool							isMultiSample() const { return mSamples > VK_SAMPLE_COUNT_1_BIT; }
 	private:
 		VkSampleCountFlagBits			mSamples = VK_SAMPLE_COUNT_1_BIT; 
 		vk::Texture2d::Format			mColorTextureParams;
