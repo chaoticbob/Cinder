@@ -54,7 +54,7 @@ public:
 
 	static CommandPoolRef		create( uint32_t queueFamilyIndex, bool transient, vk::Context *context );
 
-	VkCommandPool				getCommandPool() const { return mCommandPool; }
+	VkCommandPool				vk() const { return mCommandPool; }
 
 private:
 	CommandPool( uint32_t queueFamilyIndex, bool transient, vk::Context *context );

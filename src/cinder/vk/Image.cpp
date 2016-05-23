@@ -188,7 +188,7 @@ void Image::initialize()
 		imageCreateInfo.queueFamilyIndexCount 	= 0;
 		imageCreateInfo.pQueueFamilyIndices		= nullptr;
 		imageCreateInfo.initialLayout			= mFormat.mInitialLayout;
-		res = vkCreateImage( mDevice->getDevice(), &imageCreateInfo, nullptr, &mImage );
+		res = vkCreateImage( mDevice->vk(), &imageCreateInfo, nullptr, &mImage );
 		assert( res == VK_SUCCESS );
 
 		// Allocate memory
@@ -199,7 +199,7 @@ void Image::initialize()
 		mAllocationSize		= alloc.getSize();
 
 		// Bind memory
-		res = vkBindImageMemory( mDevice->getDevice(), mImage, mMemory, mAllocationOffset );
+		res = vkBindImageMemory( mDevice->vk(), mImage, mMemory, mAllocationOffset );
 		assert( res == VK_SUCCESS );
 
 		mOwnsImage = true;
@@ -221,7 +221,7 @@ void Image::destroy( bool removeFromTracking )
 	if( mOwnsImage ) {
 		if( VK_NULL_HANDLE != mImage ) {
 			// Destroy
-			vkDestroyImage( mDevice->getDevice(), mImage, nullptr );
+			vkDestroyImage( mDevice->vk(), mImage, nullptr );
 			// Remove from transient - allocator will check this
 			mDevice->getAllocator()->freeTransientImage( mImage );
 			// Null out image
@@ -558,7 +558,7 @@ void* Image::map( VkDeviceSize offset )
 {
 	if( isMappable() && ( nullptr == mMappedAddress ) ) {
 		VkMemoryMapFlags flags = 0;
-		VkResult result = vkMapMemory( mDevice->getDevice(), mMemory, mAllocationOffset + offset, mAllocationSize, flags, &mMappedAddress );
+		VkResult result = vkMapMemory( mDevice->vk(), mMemory, mAllocationOffset + offset, mAllocationSize, flags, &mMappedAddress );
 		if( VK_SUCCESS != result ) {
 			mMappedAddress = nullptr;
 		}
@@ -569,7 +569,7 @@ void* Image::map( VkDeviceSize offset )
 void Image::unmap()
 {
 	if( nullptr != mMappedAddress ) {
-		vkUnmapMemory( mDevice->getDevice(), mMemory );
+		vkUnmapMemory( mDevice->vk(), mMemory );
 		mMappedAddress = nullptr;
 	}
 }
@@ -785,7 +785,7 @@ void Image::copyData( uint32_t dstLayer, const uint8_t *srcData, size_t srcRowBy
 	if( ( nullptr != dst ) && ( getWidth() == width ) && ( getHeight() == height ) ) {
 		const VkImageSubresource subRes = { VK_IMAGE_ASPECT_COLOR_BIT, 0, dstLayer };
 		VkSubresourceLayout layout = {};		
-		vkGetImageSubresourceLayout( mDevice->getDevice(), mImage, &subRes, &layout );
+		vkGetImageSubresourceLayout( mDevice->vk(), mImage, &subRes, &layout );
 		size_t dstOffset = dstLayer*layout.depthPitch + layout.offset;
 		uint8_t* dstData = static_cast<uint8_t*>( dst ) + dstOffset;
 		size_t dstRowBytes = static_cast<size_t>( layout.rowPitch );
@@ -806,7 +806,7 @@ void Image::copyData( uint32_t dstLayer, const uint16_t *srcData, size_t srcRowB
 	if( ( nullptr != dst ) && ( getWidth() == width ) && ( getHeight() == height ) ) {
 		const VkImageSubresource subRes = { VK_IMAGE_ASPECT_COLOR_BIT, 0, dstLayer };
 		VkSubresourceLayout layout = {};		
-		vkGetImageSubresourceLayout( mDevice->getDevice(), mImage, &subRes, &layout );
+		vkGetImageSubresourceLayout( mDevice->vk(), mImage, &subRes, &layout );
 		size_t dstOffset = dstLayer*layout.depthPitch + layout.offset;
 		uint16_t* dstData = static_cast<uint16_t*>( dst ) + dstOffset;
 		size_t dstRowBytes = static_cast<size_t>( layout.rowPitch );
@@ -828,7 +828,7 @@ void Image::copyData( uint32_t dstLayer, const float *srcData, size_t srcRowByte
 	if( ( nullptr != dst ) && ( getWidth() == width ) && ( getHeight() == height ) ) {
 		const VkImageSubresource subRes = { VK_IMAGE_ASPECT_COLOR_BIT, 0, dstLayer };
 		VkSubresourceLayout layout = {};		
-		vkGetImageSubresourceLayout( mDevice->getDevice(), mImage, &subRes, &layout );
+		vkGetImageSubresourceLayout( mDevice->vk(), mImage, &subRes, &layout );
 		size_t dstOffset = dstLayer*layout.depthPitch + layout.offset;
 		float* dstData = static_cast<float*>( dst ) + dstOffset;
 		size_t dstRowBytes = static_cast<size_t>( layout.rowPitch );
@@ -844,7 +844,7 @@ void Image::copyData( uint32_t dstLayer, const float *srcData, size_t srcRowByte
 void Image::copy( vk::Context *context, const vk::ImageRef& srcImage, uint32_t srcMipLevel, uint32_t srcLayer, const ivec2& srcOffset, const vk::ImageRef& dstImage, VkImageLayout dstFinalLayout, uint32_t dstMipLevel, uint32_t dstLayer, const ivec2& dstOffset, const ivec2& size )
 {
 	auto& cmdPool = context->getDefaultTransientCommandPool();
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->getCommandPool(), context );
+	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->vk(), context );
 
 	cmdBuf->begin();
 	{
@@ -866,7 +866,7 @@ void Image::copy( vk::Context *context, const vk::ImageRef& srcImage, uint32_t s
 		region.dstOffset						= { dstOffset.x, dstOffset.y, 0 };
 		region.extent							= { static_cast<uint32_t>( srcImage->getWidth() ), static_cast<uint32_t>( srcImage->getHeight() ), 1 };
 
-		cmdBuf->copyImage( srcImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
+		cmdBuf->copyImage( srcImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
 
 		//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
 		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT ) );
@@ -916,7 +916,7 @@ void Image::copy(  Context* context, const vk::ImageRef& srcImage, uint32_t srcM
 
 void Image::blit( vk::Context *context, const vk::ImageRef& srcImage, uint32_t srcMipLevel, uint32_t srcLayer, const ci::Area& srcArea, const vk::ImageRef& dstImage, VkImageLayout dstFinalLayout, uint32_t dstMipLevel, uint32_t dstLayer, const ci::Area& dstArea )
 {
-	VkCommandPool cmdPool = context->getDefaultTransientCommandPool()->getCommandPool();
+	VkCommandPool cmdPool = context->getDefaultTransientCommandPool()->vk();
 	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool, context );
 
 	assert( VK_IMAGE_USAGE_TRANSFER_SRC_BIT == ( srcImage->getUsage() & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ) );
@@ -941,7 +941,7 @@ void Image::blit( vk::Context *context, const vk::ImageRef& srcImage, uint32_t s
 		region.dstOffsets[0]					= { dstArea.x1, dstArea.y1, 0 };
 		region.dstOffsets[1]					= { dstArea.x2, dstArea.y2, 1 };
 
-		cmdBuf->blitImage( srcImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR );
+		cmdBuf->blitImage( srcImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR );
 
 		//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstFinalLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT ) );

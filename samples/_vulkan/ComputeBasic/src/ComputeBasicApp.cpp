@@ -58,7 +58,7 @@ private:
 	vk::CommandPoolRef			mComputeCommandPool;
 	vk::CommandBufferRef		mComputeCmdBuf;
 	vk::DescriptorSetViewRef	mComputeDescriptorView;
-	vk::UniformSetRef			mComputeUniformSet;
+	vk::UniformViewRef			mComputeUniformSet;
 	vk::GlslProgRef				mComputeShader;
 	vk::PipelineLayoutRef		mPipelineLayout;
 	VkPipeline					mComputePipeline = VK_NULL_HANDLE;
@@ -88,9 +88,9 @@ void ComputeBasicApp::setup()
 	{
 		mComputeCommandPool = vk::CommandPool::create( vk::context()->getComputeQueue()->getQueueFamilyIndex(), false, vk::context() );
 
-		mComputeCmdBuf = vk::CommandBuffer::create( mComputeCommandPool->getCommandPool() );
+		mComputeCmdBuf = vk::CommandBuffer::create( mComputeCommandPool );
 
-		mComputeUniformSet = vk::UniformSet::create( mComputeShader->getUniformLayout() );
+		mComputeUniformSet = vk::UniformView::create( mComputeShader->getUniformLayout() );
 		mComputeDescriptorView = vk::DescriptorSetView::create( mComputeUniformSet );
 
 		mPipelineLayout = vk::PipelineLayout::create( mComputeDescriptorView->getCachedDescriptorSetLayouts() );
@@ -101,10 +101,10 @@ void ComputeBasicApp::setup()
 		createInfo.pNext				= nullptr;
 		createInfo.flags				= 0;
 		createInfo.stage				= shaderStages[0];
-		createInfo.layout				= mPipelineLayout->getPipelineLayout();
+		createInfo.layout				= mPipelineLayout->vk();
 		createInfo.basePipelineHandle	= VK_NULL_HANDLE;
 		createInfo.basePipelineIndex	= 0;
-		VkResult res = vkCreateComputePipelines( vk::context()->getDevice()->getDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &mComputePipeline );
+		VkResult res = vkCreateComputePipelines( vk::context()->getDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &mComputePipeline );
 	}
 
 	mBatch = vk::Batch::create( geom::Rect( getWindowBounds() ), vk::context()->getStockShader( vk::ShaderDef().texture() ) );
@@ -136,8 +136,8 @@ void ComputeBasicApp::update()
 			const auto& descriptorSets = mComputeDescriptorView->getDescriptorSets();
 			for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 				const auto& ds = descriptorSets[i];
-				std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-				vkCmdBindDescriptorSets( mComputeCmdBuf->getCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+				std::vector<VkDescriptorSet> descSets = { ds->vk() };
+				vkCmdBindDescriptorSets( mComputeCmdBuf->getCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineLayout->vk(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 			}
 
 			mComputeCmdBuf->dispatch( mTexture->getWidth() / 16, mTexture->getHeight() / 16, 1 );

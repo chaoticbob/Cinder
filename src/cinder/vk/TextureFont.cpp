@@ -442,7 +442,7 @@ static void drawGlyphsBuffers(
 		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 		pipelineSelector->setShaderStages( shader->getShaderStages() );
-		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass()->vk() );
 		pipelineSelector->setSubPass( ctx->getSubpass() );
 		pipelineSelector->setPipelineLayout( pipelineLayout );
 		pipeline = pipelineSelector->getSelectedPipeline();
@@ -452,7 +452,7 @@ static void drawGlyphsBuffers(
 
 	// Command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	// Fill out uniform vars
 	transientUniformSet->uniform( "uTex0", curTex );
@@ -476,7 +476,7 @@ static void drawGlyphsBuffers(
 	const auto& descriptorSets = transientDescriptorSetView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
 		cmdBufRef->bindDescriptorSets( VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 

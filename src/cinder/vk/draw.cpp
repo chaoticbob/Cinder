@@ -122,7 +122,7 @@ void draw( const Texture2dRef &texture, const Rectf &dstRect, const std::string&
 		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 		pipelineSelector->setShaderStages( shader->getShaderStages() );
-		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass()->vk() );
 		pipelineSelector->setSubPass( ctx->getSubpass() );
 		pipelineSelector->setPipelineLayout( pipelineLayout );
 		pipeline = pipelineSelector->getSelectedPipeline();
@@ -132,7 +132,7 @@ void draw( const Texture2dRef &texture, const Rectf &dstRect, const std::string&
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	// Fill out uniform vars
 	transientUniformSet->uniform( uniformName, texture );
@@ -144,7 +144,7 @@ void draw( const Texture2dRef &texture, const Rectf &dstRect, const std::string&
 	transientDescriptorView->updateDescriptorSets();
 
 	// Bind vertex buffer
-	std::vector<VkBuffer> vertexBuffers = { vertexBuffer->getBuffer() };
+	std::vector<VkBuffer> vertexBuffers = { vertexBuffer->vk() };
 	std::vector<VkDeviceSize> offsets = { 0 };
 	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
 
@@ -155,7 +155,7 @@ void draw( const Texture2dRef &texture, const Rectf &dstRect, const std::string&
 	const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
 		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 
@@ -240,7 +240,7 @@ void drawSolidRect( const Rectf &r, const vec2 &upperLeftTexCoord, const vec2 &l
 		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 		pipelineSelector->setShaderStages( shader->getShaderStages() );
-		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass()->vk() );
 		pipelineSelector->setSubPass( ctx->getSubpass() );
 		pipelineSelector->setPipelineLayout( pipelineLayout );
 		pipeline = pipelineSelector->getSelectedPipeline();
@@ -250,7 +250,7 @@ void drawSolidRect( const Rectf &r, const vec2 &upperLeftTexCoord, const vec2 &l
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	// Fill out uniform vars
 	transientUniformSet->setDefaultUniformVars( vk::context() );
@@ -261,7 +261,7 @@ void drawSolidRect( const Rectf &r, const vec2 &upperLeftTexCoord, const vec2 &l
 	transientDescriptorView->updateDescriptorSets();
 
 	// Bind vertex buffer
-	std::vector<VkBuffer> vertexBuffers = { vertexBuffer->getBuffer() };
+	std::vector<VkBuffer> vertexBuffers = { vertexBuffer->vk() };
 	std::vector<VkDeviceSize> offsets = { 0 };
 	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
 
@@ -272,7 +272,7 @@ void drawSolidRect( const Rectf &r, const vec2 &upperLeftTexCoord, const vec2 &l
 	const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
 		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 

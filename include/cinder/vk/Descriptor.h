@@ -65,7 +65,7 @@ public:
 	static DescriptorSetLayoutRef				create( const std::vector<VkDescriptorSetLayoutBinding>& bindings, vk::Device *device = nullptr );
 	static std::vector<DescriptorSetLayoutRef>	create( const std::vector<std::vector<VkDescriptorSetLayoutBinding>>& setOfBindings, vk::Device *device = nullptr );
 
-	VkDescriptorSetLayout						vkObject() const { return mDescriptorSetLayout; }
+	VkDescriptorSetLayout						vk() const { return mDescriptorSetLayout; }
 
 private:
 	DescriptorSetLayout( const std::vector<VkDescriptorSetLayoutBinding>& bindings, vk::Device *device );
@@ -137,7 +137,7 @@ public:
 	static DescriptorPoolRef				create( uint32_t maxSets, const std::vector<VkDescriptorSetLayoutBinding>& bindings, const DescriptorPool::Options& options = DescriptorPool::Options(), vk::Device *device = nullptr );
 	static DescriptorPoolRef				create( const std::vector<std::vector<VkDescriptorSetLayoutBinding>>& setOfBindings, const DescriptorPool::Options& options = DescriptorPool::Options(), vk::Device *device = nullptr );
 
-	VkDescriptorPool						vkObject() const { return mDescriptorPool; }
+	VkDescriptorPool						vk() const { return mDescriptorPool; }
 
 	const DescriptorPool::Options&			getOptions() const { return mOptions; }
 
@@ -162,7 +162,7 @@ public:
 	static DescriptorSetRef					create( vk::DescriptorPool *descriptorPool, VkDescriptorSetLayout layout, vk::Device *device = nullptr );
 	static std::vector<DescriptorSetRef>	create( vk::DescriptorPool *descriptorPool, const std::vector<VkDescriptorSetLayout>& layouts, vk::Device *device = nullptr );
 	
-	VkDescriptorSet							vkObject() const { return mDescriptorSet; }
+	VkDescriptorSet							vk() const { return mDescriptorSet; }
 	
 	//void									update( const std::vector<VkWriteDescriptorSet>& writes );
 	void									update( uint32_t writeCount, const VkWriteDescriptorSet *writes );

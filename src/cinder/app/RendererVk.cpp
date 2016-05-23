@@ -226,8 +226,8 @@ CI_LOG_I( "Using sample count: " << vk::toStringVkSampleCount( mOptions.mSamples
 
 		// Create semaphores for rendering
 		const VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		vkCreateSemaphore( mContext->getDevice()->getDevice(), &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphore );
-		vkCreateSemaphore( mContext->getDevice()->getDevice(), &semaphoreCreateInfo, nullptr, &mRenderingCompleteSemaphore );		
+		vkCreateSemaphore( mContext->getDevice()->vk(), &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphore );
+		vkCreateSemaphore( mContext->getDevice()->vk(), &semaphoreCreateInfo, nullptr, &mRenderingCompleteSemaphore );		
 	}
 }
 
@@ -269,8 +269,8 @@ void RendererVk::setup( HWND wnd, HDC dc, RendererRef sharedRenderer )
 void RendererVk::kill()
 {
 	// Destroy semaphores
-	vkDestroySemaphore( mContext->getDevice()->getDevice(), mImageAcquiredSemaphore, nullptr );
-	vkDestroySemaphore( mContext->getDevice()->getDevice(), mRenderingCompleteSemaphore, nullptr );
+	vkDestroySemaphore( mContext->getDevice()->vk(), mImageAcquiredSemaphore, nullptr );
+	vkDestroySemaphore( mContext->getDevice()->vk(), mRenderingCompleteSemaphore, nullptr );
 	mImageAcquiredSemaphore = VK_NULL_HANDLE;
 	mRenderingCompleteSemaphore = VK_NULL_HANDLE;
 

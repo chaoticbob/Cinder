@@ -178,7 +178,7 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 	std::vector<VkImageView> attachments;
 	for( const auto& fbAttachment : mAttachments ) {
 		const auto& storage = fbAttachment.getStorage();
-		attachments.push_back( storage->getImageView()->vkObject() );
+		attachments.push_back( storage->getImageView()->vk() );
 	}
 
 	VkFramebufferCreateInfo createInfo = {};
@@ -191,7 +191,7 @@ void Framebuffer::initialize( const vk::Framebuffer::Format& format )
 	createInfo.height 			= mHeight;
 	createInfo.layers 			= 1;
 	createInfo.flags			= 0;
-	VkResult res = vkCreateFramebuffer( mDevice->getDevice(), &createInfo, nullptr, &mFramebuffer );
+	VkResult res = vkCreateFramebuffer( mDevice->vk(), &createInfo, nullptr, &mFramebuffer );
 	assert( res == VK_SUCCESS );
 
 /*
@@ -223,7 +223,7 @@ void Framebuffer::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyFramebuffer( mDevice->getDevice(), mFramebuffer, nullptr );
+	vkDestroyFramebuffer( mDevice->vk(), mFramebuffer, nullptr );
 	mFramebuffer = VK_NULL_HANDLE;
 	
 	if( removeFromTracking ) {

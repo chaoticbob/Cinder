@@ -37,6 +37,7 @@
 */
 
 #include "cinder/vk/CommandBuffer.h"
+#include "cinder/vk/CommandPool.h"
 #include "cinder/vk/Context.h"
 #include "cinder/vk/Device.h"
 #include "cinder/vk/ImageView.h"
@@ -100,7 +101,7 @@ BufferMemoryBarrierParams::BufferMemoryBarrierParams( const vk::BufferRef& buffe
 	mBarrier.dstAccessMask			= srcAccessMask;
 	mBarrier.srcQueueFamilyIndex	= 0;
 	mBarrier.dstQueueFamilyIndex	= 0;
-	mBarrier.buffer					= buffer->getBuffer();
+	mBarrier.buffer					= buffer->vk();
 	// Offset and size are relative to the buffer's allocation. 
 	// So offset should be 0 unless there is a specific need.
 	// If the buffer is sub-allocated from a pool, offset does not
@@ -143,7 +144,7 @@ ImageMemoryBarrierParams::ImageMemoryBarrierParams( const vk::ImageRef& image, V
     mBarrier.newLayout							= newLayout;
     mBarrier.srcQueueFamilyIndex				= 0;
     mBarrier.dstQueueFamilyIndex				= 0;
-    mBarrier.image								= image->vkObject();
+    mBarrier.image								= image->vk();
 	mBarrier.subresourceRange.aspectMask		= image->getAspectMask();
 	mBarrier.subresourceRange.baseMipLevel		= 0;
 	mBarrier.subresourceRange.levelCount		= image->getMipLevels();
@@ -163,7 +164,7 @@ ImageMemoryBarrierParams::ImageMemoryBarrierParams( const vk::Texture2dRef& text
     mBarrier.newLayout							= newLayout;
     mBarrier.srcQueueFamilyIndex				= 0;
     mBarrier.dstQueueFamilyIndex				= 0;
-    mBarrier.image								= texture->getImage()->vkObject();
+    mBarrier.image								= texture->getImage()->vk();
 	mBarrier.subresourceRange.aspectMask		= texture->getAspectMask();
 	mBarrier.subresourceRange.baseMipLevel		= 0;
 	mBarrier.subresourceRange.levelCount		= texture->getMipLevels();
@@ -202,7 +203,7 @@ void CommandBuffer::initialize()
 	allocInfo.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount	= 1;
 
-	VkResult res = vkAllocateCommandBuffers( mContext->getDevice()->getDevice(), & allocInfo, &mCommandBuffer );
+	VkResult res = vkAllocateCommandBuffers( mContext->getDevice()->vk(), & allocInfo, &mCommandBuffer );
 	assert(res == VK_SUCCESS);
 
 	mContext->trackedObjectCreated( this );
@@ -215,7 +216,7 @@ void CommandBuffer::destroy( bool removeFromTracking )
 	}
 
 	VkCommandBuffer cmdBufs[1] = { mCommandBuffer };
-	vkFreeCommandBuffers( mContext->getDevice()->getDevice(), mCommandPool, 1, cmdBufs );
+	vkFreeCommandBuffers( mContext->getDevice()->vk(), mCommandPool, 1, cmdBufs );
 	mCommandBuffer = VK_NULL_HANDLE;
 	mCommandPool = VK_NULL_HANDLE;
 
@@ -229,6 +230,11 @@ CommandBufferRef CommandBuffer::create( VkCommandPool commandPool, Context *cont
 	context = ( nullptr != context ) ? context : Context::getCurrent();
 	CommandBufferRef result = CommandBufferRef( new CommandBuffer( commandPool, context ) );
 	return result;
+}
+
+CommandBufferRef CommandBuffer::create( const vk::CommandPoolRef& commandPool, Context *context )
+{
+	return CommandBuffer::create( commandPool->vk(), context );
 }
 
 void CommandBuffer::begin()
@@ -499,7 +505,7 @@ void CommandBuffer::bindDescriptorSet( VkPipelineBindPoint pipelineBindPoint, Vk
 
 void CommandBuffer::bindIndexBuffer( const IndexBufferRef& indexBuffer, VkDeviceSize offset )
 {
-	bindIndexBuffer( indexBuffer->getBuffer(), offset, indexBuffer->getIndexType() );
+	bindIndexBuffer( indexBuffer->vk(), offset, indexBuffer->getIndexType() );
 }
 
 void CommandBuffer::bindVertexBuffers( const std::vector<VertexBufferRef>& vertexBuffers, const std::vector<VkDeviceSize>& offsets )
@@ -513,7 +519,7 @@ void CommandBuffer::bindVertexBuffers( const std::vector<VertexBufferRef>& verte
 
 	std::vector<VkBuffer> buffers;
 	for( const auto& vertexBuffer : vertexBuffers ) {
-		buffers.push_back( vertexBuffer->getBuffer() );
+		buffers.push_back( vertexBuffer->vk() );
 		if( fillBufferOffsets ) {
 			bufferOffsets.push_back( 0 );
 		}

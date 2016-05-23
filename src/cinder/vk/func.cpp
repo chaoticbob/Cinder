@@ -37,32 +37,33 @@
 */
 
 #include "cinder/vk/func.h"
+#include "cinder/vk/CommandBuffer.h"
 #include "cinder/vk/Device.h"
 #include "cinder/vk/Sync.h"
 
 VkResult vkCreateFence( const ci::vk::Device* device, const VkFenceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFence* pFence )
 {
-	return vkCreateFence( device->getDevice(), pCreateInfo, pAllocator, pFence );
+	return vkCreateFence( device->vk(), pCreateInfo, pAllocator, pFence );
 }
 
 void vkDestroyFence( const ci::vk::Device* device, VkFence fence, const VkAllocationCallbacks* pAllocator )
 {
-	vkDestroyFence( device->getDevice(), fence, pAllocator );
+	vkDestroyFence( device->vk(), fence, pAllocator );
 }
 
 VkResult vkResetFences( const ci::vk::Device* device, uint32_t fenceCount, const VkFence* pFences )
 {
-	return vkResetFences( device->getDevice(), fenceCount, pFences );
+	return vkResetFences( device->vk(), fenceCount, pFences );
 }
 
 VkResult vkGetFenceStatus( const ci::vk::Device* device, VkFence fence )
 {
-	return vkGetFenceStatus( device->getDevice(), fence );
+	return vkGetFenceStatus( device->vk(), fence );
 }
 
 VkResult vkWaitForFences( const ci::vk::Device* device, uint32_t fenceCount, const VkFence* pFences, VkBool32 waitAll, uint64_t timeout )
 {
-	return vkWaitForFences( device->getDevice(), fenceCount, pFences, waitAll, timeout );
+	return vkWaitForFences( device->vk(), fenceCount, pFences, waitAll, timeout );
 }
 
 VkResult vkWaitForFences( const ci::vk::Device* device, const std::vector<ci::vk::FenceRef>& fences, VkBool32 waitAll, uint64_t timeout )
@@ -77,10 +78,20 @@ VkResult vkWaitForFences( const ci::vk::Device* device, const std::vector<ci::vk
 
 VkResult vkCreateSemaphore( const ci::vk::Device* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSemaphore* pSemaphore )
 {
-	return vkCreateSemaphore( device->getDevice(), pCreateInfo, pAllocator, pSemaphore );
+	return vkCreateSemaphore( device->vk(), pCreateInfo, pAllocator, pSemaphore );
 }
 
 void vkDestroySemaphore( const ci::vk::Device* device, VkSemaphore semaphore, const VkAllocationCallbacks* pAllocator )
 {
-	vkDestroySemaphore( device->getDevice(), semaphore, pAllocator );
+	vkDestroySemaphore( device->vk(), semaphore, pAllocator );
+}
+
+VkResult vkCreateComputePipelines( const ci::vk::Device* device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines )
+{
+	return vkCreateComputePipelines( device->vk(), pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines );
+}
+
+void vkCmdBindDescriptorSets( const CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets 
+{
+	vkCmdBindDescriptorSets( commandBuffer->vk(), pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets );
 }

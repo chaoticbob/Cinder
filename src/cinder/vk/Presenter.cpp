@@ -126,7 +126,7 @@ void Presenter::resize( const ivec2& newWindowSize )
 	{
 		mSurface = vk::Surface::create( mPlatformWindow, mDevice );
 
-		mDevice->setPresentQueueFamilyIndex( mSurface->getSurface() );
+		mDevice->setPresentQueueFamilyIndex( mSurface->vk() );
 		CI_LOG_I( "Present queue family index: " << mDevice->getPresentQueueFamilyIndex() );
 	}
 	
@@ -213,7 +213,7 @@ void Presenter::resize( const ivec2& newWindowSize )
 					.addAttachment( mMultiSampleAttachments[i] )
 					.addAttachment( colorAttachments[i] )
 					.addAttachment( depthAttachemnts[i] );
-				vk::FramebufferRef framebuffer = vk::Framebuffer::create( mRenderPasses[i]->getRenderPass(), mWindowSize, format, mDevice );
+				vk::FramebufferRef framebuffer = vk::Framebuffer::create( mRenderPasses[i]->vk(), mWindowSize, format, mDevice );
 				mFramebuffers[i] = framebuffer;
 			}
 		}
@@ -252,7 +252,7 @@ void Presenter::resize( const ivec2& newWindowSize )
 				vk::Framebuffer::Format format = vk::Framebuffer::Format()
 					.addAttachment( colorAttachments[i] )
 					.addAttachment( depthAttachemnts[i] );
-				vk::FramebufferRef framebuffer = vk::Framebuffer::create( mRenderPasses[i]->getRenderPass(), mWindowSize, format, mDevice );
+				vk::FramebufferRef framebuffer = vk::Framebuffer::create( mRenderPasses[i]->vk(), mWindowSize, format, mDevice );
 				mFramebuffers[i] = framebuffer;
 			}
 		}
@@ -261,7 +261,7 @@ void Presenter::resize( const ivec2& newWindowSize )
 
 void Presenter::clearSwapchainImages( vk::Context *context )
 {
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( context->getDefaultTransientCommandPool()->getCommandPool(), context );
+	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( context->getDefaultTransientCommandPool()->vk(), context );
 	cmdBuf->begin();
 	{		
 		const auto& attachments = mSwapchain->getColorAttachments();
@@ -273,7 +273,7 @@ void Presenter::clearSwapchainImages( vk::Context *context )
 			subresRange.levelCount		= 1;
 			subresRange.baseArrayLayer	= 0;
 			subresRange.layerCount		= 1;
-			cmdBuf->clearColorImage( attachment->getImage()->vkObject(), VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &subresRange );
+			cmdBuf->clearColorImage( attachment->getImage()->vk(), VK_IMAGE_LAYOUT_GENERAL, &clearColor, 1, &subresRange );
 		}
 	}
 	cmdBuf->end();
@@ -284,7 +284,7 @@ void Presenter::clearSwapchainImages( vk::Context *context )
 void Presenter::transitionToFirstUse( vk::Context *context )
 {
 	auto& cmdPool = context->getDefaultTransientCommandPool();
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->getCommandPool(), context );
+	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->vk(), context );
 
 	cmdBuf->begin();
 	{
@@ -332,9 +332,9 @@ void Presenter::setClearColor( const ci::ColorA& color )
 
 uint32_t Presenter::acquireNextImage( VkFence fence, VkSemaphore signalSemaphore )
 {
-	VkSwapchainKHR swapchain = mSwapchain->getSwapchain();
+	VkSwapchainKHR swapchain = mSwapchain->vk();
 	uint64_t timeout = UINT64_MAX;
-	VkResult res = mDevice->AcquireNextImageKHR( mDevice->getDevice(), swapchain, timeout, signalSemaphore, fence, &mCurrentImageIndex );
+	VkResult res = mDevice->AcquireNextImageKHR( mDevice->vk(), swapchain, timeout, signalSemaphore, fence, &mCurrentImageIndex );
 	assert( VK_SUCCESS == res );
 	return mCurrentImageIndex;
 }
@@ -405,8 +405,8 @@ void Presenter::beginRender( const vk::CommandBufferRef& cmdBuf, vk::Context *co
 		VkRenderPassBeginInfo renderPassBegin;
 		renderPassBegin.sType			= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassBegin.pNext			= NULL;
-		renderPassBegin.renderPass		= mRenderPasses[mCurrentImageIndex]->getRenderPass();
-		renderPassBegin.framebuffer		= mFramebuffers[mCurrentImageIndex]->getFramebuffer();
+		renderPassBegin.renderPass		= mRenderPasses[mCurrentImageIndex]->vk();
+		renderPassBegin.framebuffer		= mFramebuffers[mCurrentImageIndex]->vk();
 		renderPassBegin.renderArea		= mRenderAreea;
 		renderPassBegin.clearValueCount	= static_cast<uint32_t>( clearValues.size() );
 		renderPassBegin.pClearValues	= clearValues.empty() ? nullptr : clearValues.data();

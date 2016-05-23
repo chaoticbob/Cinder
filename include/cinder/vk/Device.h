@@ -117,7 +117,7 @@ public:
 
 	static DeviceRef							create( VkPhysicalDevice gpu, const Device::Options& options, vk::Environment *env );
 
-	VkDevice									getDevice() const { return mDevice; }
+	VkDevice									vk() const { return mDevice; }
 
 	Environment*								getEnv() const { return mEnvironment; }
 	VkPhysicalDevice							getGpu() const { return mGpu; }

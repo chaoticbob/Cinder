@@ -272,8 +272,8 @@ std::string cinder::vk::Allocator::PoolManager<VkObjectT>::getAllocationsReport(
 // -------------------------------------------------------------------------------------------------
 Allocator::Allocator( size_t bufferBlockSize, size_t imageBlockSize, vk::Device* device )
 	: vk::BaseDeviceObject( device ),
-	  mBufferAllocations( device->getDevice(), bufferBlockSize ),
-	  mImageAllocations( device->getDevice(), bufferBlockSize )
+	  mBufferAllocations( device->vk(), bufferBlockSize ),
+	  mImageAllocations( device->vk(), bufferBlockSize )
 {
 	mBufferAllocations.mPoolSize = bufferBlockSize;
 	mImageAllocations.mPoolSize = imageBlockSize;
@@ -309,7 +309,7 @@ Allocator::Allocation Allocator::allocateBuffer( VkBuffer buffer, bool transient
 {
 	// Get memory requirements
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetBufferMemoryRequirements( mDevice->getDevice(), buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements( mDevice->vk(), buffer, &memoryRequirements);
 
 	// If the device doesn't support VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, fall back to VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 	bool requestedDeviceLocal = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT == ( memoryProperty & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ) );
@@ -341,7 +341,7 @@ Allocator::Allocation Allocator::allocateImage( VkImage image, bool transient, V
 {
 	// Get memory requirements
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements( mDevice->getDevice(), image, &memoryRequirements);
+	vkGetImageMemoryRequirements( mDevice->vk(), image, &memoryRequirements);
 
 	// If the device doesn't support VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, fall back to VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 	bool requestedDeviceLocal = ( VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT == ( memoryProperty & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ) );

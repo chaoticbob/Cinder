@@ -95,7 +95,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
     imageViewCreateInfo.viewType						= mViewType;
     imageViewCreateInfo.format							= mImage->getInternalFormat();
     imageViewCreateInfo.flags							= 0;
-	imageViewCreateInfo.image							= mImage->vkObject();
+	imageViewCreateInfo.image							= mImage->vk();
 	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
 	imageViewCreateInfo.subresourceRange.levelCount     = mImage->getMipLevels();
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -115,7 +115,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
 		// Do we need anything else for these cases?
 	}
 
-	VkResult res = vkCreateImageView( mDevice->getDevice(), &imageViewCreateInfo, nullptr, &mImageView );
+	VkResult res = vkCreateImageView( mDevice->vk(), &imageViewCreateInfo, nullptr, &mImageView );
 	assert(res == VK_SUCCESS);
 
 	if( mSelfOwned ) {
@@ -138,7 +138,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
     imageViewCreateInfo.viewType						= mViewType;
     imageViewCreateInfo.format							= mImage->getInternalFormat();
     imageViewCreateInfo.flags							= 0;
-	imageViewCreateInfo.image							= mImage->vkObject();
+	imageViewCreateInfo.image							= mImage->vk();
 	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
 	imageViewCreateInfo.subresourceRange.levelCount     = mImage->getMipLevels();
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -158,7 +158,7 @@ void ImageView::initialize( VkImageViewType viewType, VkImageType imageType, int
 		// Do we need anything else for these cases?
 	}
 
-	VkResult res = vkCreateImageView( mDevice->getDevice(), &imageViewCreateInfo, nullptr, &mImageView );
+	VkResult res = vkCreateImageView( mDevice->vk(), &imageViewCreateInfo, nullptr, &mImageView );
 	assert(res == VK_SUCCESS);
 
 	if( mSelfOwned ) {
@@ -172,7 +172,7 @@ void ImageView::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyImageView( mDevice->getDevice(), mImageView, nullptr );
+	vkDestroyImageView( mDevice->vk(), mImageView, nullptr );
 	mImageView = VK_NULL_HANDLE;
 
 	if( mImage ) {

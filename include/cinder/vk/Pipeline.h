@@ -74,7 +74,7 @@ public:
 	static PipelineLayoutRef	create( const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, vk::Device *device = nullptr );
 	static PipelineLayoutRef	create( const std::vector<VkPushConstantRange>& pushConstantRanges, vk::Device *device = nullptr );
 
-	VkPipelineLayout			getPipelineLayout() const { return mPipelineLayout; }
+	VkPipelineLayout			vk() const { return mPipelineLayout; }
 
 private:
 	PipelineLayout( const DescriptorSetLayoutRef &descriptorSetLayouts, vk::Device *device );
@@ -134,7 +134,7 @@ public:
 
 	static PipelineCacheRef		create( vk::Device *device = nullptr );
 
-	VkPipelineCache				getPipelineCache() const { return mPipelineCache; }
+	VkPipelineCache				vk() const { return mPipelineCache; }
 
 private:
 	PipelineCache( vk::Device *device );
@@ -202,7 +202,7 @@ public:
 	static PipelineRef			create( const Pipeline::Options& options, const vk::PipelineCacheRef& pipelineCacheRef, vk::Device *device = nullptr );
 	static PipelineRef			create( const VkGraphicsPipelineCreateInfo& createInfo, const vk::PipelineCacheRef& pipelineCacheRef, vk::Device *device = nullptr );
 
-	VkPipeline					getPipeline() const { return mPipeline; }
+	VkPipeline					vk() const { return mPipeline; }
 
 private:
 	//Pipeline( VkPipeline pipeline, bool ownsPipeline = true );

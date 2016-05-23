@@ -1017,7 +1017,7 @@ void ShaderProg::initialize( const ShaderProg::Format &format )
 			// Compile shader if needed
 			if( shader.needsCompile ) {
 				try {
-					if( ! compileGlslToSpirv( mDevice->getDevice(), shader.stage, shader.sourceText, &(shader.spirvBinary) ) ) {
+					if( ! compileGlslToSpirv( mDevice->vk(), shader.stage, shader.sourceText, &(shader.spirvBinary) ) ) {
 						throw std::runtime_error( "Compiling GLSL to SPIR-V failed" );
 					}
 				}
@@ -1035,7 +1035,7 @@ void ShaderProg::initialize( const ShaderProg::Format &format )
 			}
 
 			// Build shader module for this stage
-			if( ! buildShaderModule( mDevice->getDevice(), shader.spirvBinary, &(mPipelineShaderStages[shader.stageIndex].module) ) ) {
+			if( ! buildShaderModule( mDevice->vk(), shader.spirvBinary, &(mPipelineShaderStages[shader.stageIndex].module) ) ) {
 				std::string msg = "Couldn't create module for shader stage " + toStringVkShaderStageFlagBits( shader.stage );
 				throw std::runtime_error(  msg );
 			}
@@ -1111,7 +1111,7 @@ void ShaderProg::destroy( bool removeFromTracking )
 	}
 
 	for( auto& shaderStage : mPipelineShaderStages ) {
-		vkDestroyShaderModule( mDevice->getDevice(), shaderStage.module, nullptr );
+		vkDestroyShaderModule( mDevice->vk(), shaderStage.module, nullptr );
 		shaderStage.module = VK_NULL_HANDLE;
 	}
 	mPipelineShaderStages.clear();

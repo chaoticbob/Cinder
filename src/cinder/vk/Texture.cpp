@@ -332,11 +332,11 @@ void Texture2d::initializeFinal( vk::Device *device )
 		samplerCreateInfo.anisotropyEnable	= VK_FALSE;
 		samplerCreateInfo.compareEnable		= VK_FALSE;
 	}
-    res = vkCreateSampler( device->getDevice(), &samplerCreateInfo, nullptr, &mSampler );
+    res = vkCreateSampler( device->vk(), &samplerCreateInfo, nullptr, &mSampler );
     assert(res == VK_SUCCESS);
 	
 	// Descriptor
-	mImageInfo.imageView   = this->getImageView()->vkObject();
+	mImageInfo.imageView   = this->getImageView()->vk();
 	mImageInfo.sampler     = this->mSampler;
 	mImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 }
@@ -617,7 +617,7 @@ Texture2dRef Texture2d::create( const gl::TextureData& textureData, const Textur
 		result = vk::Texture::create( width, height, format );
 
 		auto ctx = vk::context();
-		VkCommandPool cmdPool = ctx->getDefaultCommandPool()->getCommandPool();
+		VkCommandPool cmdPool = ctx->getDefaultCommandPool()->vk();
 		vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool, ctx );
 
 		auto& dstImage = result->getImageView()->getImage();
@@ -645,7 +645,7 @@ Texture2dRef Texture2d::create( const gl::TextureData& textureData, const Textur
 				width /= 2;
 				height /= 2;
 			}
-			cmdBuf->copyBufferToImage( buf->getBuffer(), dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>( regions.size() ), regions.data() );
+			cmdBuf->copyBufferToImage( buf->vk(), dstImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>( regions.size() ), regions.data() );
 
 			//cmdBuf->pipelineBarrierImageMemory( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
 			cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT ) );
@@ -748,7 +748,7 @@ void Texture2d::update( vk::Context *context, const vk::CommandBufferRef& cmdBuf
 		copyRegion.imageSubresource.layerCount		= 1;
 		copyRegion.imageOffset						= { 0, 0, 0 };
 		copyRegion.imageExtent						= { width, height, 1 };
-		cmdBuf->copyBufferToImage( buffer->getBuffer(), dstImage->vkObject(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
+		cmdBuf->copyBufferToImage( buffer->vk(), dstImage->vk(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
 		cmdBuf->pipelineBarrierImageMemory( vk::ImageMemoryBarrierParams( dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT ) );
 	}
@@ -1018,11 +1018,11 @@ void TextureCubeMap::initializeFinal( vk::Device *device )
     samplerCreateInfo.compareEnable				= VK_FALSE;
     samplerCreateInfo.borderColor				= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	samplerCreateInfo.unnormalizedCoordinates	= VK_FALSE;
-    res = vkCreateSampler( device ->getDevice(), &samplerCreateInfo, nullptr, &mSampler );
+    res = vkCreateSampler( device ->vk(), &samplerCreateInfo, nullptr, &mSampler );
     assert(res == VK_SUCCESS);
 	
 	// Descriptor
-	mImageInfo.imageView   = this->getImageView()->vkObject();
+	mImageInfo.imageView   = this->getImageView()->vk();
 	mImageInfo.sampler     = this->mSampler;
 	mImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }

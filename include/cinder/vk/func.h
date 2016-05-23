@@ -40,9 +40,11 @@
 
 namespace cinder { namespace vk {
 
+class CommandBuffer;
 class Device;
 class Fence;
 class Semaphore;
+using CommandBufferRef = std::shared_ptr<CommandBuffer>
 using DeviceRef = std::shared_ptr<Device>;
 using FenceRef = std::shared_ptr<Fence>;
 using SemaphoreRef = std::shared_ptr<Semaphore>;
@@ -58,3 +60,6 @@ VkResult	vkWaitForFences( const ci::vk::Device* device, const std::vector<ci::vk
 
 VkResult	vkCreateSemaphore( const ci::vk::Device* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSemaphore* pSemaphore );
 void		vkDestroySemaphore( const ci::vk::Device* device, VkSemaphore semaphore, const VkAllocationCallbacks* pAllocator );
+
+VkResult	vkCreateComputePipelines( const ci::vk::Device* device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines );
+void		vkCmdBindDescriptorSets( VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets )

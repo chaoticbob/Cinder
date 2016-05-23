@@ -460,7 +460,7 @@ VkPipeline PipelineSelector::getSelectedPipeline() const
 		// If a pipeline s found, select it
 		if( std::end( mPipelines ) != it ) {				
 			mSelectedPipelineHash = it->first;
-			mSelectedPipeline = it->second->getPipeline();
+			mSelectedPipeline = it->second->vk();
 		}
 		// Otherwise create it
 		else {
@@ -490,7 +490,7 @@ VkPipeline PipelineSelector::getSelectedPipeline() const
 
 			mPipelines.push_back( std::make_pair( hash, pipeline ) );
 			mSelectedPipelineHash = hash;
-			mSelectedPipeline = pipeline->getPipeline();
+			mSelectedPipeline = pipeline->vk();
 			
 			CI_LOG_I( "Created pipeline: " << mPipelines.size() << " pipelines now exists" );
 			CI_LOG_I( "   " << "Cull Mode: " << toStringVkCullMode( mCurrentCullMode ) );

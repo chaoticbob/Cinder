@@ -68,15 +68,15 @@ void Swapchain::initializeColorBuffers()
 	auto env = mDevice->getEnv();
 
 	VkSurfaceCapabilitiesKHR surfCapabilities;
-	res = env->GetPhysicalDeviceSurfaceCapabilitiesKHR( mDevice->getGpu(), mSurface->getSurface(), &surfCapabilities );
+	res = env->GetPhysicalDeviceSurfaceCapabilitiesKHR( mDevice->getGpu(), mSurface->vk(), &surfCapabilities );
 	assert(res == VK_SUCCESS);
 
 	uint32_t presentModeCount;
-	res = env->GetPhysicalDeviceSurfacePresentModesKHR( mDevice->getGpu(), mSurface->getSurface(), &presentModeCount, nullptr );
+	res = env->GetPhysicalDeviceSurfacePresentModesKHR( mDevice->getGpu(), mSurface->vk(), &presentModeCount, nullptr );
 	assert(res == VK_SUCCESS);
 
 	std::vector<VkPresentModeKHR> presentModes( presentModeCount );
-	res = env->GetPhysicalDeviceSurfacePresentModesKHR( mDevice->getGpu(), mSurface->getSurface(), &presentModeCount, presentModes.data() );
+	res = env->GetPhysicalDeviceSurfacePresentModesKHR( mDevice->getGpu(), mSurface->vk(), &presentModeCount, presentModes.data() );
 	assert(res == VK_SUCCESS);
 
 	VkExtent2D swapChainExtent;
@@ -139,7 +139,7 @@ void Swapchain::initializeColorBuffers()
 	VkSwapchainCreateInfoKHR createInfo ={};
 	createInfo.sType					= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.pNext					= nullptr;
-	createInfo.surface					= mSurface->getSurface();
+	createInfo.surface					= mSurface->vk();
 	createInfo.minImageCount			= mImageCount;
 	createInfo.imageFormat				= mSurface->getFormat();
 	createInfo.imageExtent				= mSwapchainExtent;
@@ -155,14 +155,14 @@ void Swapchain::initializeColorBuffers()
 	createInfo.queueFamilyIndexCount	= 0;
 	createInfo.pQueueFamilyIndices		= nullptr;
 
-	res = mDevice->CreateSwapchainKHR( mDevice->getDevice(), &createInfo, nullptr, &mSwapchain );
+	res = mDevice->CreateSwapchainKHR( mDevice->vk(), &createInfo, nullptr, &mSwapchain );
 	assert( res == VK_SUCCESS );
 
-	res = mDevice->GetSwapchainImagesKHR( mDevice->getDevice(), mSwapchain, &(mImageCount),  NULL );
+	res = mDevice->GetSwapchainImagesKHR( mDevice->vk(), mSwapchain, &(mImageCount),  NULL );
 	assert( res == VK_SUCCESS );
 
 	std::vector<VkImage> swapchainImages = std::vector<VkImage>( mImageCount, VK_NULL_HANDLE );
-	res = mDevice->GetSwapchainImagesKHR( mDevice->getDevice(), mSwapchain, &(mImageCount), swapchainImages.data() );
+	res = mDevice->GetSwapchainImagesKHR( mDevice->vk(), mSwapchain, &(mImageCount), swapchainImages.data() );
 	assert( res == VK_SUCCESS );
 
 	for( uint32_t i = 0; i < mImageCount; ++i ) {
@@ -206,7 +206,7 @@ void Swapchain::destroy( bool removeFromTracking )
 		return;
 	}
 
-	mDevice->DestroySwapchainKHR( mDevice->getDevice(), mSwapchain, nullptr );
+	mDevice->DestroySwapchainKHR( mDevice->vk(), mSwapchain, nullptr );
 	mSwapchain = VK_NULL_HANDLE;
 
 	if( removeFromTracking ) {

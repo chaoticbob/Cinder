@@ -157,7 +157,7 @@ public:
 
 	static ImageRef			create( VkImageType imageType, int32_t width, int32_t height, int32_t depth, VkImage image, const Image::Format& options, Device *device = nullptr );
 
-	VkImage					vkObject() const { return mImage; }
+	VkImage					vk() const { return mImage; }
 
 	const Image::Format&	getFormat() const { return mFormat; }
 

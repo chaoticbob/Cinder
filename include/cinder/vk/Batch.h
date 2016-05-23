@@ -84,15 +84,8 @@ class Batch {
 
 	//! Draws the Batch. Optionally specify a \a first vertex/element and a \a count. Otherwise the entire geometry will be drawn.
 	void				draw( int32_t first = 0, int32_t count = -1 );
-
+	//! Draws the Batch instanceCount times.
 	void				drawInstanced( uint32_t instanceCount );
-
-
-	//vk::UniformSetRef&			getUniformLayout() { return mUniformSet; }
-	//const vk::UniformSetRef&	getUniformLayout() const { return mUniformSet; }
-
-	//const vk::PipelineLayoutRef&	getPipelineLayout() const { return mPipelineLayout; }
-	//const vk::PipelineRef&			getPipeline() const { return mPipeline; }
 
 	//! Returns OpenGL primitive type (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc)
 	VkPrimitiveTopology			getPrimitive() const { return mVboMesh->getPrimitive(); }
@@ -106,19 +99,11 @@ class Batch {
 	const vk::ShaderProgRef&	getShaderProg() const	{ return mShader; }
 	//! Replaces the shader associated with the Batch. Issues a warning if not all attributes were able to match.
 	void						replaceGlslProg( const vk::ShaderProgRef &shader );
-/*
-	//! Returns the VAO mapping the Batch's geometry to its shader
-	const VaoRef				getVao() const { return mVao; }
-*/
+
 	//! Returns the VboMesh associated with the Batch
 	vk::VertexBufferMeshRef		getVboMesh() const { return mVboMesh; }
 	//! Replaces the VboMesh associated with the Batch. Issues a warning if not all attributes were able to match.
 	void						replaceVboMesh( const VboMeshRef &vboMesh );
-
-/*
-	//! Changes the GL context the Batch is associated with
-	void						reassignContext( Context *context );
-*/
 
 	void						uniform( const std::string& name, const float    value );
 	void						uniform( const std::string& name, const int32_t  value );
@@ -131,20 +116,9 @@ class Batch {
 	void						uniform( const std::string& name, const mat3&    value );
 	void						uniform( const std::string& name, const mat4&    value );
 	void						uniform( const std::string& name, const TextureBaseRef& texture );
-/*
-	void						sampler2D( const std::string& name, const TextureBaseRef& texture );
-	void						sampler2DRect( const std::string& name, const TextureBaseRef& texture );
-	void						samplerCube( const std::string& name, const TextureBaseRef& texture );
-*/
 
 	const vk::UniformViewRef&	getUniformSet() const { return mUniformSet; }
 	void						setDefaultUniformVars( vk::Context *context );
-
-	//void						setCullMode( VkCullModeFlagBits cullMode ) { mPipelineSelection = cullMode; }
-	//void						setCullModeNone() { setCullMode( VK_CULL_MODE_NONE ); }
-	//void						setCullModeFront() { setCullMode( VK_CULL_MODE_FRONT_BIT ); }
-	//void						setCullModeBack() { setCullMode( VK_CULL_MODE_BACK_BIT ); }
-	//void						setCullModeFrontAndBack() { setCullMode( VK_CULL_MODE_FRONT_AND_BACK ); }
 
   protected:
 	Batch( const VboMeshRef &vboMesh, const vk::ShaderProgRef &glsl, const AttributeMapping &attributeMapping );

@@ -62,7 +62,7 @@ public:
 
 	static QueueRef	create( VkQueueFlags queueTypes, uint32_t queueFamilyIndex, uint32_t queueIndex, vk::Context *context = nullptr );
 
-	VkQueue			getQueue() const { return mQueue; }
+	VkQueue			vk() const { return mQueue; }
 
 	VkQueueFlags	getQueueTypes() const { return mQueueTypes; }
 	uint32_t		getQueueFamilyIndex() const { return mQueueFamilyIndex; }

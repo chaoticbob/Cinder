@@ -58,7 +58,8 @@ public:
 
 	static SurfaceRef			create( const vk::PlatformWindow& platformWindow, vk::Device *device );
 
-	VkSurfaceKHR				getSurface() const { return mSurface; }
+	VkSurfaceKHR				vk() const { return mSurface; }
+
 	VkFormat					getFormat() const { return mFormat; }
 
 private:

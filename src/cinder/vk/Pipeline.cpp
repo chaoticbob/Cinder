@@ -106,7 +106,7 @@ PipelineLayoutRef PipelineLayout::create( const std::vector<VkPushConstantRange>
 void PipelineLayout::initialize( const DescriptorSetLayoutRef &descriptorSetLayout )
 {
 	std::vector<VkDescriptorSetLayout> descSetLayouts;
-	descSetLayouts.push_back( descriptorSetLayout->vkObject() );
+	descSetLayouts.push_back( descriptorSetLayout->vk() );
 
     VkPipelineLayoutCreateInfo createInfo = {};
     createInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -116,7 +116,7 @@ void PipelineLayout::initialize( const DescriptorSetLayoutRef &descriptorSetLayo
     createInfo.setLayoutCount         = static_cast<uint32_t>( descSetLayouts.size() );
     createInfo.pSetLayouts            = descSetLayouts.data();
 
-    VkResult res = vkCreatePipelineLayout( mDevice->getDevice(), &createInfo, nullptr, &mPipelineLayout );
+    VkResult res = vkCreatePipelineLayout( mDevice->vk(), &createInfo, nullptr, &mPipelineLayout );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -132,7 +132,7 @@ void PipelineLayout::initialize( const std::vector<VkDescriptorSetLayout>& descr
     createInfo.pushConstantRangeCount = static_cast<uint32_t>( pushConstantRanges.size() );
     createInfo.pPushConstantRanges    = pushConstantRanges.empty() ? nullptr : pushConstantRanges.data();
 
-    VkResult res = vkCreatePipelineLayout( mDevice->getDevice(), &createInfo, nullptr, &mPipelineLayout );
+    VkResult res = vkCreatePipelineLayout( mDevice->vk(), &createInfo, nullptr, &mPipelineLayout );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -160,7 +160,7 @@ void PipelineLayout::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyPipelineLayout( mDevice->getDevice(), mPipelineLayout, nullptr );
+	vkDestroyPipelineLayout( mDevice->vk(), mPipelineLayout, nullptr );
 	mPipelineLayout = VK_NULL_HANDLE;
 	
 	if( removeFromTracking ) {
@@ -214,7 +214,7 @@ VkPipelineLayout PipelineLayoutSelector::getSelectedLayout( const std::vector<Vk
 		);
 		// If a descriptor set layout is found, select it
 		if( it != std::end( mPipelineLayouts ) ) {
-			result = it->second->getPipelineLayout();
+			result = it->second->vk();
 		}
 		// Otherwise create it
 		else {
@@ -222,7 +222,7 @@ VkPipelineLayout PipelineLayoutSelector::getSelectedLayout( const std::vector<Vk
 
 			vk::PipelineLayoutRef dsl = vk::PipelineLayout::create( descriptorSetLayouts, pushConstantRanges, mDevice );			
 			mPipelineLayouts.push_back( std::make_pair( HashData( descriptorSetLayouts, pushConstantRanges, hash ), dsl ) );
-			result = dsl->getPipelineLayout();
+			result = dsl->vk();
 		}
 	}
 	return result;
@@ -335,7 +335,7 @@ void PipelineCache::initialize()
     createInfo.initialDataSize	= 0;
     createInfo.pInitialData		= nullptr;
     createInfo.flags			= 0;
-    VkResult res = vkCreatePipelineCache( mDevice->getDevice(), &createInfo, NULL, &mPipelineCache );
+    VkResult res = vkCreatePipelineCache( mDevice->vk(), &createInfo, NULL, &mPipelineCache );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -347,7 +347,7 @@ void PipelineCache::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyPipelineCache( mDevice->getDevice(), mPipelineCache, nullptr );
+	vkDestroyPipelineCache( mDevice->vk(), mPipelineCache, nullptr );
 	mPipelineCache = VK_NULL_HANDLE;
 
 	if( removeFromTracking ) {
@@ -366,7 +366,7 @@ Pipeline::Options& Pipeline::Options::setTopology( VkPrimitiveTopology topology 
 
 Pipeline::Options& Pipeline::Options::setPipelineLayout( const PipelineLayoutRef &layout )
 {
-	mPipelineLayout = layout->getPipelineLayout(); 
+	mPipelineLayout = layout->vk(); 
 	return *this;
 }
 
@@ -378,7 +378,7 @@ Pipeline::Options& Pipeline::Options::setPipelineLayout( const VkPipelineLayout 
 
 Pipeline::Options& Pipeline::Options::setRenderPass( const RenderPassRef &renderPass )
 {
-	mRenderPass = renderPass->getRenderPass(); 
+	mRenderPass = renderPass->vk(); 
 	return *this;
 }
 
@@ -596,7 +596,7 @@ void Pipeline::initialize( const Pipeline::Options& options, const vk::PipelineC
 	pipelineCreateInfo.basePipelineIndex				= 0;
 
 	VkPipelineCache pipelineCache = VK_NULL_HANDLE; //( options.mDisablePipleineCache ? VK_NULL_HANDLE : ( pipelineCacheRef ? pipelineCacheRef->getPipelineCache() : mContext->getPipelineCache()->getPipelineCache() ) );
-    res = vkCreateGraphicsPipelines( mDevice->getDevice(), pipelineCache, 1, &pipelineCreateInfo, NULL, &mPipeline );
+    res = vkCreateGraphicsPipelines( mDevice->vk(), pipelineCache, 1, &pipelineCreateInfo, NULL, &mPipeline );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -605,7 +605,7 @@ void Pipeline::initialize( const Pipeline::Options& options, const vk::PipelineC
 void Pipeline::initialize( const VkGraphicsPipelineCreateInfo& createInfo, const vk::PipelineCacheRef& pipelineCacheRef )
 {
 	VkPipelineCache pipelineCache = VK_NULL_HANDLE; //( pipelineCacheRef ? pipelineCacheRef->getPipelineCache() : mContext->getPipelineCache()->getPipelineCache() );
-    VkResult res = vkCreateGraphicsPipelines( mDevice->getDevice(), pipelineCache, 1, &createInfo, NULL, &mPipeline );
+    VkResult res = vkCreateGraphicsPipelines( mDevice->vk(), pipelineCache, 1, &createInfo, NULL, &mPipeline );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -618,7 +618,7 @@ void Pipeline::destroy(bool removeFromTracking)
 	}
 
 	if( mOwnsPipeline ) {
-		vkDestroyPipeline( mDevice->getDevice(), mPipeline, nullptr );
+		vkDestroyPipeline( mDevice->vk(), mPipeline, nullptr );
 		mPipeline = VK_NULL_HANDLE;
 	}
 	

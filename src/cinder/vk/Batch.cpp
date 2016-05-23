@@ -122,63 +122,13 @@ void Batch::initPipeline( const AttributeMapping &attributeMapping )
 
 	// Descriptor layouts, pool, set
 	mDescriptorSetView = vk::DescriptorSetView::create( mUniformSet );
-	//mDescriptorSetLayout = vk::DescriptorSetLayout::create( *mUniformSet );
-	//mDescriptorPool = vk::DescriptorPool::create( mDescriptorSetLayout->getLayoutBindings() );
-	//mDescriptorSet = vk::DescriptorSet::create( mDescriptorPool->getDescriptorPool(), mUniformLayout, mDescriptorSetLayout );
 
 	// Pipeline layout
 	mPipelineLayout = vk::PipelineLayout::create( mDescriptorSetView->getCachedDescriptorSetLayouts() );
-
-/*
-	// Pipeline
-	vk::Pipeline::Options pipelineOptions;
-	pipelineOptions.setTopology( mVboMesh->getPrimitive() );
-	pipelineOptions.setPipelineLayout( mPipelineLayout );
-	pipelineOptions.setRenderPass( vk::context()->getRenderPass() );
-	pipelineOptions.setShaderProg( mShader );
-	{
-		auto bindings = mVertexInputDescription.getBindings();
-		for( const auto& binding : bindings ) {
-			pipelineOptions.addVertexBinding( binding );
-		}
-		//
-		auto attributes = mVertexInputDescription.getAttributes();
-		for( const auto& attr : attributes ) {
-			pipelineOptions.addVertexAtrribute( attr );
-		}
-	}	
-	// Cull none	
-	pipelineOptions.setCullModeNone();
-	mPipelines[VK_CULL_MODE_NONE] = vk::Pipeline::create( pipelineOptions, nullptr );
-	// Cull front
-	pipelineOptions.setCullModeFront();
-	mPipelines[VK_CULL_MODE_FRONT_BIT] = vk::Pipeline::create( pipelineOptions, nullptr );
-	// Cull back
-	pipelineOptions.setCullModeBack();
-	mPipelines[VK_CULL_MODE_BACK_BIT] = vk::Pipeline::create( pipelineOptions, nullptr );
-	// Cull front and back
-	pipelineOptions.setCullModeFrontAndBack();
-	mPipelines[VK_CULL_MODE_FRONT_AND_BACK] = vk::Pipeline::create( pipelineOptions, nullptr );
-*/
 }
 
 void Batch::destroyPipeline()
 {
-	//if( mUniformLayout ) {
-	//	mUniformLayout->~UniformBuffer();
-	//	mUniformLayout.reset();
-	//}
-
-	//if( mPipeline ) {
-	//	mPipeline->~Pipeline();
-	//	mPipeline.reset();
-	//}
-	//for( auto& it : mPipelines ) {
-	//	auto& pipeline = it.second;
-	//	pipeline->~Pipeline();
-	//	pipeline.reset();		
-	//}
-
 	if( mPipelineLayout ) {
 		mPipelineLayout->~PipelineLayout();
 		mPipelineLayout.reset();
@@ -187,21 +137,6 @@ void Batch::destroyPipeline()
 	if( mDescriptorSetView ) {
 		mDescriptorSetView.reset();
 	}
-	
-	//if( mDescriptorSet ) {
-	//	mDescriptorSet->~DescriptorSet();
-	//	mDescriptorSet.reset();
-	//}
-
-	//if( mDescriptorPool ) {
-	//	mDescriptorPool->~DescriptorPool();
-	//	mDescriptorPool.reset();
-	//}
-
-	//if( mDescriptorSetLayout ) {
-	//	mDescriptorSetLayout->~DescriptorSetLayout();
-	//	mDescriptorSetLayout.reset();
-	//}
 }
 
 void Batch::replaceGlslProg( const vk::ShaderProgRef& shader )
@@ -273,23 +208,6 @@ void Batch::uniform( const std::string& name, const TextureBaseRef& texture )
 	mUniformSet->uniform( name, texture );
 }
 
-/*
-void Batch::sampler2D( const std::string& name, const TextureBaseRef& texture )
-{
-	mUniformSet->sampler2D( name, texture );
-}
-
-void Batch::sampler2DRect( const std::string& name, const TextureBaseRef& texture )
-{
-	mUniformSet->sampler2DRect( name, texture );
-}
-
-void Batch::samplerCube( const std::string& name, const TextureBaseRef& texture )
-{
-	mUniformSet->samplerCube( name, texture );
-}
-*/
-
 void Batch::setDefaultUniformVars( vk::Context *context )
 {
 	mUniformSet->setDefaultUniformVars( vk::context() );
@@ -304,12 +222,12 @@ void Batch::singleBind()
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	// Bind index buffer
 	bool useIndexBuffer = mVboMesh->getIndexVbo() ? true : false;
 	if(  useIndexBuffer) {
-		auto indexBuffer = mVboMesh->getIndexVbo()->getBuffer();
+		auto indexBuffer = mVboMesh->getIndexVbo()->vk();
 		auto indexType = mVboMesh->getIndexVbo()->getIndexType();
 		vkCmdBindIndexBuffer( cmdBuf, indexBuffer, 0,indexType );
 	}
@@ -318,7 +236,7 @@ void Batch::singleBind()
 	std::vector<VkBuffer> vertexBuffers;
 	std::vector<VkDeviceSize> offsets;
 	for( const auto& vb : mVboMesh->getVertexArrayVbos() ) {
-		vertexBuffers.push_back( vb->getBuffer() );
+		vertexBuffers.push_back( vb->vk() );
 		offsets.push_back( 0 );
 	}
 	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
@@ -330,8 +248,8 @@ void Batch::singleBind()
 	const auto& descriptorSets = mDescriptorSetView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
+		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->vk(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 
 	// Get a pipeline
@@ -348,9 +266,9 @@ void Batch::singleBind()
 	pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 	pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 	pipelineSelector->setShaderStages( mShader->getShaderStages() );
-	pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+	pipelineSelector->setRenderPass( ctx->getRenderPass()->vk() );
 	pipelineSelector->setSubPass( ctx->getSubpass() );
-	pipelineSelector->setPipelineLayout( mPipelineLayout->getPipelineLayout() );
+	pipelineSelector->setPipelineLayout( mPipelineLayout->vk() );
 	auto pipeline = pipelineSelector->getSelectedPipeline();
 	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 }
@@ -375,7 +293,7 @@ void Batch::draw( int32_t first, int32_t count )
 {
 	// Get current command buffer
 	auto& cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	if( mBound ) {
 		// Update descriptor set
@@ -388,8 +306,8 @@ void Batch::draw( int32_t first, int32_t count )
 			//std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
 			//vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 
-			VkDescriptorSet descSet = descriptorSets[i]->vkObject();
-			vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, 1, &descSet, 0, nullptr );
+			VkDescriptorSet descSet = descriptorSets[i]->vk();
+			vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->vk(), i, 1, &descSet, 0, nullptr );
 		}
 	}
 	else {
@@ -425,7 +343,7 @@ void Batch::drawInstanced( uint32_t instanceCount )
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
+	auto cmdBuf = cmdBufRef->vk();
 
 	//// Fill out uniform vars
 	mUniformSet->setDefaultUniformVars( vk::context() );
@@ -438,7 +356,7 @@ void Batch::drawInstanced( uint32_t instanceCount )
 	// Bind index buffer
 	bool useIndexBuffer = mVboMesh->getIndexVbo() ? true : false;
 	if(  useIndexBuffer) {
-		auto indexBuffer = mVboMesh->getIndexVbo()->getBuffer();
+		auto indexBuffer = mVboMesh->getIndexVbo()->vk();
 		auto indexType = mVboMesh->getIndexVbo()->getIndexType();
 		vkCmdBindIndexBuffer( cmdBuf, indexBuffer, 0,indexType );
 	}
@@ -447,7 +365,7 @@ void Batch::drawInstanced( uint32_t instanceCount )
 	std::vector<VkBuffer> vertexBuffers;
 	std::vector<VkDeviceSize> offsets;
 	for( const auto& vb : mVboMesh->getVertexArrayVbos() ) {
-		vertexBuffers.push_back( vb->getBuffer() );
+		vertexBuffers.push_back( vb->vk() );
 		offsets.push_back( 0 );
 	}
 	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
@@ -456,8 +374,8 @@ void Batch::drawInstanced( uint32_t instanceCount )
 	const auto& descriptorSets = mDescriptorSetView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
+		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->vk(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 
 	// Get a pipeline
@@ -474,9 +392,9 @@ void Batch::drawInstanced( uint32_t instanceCount )
 	pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 	pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 	pipelineSelector->setShaderStages( mShader->getShaderStages() );
-	pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+	pipelineSelector->setRenderPass( ctx->getRenderPass()->vk() );
 	pipelineSelector->setSubPass( ctx->getSubpass() );
-	pipelineSelector->setPipelineLayout( mPipelineLayout->getPipelineLayout() );
+	pipelineSelector->setPipelineLayout( mPipelineLayout->vk() );
 	auto pipeline = pipelineSelector->getSelectedPipeline();
 	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
@@ -490,21 +408,6 @@ void Batch::drawInstanced( uint32_t instanceCount )
 		vkCmdDraw( cmdBuf, vertexCount, instanceCount, 0, 0 );
 	}
 }
-
-/*
-void Batch::bind()
-{
-	mGlsl->bind();
-	mVao->bind();
-}
-*/
-
-/*
-void Batch::reassignContext( Context *context )
-{
-	mVao->reassignContext( context );
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// VertBatch

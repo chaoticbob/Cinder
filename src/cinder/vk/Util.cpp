@@ -50,7 +50,7 @@ namespace cinder { namespace vk {
 void transitionToFirstUse( const vk::ImageRef& image, VkImageLayout firstUseLayout, vk::Context *context )
 {
 	auto& cmdPool = context->getDefaultTransientCommandPool();
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->getCommandPool(), context );
+	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->vk(), context );
 
 	cmdBuf->begin();
 	{

@@ -121,7 +121,7 @@ void Buffer::createBufferAndAllocate( size_t size )
 	createInfo.sharingMode 				= VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.queueFamilyIndexCount 	= 0;
 	createInfo.pQueueFamilyIndices		= nullptr;
-	res = vkCreateBuffer( mDevice->getDevice(), &createInfo, nullptr, &mBuffer );
+	res = vkCreateBuffer( mDevice->vk(), &createInfo, nullptr, &mBuffer );
 	assert( res == VK_SUCCESS );
 
 	// Allocate memory
@@ -145,7 +145,7 @@ void Buffer::createBufferAndAllocate( size_t size )
 	mAllocationSize		= alloc.getSize();
 
 	// Bind memory
-	res = vkBindBufferMemory( mDevice->getDevice(), mBuffer, mMemory, mAllocationOffset );
+	res = vkBindBufferMemory( mDevice->vk(), mBuffer, mMemory, mAllocationOffset );
 	assert( res == VK_SUCCESS );
 
 /*
@@ -189,7 +189,7 @@ void Buffer::destroyBufferAndFree()
 {
 	if( VK_NULL_HANDLE != mBuffer ) {
 		// Destroy
-		vkDestroyBuffer( mDevice->getDevice(), mBuffer, nullptr );
+		vkDestroyBuffer( mDevice->vk(), mBuffer, nullptr );
 		// Remove from transient - allocator will check this
 		mDevice->getAllocator()->freeTransientBuffer( mBuffer );
 		// Null out buffer
@@ -210,7 +210,7 @@ void* Buffer::map( VkDeviceSize offset )
 {
 	if( ( nullptr == mMappedAddress ) && mFormat.hasMemoryPropertyHostVisible() ) {
 		VkMemoryMapFlags flags = 0;
-		VkResult result = vkMapMemory( mDevice->getDevice(), mMemory, mAllocationOffset + offset, mSize, flags, &mMappedAddress );
+		VkResult result = vkMapMemory( mDevice->vk(), mMemory, mAllocationOffset + offset, mSize, flags, &mMappedAddress );
 		if( VK_SUCCESS != result ) {
 			mMappedAddress = nullptr;
 		}
@@ -221,7 +221,7 @@ void* Buffer::map( VkDeviceSize offset )
 void Buffer::unmap( bool doFlush )
 {
 	if( nullptr != mMappedAddress ) {
-		vkUnmapMemory( mDevice->getDevice(), mMemory );
+		vkUnmapMemory( mDevice->vk(), mMemory );
 		mMappedAddress = nullptr;
 	}
 
@@ -239,7 +239,7 @@ void Buffer::flush()
 		range.memory = mMemory;
 		range.offset = mAllocationOffset;
 		range.size   = mAllocationSize;
-		VkResult res = vkFlushMappedMemoryRanges( mDevice->getDevice(), 1, &range );
+		VkResult res = vkFlushMappedMemoryRanges( mDevice->vk(), 1, &range );
 		assert( VK_SUCCESS == res );
 	}
 }
@@ -275,7 +275,7 @@ void Buffer::bufferData( VkDeviceSize size, const void *data, bool doFlush )
 				// Buffer data to staging
 				stagingBuffer->bufferDataImpl( size, data, doFlush );
 				// Copy to current buffer
-				vk::Buffer::copy( vk::context(), stagingBuffer->getBuffer(), 0, mBuffer, 0, size );
+				vk::Buffer::copy( vk::context(), stagingBuffer->vk(), 0, mBuffer, 0, size );
 			}
 		}
 	}
@@ -317,7 +317,7 @@ void Buffer::bufferSubData( VkDeviceSize offset, VkDeviceSize size, const void *
 			// Buffer data to staging
 			stagingBuffer->bufferDataImpl( size, data, doFlush );
 			// Copy to current buffer
-			vk::Buffer::copy( vk::context(), stagingBuffer->getBuffer(), 0, mBuffer, offset, size );
+			vk::Buffer::copy( vk::context(), stagingBuffer->vk(), 0, mBuffer, offset, size );
 		}
 	}
 }
@@ -334,7 +334,7 @@ void Buffer::ensureMinimumSize( size_t minimumSize )
 void Buffer::copy( vk::Context* context, VkBuffer srcBuffer, VkDeviceSize srcOffset, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize size )
 {
 	auto& cmdPool = context->getDefaultCommandPool();
-	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->getCommandPool(), context );
+	vk::CommandBufferRef cmdBuf = vk::CommandBuffer::create( cmdPool->vk(), context );
 
 	cmdBuf->begin();
 	{

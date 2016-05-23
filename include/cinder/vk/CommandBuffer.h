@@ -43,6 +43,7 @@
 namespace cinder { namespace vk {
 
 class Buffer;
+class CommandPool;
 class Image;
 class ImageView;
 class IndexBuffer;
@@ -51,6 +52,7 @@ class Texture2d;
 class UniformBuffer;
 class VertexBuffer;
 using BufferRef = std::shared_ptr<Buffer>;
+using CommandPoolRef = std::shared_ptr<CommandPool>;
 using ImageRef = std::shared_ptr<Image>;
 using ImageViewRef = std::shared_ptr<ImageView>;
 using IndexBufferRef = std::shared_ptr<IndexBuffer>;
@@ -149,8 +151,9 @@ public:
 	virtual ~CommandBuffer();
 
 	static CommandBufferRef		create( VkCommandPool commandPool, vk::Context *context = nullptr );
+	static CommandBufferRef		create( const vk::CommandPoolRef& commandPool, vk::Context *context = nullptr );
 
-	VkCommandBuffer				getCommandBuffer() const { return mCommandBuffer; }
+	VkCommandBuffer				vk() const { return mCommandBuffer; }
 
 	void begin();
 	void end();

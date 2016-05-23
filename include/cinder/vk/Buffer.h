@@ -100,7 +100,8 @@ public:
 
 	static BufferRef 		create( VkDeviceSize size, const vk::Buffer::Format& format, vk::Device *device = nullptr );
 
-	VkBuffer				getBuffer() const { return mBuffer; }
+	VkBuffer				vk() const { return mBuffer; }
+
 	const VkDescriptorBufferInfo&	getBufferInfo() const { return mBufferInfo; }
 
 	VkDeviceSize			getSize() const { return mSize; }

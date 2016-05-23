@@ -119,7 +119,7 @@ public:
 	//! Creates an 2D image view using a specific viewType
 	static ImageViewRef		createCube( int32_t width, int32_t height, const vk::ImageRef& premadeImage, ImageView::Options options = ImageView::Options(), vk::Device *device = nullptr );
 
-	VkImageView				vkObject() const { return mImageView; }
+	VkImageView				vk() const { return mImageView; }
 
 	const vk::ImageRef&		getImage() const { return mImage; }
 

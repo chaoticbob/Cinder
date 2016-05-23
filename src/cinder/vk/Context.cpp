@@ -185,7 +185,7 @@ void Context::initialize( const Context* existingContext, VkQueueFlags queueType
 	const uint32_t graphicsQueueFamilyIndex = mGraphicsQueue->getQueueFamilyIndex();
 	mDefaultCommandPool = vk::CommandPool::create( graphicsQueueFamilyIndex, false, this );
 	mDefaultTransientCommandPool = vk::CommandPool::create( graphicsQueueFamilyIndex, true, this );
-	mDefaultCommandBuffer = vk::CommandBuffer::create( mDefaultCommandPool->getCommandPool(), this );
+	mDefaultCommandBuffer = vk::CommandBuffer::create( mDefaultCommandPool->vk(), this );
 
 	mCachedColorAttachmentBlend.blendEnable			= VK_FALSE;
 	mCachedColorAttachmentBlend.srcColorBlendFactor	= VK_BLEND_FACTOR_SRC_ALPHA;

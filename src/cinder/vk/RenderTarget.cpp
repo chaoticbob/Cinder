@@ -248,7 +248,7 @@ void RenderTarget::initialize( const RenderTarget::Options& options, vk::Device*
 	}
 
 	mRenderPass = vk::RenderPass::create( renderPassOptions, device );
-	mFramebuffer = vk::Framebuffer::create( mRenderPass->getRenderPass(), mSize, framebufferFormat, device );
+	mFramebuffer = vk::Framebuffer::create( mRenderPass->vk(), mSize, framebufferFormat, device );
 }
 
 RenderTargetRef RenderTarget::create( const ivec2& size, VkFormat attachment, vk::Device* device )

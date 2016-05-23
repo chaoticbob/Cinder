@@ -67,7 +67,7 @@ void CommandPool::initialize()
 		createInfo.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 	}
 
-    VkResult res = vkCreateCommandPool( mContext->getDevice()->getDevice(), &createInfo, nullptr, &mCommandPool );
+    VkResult res = vkCreateCommandPool( mContext->getDevice()->vk(), &createInfo, nullptr, &mCommandPool );
     assert( res == VK_SUCCESS );
 
 	mContext->trackedObjectCreated( this );
@@ -79,7 +79,7 @@ void CommandPool::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyCommandPool(  mContext->getDevice()->getDevice(), mCommandPool, nullptr );
+	vkDestroyCommandPool(  mContext->getDevice()->vk(), mCommandPool, nullptr );
 	mCommandPool = VK_NULL_HANDLE;
 
 	if( removeFromTracking ) {

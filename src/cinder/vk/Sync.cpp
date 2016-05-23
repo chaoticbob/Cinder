@@ -80,7 +80,7 @@ void Fence::destroy( bool removeFromTracking )
 		return;
 	}
 
-	vkDestroyFence( mDevice->getDevice(), mVkObject, nullptr );
+	vkDestroyFence( mDevice->vk(), mVkObject, nullptr );
 
 	if( removeFromTracking ) {
 		mDevice->trackedObjectDestroyed( this );

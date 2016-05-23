@@ -103,7 +103,7 @@ public:
 
 	static FramebufferRef		create( VkRenderPass renderPass, const ivec2& size, const vk::Framebuffer::Format& format, vk::Device *device = nullptr );
 
-	VkFramebuffer				getFramebuffer() const { return mFramebuffer; }
+	VkFramebuffer				vk() const { return mFramebuffer; }
 
 	uint32_t					getWidth() const { return mWidth; }
 	uint32_t					getHeight() const { return mHeight; }

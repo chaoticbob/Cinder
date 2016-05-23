@@ -76,7 +76,7 @@ public:
 
 	static SwapchainRef			create( const ivec2& size, uint32_t imageCount, const vk::SurfaceRef& surface, const Swapchain::Options& options, Device *device = nullptr );
 
-	VkSwapchainKHR				getSwapchain() const { return mSwapchain; }
+	VkSwapchainKHR				vk() const { return mSwapchain; }
 
 	int32_t						getWidth() const { return mSwapchainExtent.width; }
 	int32_t						getHeight() const { return mSwapchainExtent.height; }

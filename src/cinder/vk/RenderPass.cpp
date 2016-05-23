@@ -365,7 +365,7 @@ void RenderPass::initialize( const RenderPass::Options& options )
 	renderPassCreateInfo.pSubpasses 		= subPassDescs.empty() ? nullptr : subPassDescs.data();
 	renderPassCreateInfo.dependencyCount 	= static_cast<uint32_t>( dependencies.size() );
 	renderPassCreateInfo.pDependencies 		= dependencies.empty() ? nullptr : dependencies.data();;
-	VkResult res = vkCreateRenderPass( mDevice->getDevice(), &renderPassCreateInfo, nullptr, &mRenderPass );
+	VkResult res = vkCreateRenderPass( mDevice->vk(), &renderPassCreateInfo, nullptr, &mRenderPass );
     assert( res == VK_SUCCESS );
 
 	mDevice->trackedObjectCreated( this );
@@ -377,7 +377,7 @@ void RenderPass::destroy( bool removeFromTracking )
 		return;
 	}
 	
-	vkDestroyRenderPass( mDevice->getDevice(), mRenderPass, nullptr );
+	vkDestroyRenderPass( mDevice->vk(), mRenderPass, nullptr );
 	mRenderPass = VK_NULL_HANDLE;
 
 	if( removeFromTracking ) {
@@ -498,8 +498,8 @@ void RenderPass::beginRender( const vk::CommandBufferRef& cmdBuf,const vk::Frame
 	VkRenderPassBeginInfo renderPassBegin;
 	renderPassBegin.sType			= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBegin.pNext			= NULL;
-	renderPassBegin.renderPass		= this->getRenderPass();
-	renderPassBegin.framebuffer		= mFramebuffer->getFramebuffer();
+	renderPassBegin.renderPass		= this->vk();
+	renderPassBegin.framebuffer		= mFramebuffer->vk();
 	renderPassBegin.renderArea		= ra;
 	renderPassBegin.clearValueCount	= static_cast<uint32_t>( clearValues.size() );
 	renderPassBegin.pClearValues	= clearValues.empty() ? nullptr : clearValues.data();
@@ -599,8 +599,8 @@ void RenderPass::beginRenderExplicit( const vk::CommandBufferRef& cmdBuf,const v
 	VkRenderPassBeginInfo renderPassBegin;
 	renderPassBegin.sType			= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBegin.pNext			= NULL;
-	renderPassBegin.renderPass		= this->getRenderPass();
-	renderPassBegin.framebuffer		= mFramebuffer->getFramebuffer();
+	renderPassBegin.renderPass		= this->vk();
+	renderPassBegin.framebuffer		= mFramebuffer->vk();
 	renderPassBegin.renderArea		= ra;
 	renderPassBegin.clearValueCount	= static_cast<uint32_t>( clearValues.size() );
 	renderPassBegin.pClearValues	= clearValues.empty() ? nullptr : clearValues.data();

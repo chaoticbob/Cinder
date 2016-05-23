@@ -67,7 +67,7 @@ void Queue::initialize( uint32_t queueFamilyIndex, uint32_t queueIndex )
 {
 	mQueueFamilyIndex = queueFamilyIndex;
 	mQueueIndex = queueIndex;
-	vkGetDeviceQueue( mContext->getDevice()->getDevice(), mQueueFamilyIndex, mQueueIndex, &mQueue );
+	vkGetDeviceQueue( mContext->getDevice()->vk(), mQueueFamilyIndex, mQueueIndex, &mQueue );
 }
 
 void Queue::destroy( bool removeFromTracking )
@@ -120,7 +120,7 @@ void Queue::submit( const std::vector<vk::CommandBufferRef>& cmdBufRefs, const s
 {
 	std::vector<VkCommandBuffer> cmdBufs;
 	for( auto &elem : cmdBufRefs ) {
-		cmdBufs.push_back( elem->getCommandBuffer() );
+		cmdBufs.push_back( elem->vk() );
 	}
 
 	this->submit( cmdBufs, waitSemaphores, waitStageMasks, fence, signalSemaphores );
@@ -149,7 +149,7 @@ void Queue::submit( VkCommandBuffer cmdBuf, VkSemaphore waitSemaphore, VkPipelin
 
 void Queue::submit( const vk::CommandBufferRef& cmdBufRef, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageMask, VkFence fence, VkSemaphore signalSemaphore )
 {
-	this->submit( cmdBufRef->getCommandBuffer(), waitSemaphore, waitStageMask, fence, signalSemaphore );
+	this->submit( cmdBufRef->vk(), waitSemaphore, waitStageMask, fence, signalSemaphore );
 }
 
 void Queue::present( const std::vector<VkSemaphore>& waitSemaphores, const std::vector<VkSwapchainKHR>& swapChains, const std::vector<uint32_t>& imageIndices )
@@ -179,7 +179,7 @@ void Queue::present( VkSemaphore waitSemaphore, VkSwapchainKHR swapChain, uint32
 
 void Queue::present( VkSemaphore waitSemaphore, const vk::SwapchainRef& swapChainRef, uint32_t imageIndex )
 {
-	this->present( waitSemaphore, swapChainRef->getSwapchain(), imageIndex );
+	this->present( waitSemaphore, swapChainRef->vk(), imageIndex );
 }
 
 void Queue::present( const std::vector<VkSemaphore>& waitSemaphores, const PresenterRef& presenter)
@@ -187,7 +187,7 @@ void Queue::present( const std::vector<VkSemaphore>& waitSemaphores, const Prese
 	std::vector<VkSwapchainKHR> swapChains;
 	std::vector<uint32_t> imageIndices;
 
-	swapChains.push_back( presenter->getSwapchain()->getSwapchain() );
+	swapChains.push_back( presenter->getSwapchain()->vk() );
 	imageIndices.push_back( presenter->getCurrentImageIndex() );
 
 	this->present( waitSemaphores, swapChains, imageIndices );

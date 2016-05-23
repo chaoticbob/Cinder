@@ -194,7 +194,7 @@ public:
 
 	static RenderPassRef					create( const RenderPass::Options& options, Device *device = nullptr );
 
-	VkRenderPass							getRenderPass() const { return mRenderPass; }
+	VkRenderPass							vk() const { return mRenderPass; }
 
 	const std::vector<VkAttachmentDescription>&	getAttachmentDescriptors() const { return mAttachmentDescriptors; }
 	const std::vector<VkClearValue>&			getAttachmentClearValues() const { return mAttachmentClearValues; }
