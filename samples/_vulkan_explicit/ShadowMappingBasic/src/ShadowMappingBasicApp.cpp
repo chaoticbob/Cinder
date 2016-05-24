@@ -104,7 +104,7 @@ void ShadowMappingBasic::setup()
 	vk::Texture2d::Format texParms = vk::Texture2d::Format();
 	texParms.setMagFilter( VK_FILTER_LINEAR );
 	texParms.setMinFilter( VK_FILTER_LINEAR );
-	texParms.setWrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
+	texParms.wrap( VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE );
 	texParms.setCompareMode( VK_COMPARE_OP_LESS_OR_EQUAL );
 	mFbo = vk::RenderTarget::create( ivec2( FBO_WIDTH, FBO_HEIGHT ), vk::RenderTarget::Options( depthInternalFormat ).setDepthStencilTextureParams( texParms ) );  
 	
@@ -143,8 +143,8 @@ void ShadowMappingBasic::setup()
 	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mShadowMapCompleteSemaphore );
 	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mRenderingCompleteSemaphore );
 
-	mShadowMapCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
-	mRenderCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
+	mShadowMapCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
+	mRenderCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
 
 	vk::enableDepthRead();
 	vk::enableDepthWrite();

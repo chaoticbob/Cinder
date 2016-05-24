@@ -307,7 +307,7 @@ void FishTornadoApp::setup()
 			.addAttachment( ci::vk::Framebuffer::Attachment( VK_FORMAT_R8G8B8A8_UNORM, sampleCount ) )
 			.addAttachment( ci::vk::Framebuffer::Attachment( VK_FORMAT_D16_UNORM, sampleCount ) )
 			.addAttachment( ci::vk::Framebuffer::Attachment( mMainColorTex ) );
-		mMainFbo = ci::vk::Framebuffer::create( mMainRenderPass->getRenderPass(), getWindowSize(), framebufferFormat );
+		mMainFbo = ci::vk::Framebuffer::create( mMainRenderPass, getWindowSize(), framebufferFormat );
 	}
 	catch( const std::exception& e ) {
 		CI_LOG_E( "FBO ERROR: " << e.what() );
@@ -333,8 +333,8 @@ void FishTornadoApp::setup()
 	mDrawShark			= true;
 	mDrawParams			= true;
 
-	mCommandBuffers[0] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
-	mCommandBuffers[1] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
+	mCommandBuffers[0] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
+	mCommandBuffers[1] = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphore );

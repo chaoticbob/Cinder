@@ -39,7 +39,11 @@
 #include "cinder/vk/func.h"
 #include "cinder/vk/CommandBuffer.h"
 #include "cinder/vk/Device.h"
+#include "cinder/vk/IndexBuffer.h"
+#include "cinder/vk/Pipeline.h"
 #include "cinder/vk/Sync.h"
+#include "cinder/vk/VertexBuffer.h"
+using namespace ci;
 
 VkResult vkCreateFence( const ci::vk::Device* device, const VkFenceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFence* pFence )
 {
@@ -91,7 +95,59 @@ VkResult vkCreateComputePipelines( const ci::vk::Device* device, VkPipelineCache
 	return vkCreateComputePipelines( device->vk(), pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines );
 }
 
-void vkCmdBindDescriptorSets( const CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets 
+void vkCmdBindPipeline( const ci::vk::CommandBufferRef& commandBufferr, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline )
+{
+	vkCmdBindPipeline( commandBufferr->vk(), pipelineBindPoint, pipeline );
+}
+
+void vkCmdBindPipeline( const ci::vk::CommandBufferRef& commandBufferr, VkPipelineBindPoint  pipelineBindPoint, const ci::vk::PipelineRef& pipeline )
+{
+	vkCmdBindPipeline( commandBufferr->vk(), pipelineBindPoint, pipeline->vk() );
+}
+
+void vkCmdBindDescriptorSets(const vk::CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)
 {
 	vkCmdBindDescriptorSets( commandBuffer->vk(), pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets );
+}
+
+void vkCmdBindDescriptorSets( const ci::vk::CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, const ci::vk::PipelineLayoutRef& layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets )
+{
+	vkCmdBindDescriptorSets( commandBuffer->vk(), pipelineBindPoint, layout->vk(), firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets );
+}
+
+void vkCmdBindIndexBuffer( const ci::vk::CommandBufferRef& commandBuffer, const ci::vk::IndexBufferRef& buffer, VkDeviceSize offset )
+{
+	vkCmdBindIndexBuffer( commandBuffer->vk(), buffer->vk(), offset, buffer->getIndexType() );
+}
+
+void vkCmdBindVertexBuffers(const ci::vk::CommandBufferRef& commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const ci::vk::VertexBufferRef& buffer, VkDeviceSize offset )
+{
+	std::vector<VkBuffer> buffers = { buffer->vk() };
+	std::vector<VkDeviceSize> offsets = { offset };
+	vkCmdBindVertexBuffers( commandBuffer->vk(), 0, 1, buffers.data(), offsets.data() );
+}
+
+void vkCmdBindVertexBuffers(const ci::vk::CommandBufferRef& commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const std::vector<VkBuffer>& buffers, const std::vector<VkDeviceSize>& offsets)
+{
+	vkCmdBindVertexBuffers( commandBuffer->vk(), firstBinding, bindingCount, buffers.data(), offsets.data() );
+}
+
+void vkCmdDraw( const ci::vk::CommandBufferRef& commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance )
+{
+	vkCmdDraw( commandBuffer->vk(), vertexCount, instanceCount, firstVertex, firstInstance );
+}
+
+void vkCmdDrawIndexed(const ci::vk::CommandBufferRef& commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
+{
+	vkCmdDrawIndexed( commandBuffer->vk(), indexCount, instanceCount, firstIndex, vertexOffset, firstInstance );
+}
+
+void vkCmdPushConstants( const ci::vk::CommandBufferRef& commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues )
+{
+	vkCmdPushConstants( commandBuffer->vk(), layout, stageFlags, offset, size, pValues );
+}
+
+void vkCmdPushConstants(const ci::vk::CommandBufferRef& commandBuffer, const ci::vk::PipelineLayoutRef& layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues)
+{
+	vkCmdPushConstants( commandBuffer->vk(), layout->vk(), stageFlags, offset, size, pValues );
 }

@@ -62,8 +62,10 @@ template <typename T> uint32_t	calculateHash( const std::vector<T>& data ) {
 class Context;
 class PipelineCache;
 class PipelineSelector;
+class RenderPass;
 using PipelineCacheRef = std::shared_ptr<PipelineCache>;
 using PipelineSelectorRef = std::shared_ptr<PipelineSelector>;
+using RenderPassRef = std::shared_ptr<RenderPass>;
 
 //! \class PipelineSelector
 //!
@@ -122,6 +124,7 @@ public:
 	static PipelineSelectorRef	create( const vk::PipelineCacheRef& pipelineCacheRef, Device *device = nullptr );
 
 	void						setRenderPass( const VkRenderPass& renderPass );
+	void						setRenderPass( const vk::RenderPassRef& renderPass );
 	void						setSubPass( const uint32_t subPass );
 	void						setPipelineLayout( const VkPipelineLayout& layout );
 

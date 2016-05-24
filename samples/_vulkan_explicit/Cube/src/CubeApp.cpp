@@ -137,8 +137,8 @@ void RotatingCubeApp::setup()
 	mFencesInited[0] = false;
 	mFencesInited[1] = false;
 
-	mCommandBuffers[0]	= vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
-	mCommandBuffers[1]	= vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
+	mCommandBuffers[0]	= vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
+	mCommandBuffers[1]	= vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	vkCreateSemaphore( vk::context()->getDevice(), &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphore[0] );

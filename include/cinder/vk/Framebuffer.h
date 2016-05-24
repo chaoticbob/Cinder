@@ -46,7 +46,9 @@
 namespace cinder { namespace vk {
 
 class Framebuffer;
+class RenderPass;
 using FramebufferRef = std::shared_ptr<Framebuffer>;
+using RenderPassRef = std::shared_ptr<RenderPass>;
 
 //! \class Framebuffer
 //!
@@ -102,6 +104,7 @@ public:
 	virtual ~Framebuffer();
 
 	static FramebufferRef		create( VkRenderPass renderPass, const ivec2& size, const vk::Framebuffer::Format& format, vk::Device *device = nullptr );
+	static FramebufferRef		create( const vk::RenderPassRef& renderPass, const ivec2& size, const vk::Framebuffer::Format& format, vk::Device *device = nullptr );
 
 	VkFramebuffer				vk() const { return mFramebuffer; }
 

@@ -128,7 +128,7 @@ Light::Light()
 		framebufferFormat.addAttachment( ci::vk::Framebuffer::Attachment( mShadowMapTex->getImageView() ) );
 		framebufferFormat.addAttachment( ci::vk::Framebuffer::Attachment( mBlurredShadowMapTex[0]->getImageView() ) );
 		framebufferFormat.addAttachment( ci::vk::Framebuffer::Attachment( mBlurredShadowMapTex[1]->getImageView() ) );
-		mShadowMapFbo = ci::vk::Framebuffer::create( mShadowMapRenderPass->getRenderPass(), mShadowMapTex->getSize(), framebufferFormat );
+		mShadowMapFbo = ci::vk::Framebuffer::create( mShadowMapRenderPass, mShadowMapTex->getSize(), framebufferFormat );
 	}
 	catch( const std::exception& e ) {
 		ci::app::console() << "FBO ERROR: " << e.what() << std::endl;

@@ -60,7 +60,7 @@ private:
 
 	vk::CommandBufferRef		mComputeCmdBuf;
 	vk::DescriptorSetViewRef	mComputeDescriptorView;
-	vk::UniformSetRef			mComputeUniformSet;
+	vk::UniformViewRef			mComputeUniformView;
 	vk::GlslProgRef				mComputeShader;
 	vk::PipelineLayoutRef		mComputePipelineLayout;
 	VkPipeline					mComputePipeline = VK_NULL_HANDLE;
@@ -90,10 +90,10 @@ void ComputeBasicApp::setup()
 	}
 
 	{
-		mComputeCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool()->getCommandPool() );
+		mComputeCmdBuf = vk::CommandBuffer::create( vk::context()->getDefaultCommandPool() );
 
-		mComputeUniformSet = vk::UniformSet::create( mComputeShader->getUniformLayout() );
-		mComputeDescriptorView = vk::DescriptorSetView::create( mComputeUniformSet );
+		mComputeUniformView = vk::UniformView::create( mComputeShader->getUniformLayout() );
+		mComputeDescriptorView = vk::DescriptorSetView::create( mComputeUniformView );
 
 		mComputePipelineLayout = vk::PipelineLayout::create( mComputeDescriptorView->getCachedDescriptorSetLayouts() );
 
@@ -103,10 +103,10 @@ void ComputeBasicApp::setup()
 		createInfo.pNext				= nullptr;
 		createInfo.flags				= 0;
 		createInfo.stage				= shaderStages[0];
-		createInfo.layout				= mComputePipelineLayout->getPipelineLayout();
+		createInfo.layout				= mComputePipelineLayout->vk();
 		createInfo.basePipelineHandle	= VK_NULL_HANDLE;
 		createInfo.basePipelineIndex	= 0;
-		VkResult res = vkCreateComputePipelines( vk::context()->getDevice()->getDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &mComputePipeline );
+		VkResult res = vkCreateComputePipelines( vk::context()->getDevice(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &mComputePipeline );
 		assert( VK_SUCCESS == res );
 	}
 
@@ -126,8 +126,9 @@ void ComputeBasicApp::generateComputeCommandBuffer( const vk::CommandBufferRef& 
 		// Update uniforms
 		{
 			float t = 2.0f*getElapsedSeconds();
-			mComputeUniformSet->uniform( "ciBlock0.pos", vec2( 0.5 ) + 0.5f*vec2( cos( t ), sin( t ) ) );
-			mComputeUniformSet->bufferPending( cmdBuf, VK_ACCESS_UNIFORM_READ_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT );
+			mComputeUniformView->uniform( "ciBlock0.pos", vec2( 0.5 ) + 0.5f*vec2( cos( t ), sin( t ) ) );
+			mComputeUniformView->bufferPending( cmdBuf );
+			cmdBuf->pipelineBarrierGlobalMemoryUniformTransfer();
 		}
 
 		// Compute
@@ -138,8 +139,8 @@ void ComputeBasicApp::generateComputeCommandBuffer( const vk::CommandBufferRef& 
 			const auto& descriptorSets = mComputeDescriptorView->getDescriptorSets();
 			for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 				const auto& ds = descriptorSets[i];
-				std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-				vkCmdBindDescriptorSets( cmdBuf->getCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, mComputePipelineLayout->getPipelineLayout(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+				std::vector<VkDescriptorSet> descSets = { ds->vk() };
+				vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, mComputePipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 			}
 
 			cmdBuf->dispatch( mTexture->getWidth() / 16, mTexture->getHeight() / 16, 1 );
@@ -234,7 +235,7 @@ VkBool32 debugReportVk(
 		//CI_LOG_I( "[" << pLayerPrefix << "] : " << pMessage << " (" << messageCode << ")" );
 	}
 	else if( flags & VK_DEBUG_REPORT_ERROR_BIT_EXT ) {
-		CI_LOG_E( "[" << pLayerPrefix << "] : " << pMessage << " (" << messageCode << ")" );
+		//CI_LOG_E( "[" << pLayerPrefix << "] : " << pMessage << " (" << messageCode << ")" );
 	}
 	else if( flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT ) {
 		//CI_LOG_D( "[" << pLayerPrefix << "] : " << pMessage << " (" << messageCode << ")" );

@@ -239,7 +239,7 @@ console() << "Asset size: " << ci::app::android::AssetFileSystem_flength( asset 
 	// Vulkan pipeline
 	{
 		mCommandPool = vk::CommandPool::create( vk::context()->getGraphicsQueue()->getQueueFamilyIndex(), false, vk::context() );
-		mCommandBuffer = vk::CommandBuffer::create( mCommandPool->getCommandPool() );
+		mCommandBuffer = vk::CommandBuffer::create( mCommandPool );
 
 		// Uniform buffer
 		mUniformSet = vk::UniformView::create( mShaderNormalMapping->getUniformLayout() );
@@ -310,41 +310,40 @@ void NormalMappingApp::update()
 	mUniformSet->uniform( "ciBlock2.lightSource1_position", mLightAmbient.position );
 }
 
-void NormalMappingApp::drawModel( const vk::CommandBufferRef& cmdBufRef )
+void NormalMappingApp::drawModel( const vk::CommandBufferRef& cmdBuf )
 {
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
-
 	if( ! mDescriptorSet ) {
-		mDescriptorSet = vk::DescriptorSet::create( mDescriptorPool.get(), mDescriptorSetLayout->vkObject() );
+		mDescriptorSet = vk::DescriptorSet::create( mDescriptorPool.get(), mDescriptorSetLayout->vk() );
 	}
 
 	// Update descriptor set
 	uint32_t writeCount = 0;
 	VkWriteDescriptorSet *writes = nullptr;
-	if( mUniformSet->getSets()[0]->getBindingUpdates( mDescriptorSet->vkObject(), &writeCount, &writes ) ) {
+	if( mUniformSet->getSets()[0]->getBindingUpdates( mDescriptorSet->vk(), &writeCount, &writes ) ) {
 		mDescriptorSet->update( writeCount, writes );
 	}
 
 	// Bind index buffer
-	auto indexBuffer = mMesh->getIndexVbo()->getBuffer();
-	auto indexType = mMesh->getIndexVbo()->getIndexType();
-	vkCmdBindIndexBuffer( cmdBuf, indexBuffer, 0,indexType );
+	//auto indexBuffer = mMesh->getIndexVbo()->getBuffer();
+	//auto indexType = mMesh->getIndexVbo()->getIndexType();
+	//vkCmdBindIndexBuffer( cmdBuf, indexBuffer, 0,indexType );
+	vkCmdBindIndexBuffer( cmdBuf, mMesh->getIndexVbo() );
 
 	// Bind vertex buffer
 	std::vector<VkBuffer> vertexBuffers;
 	std::vector<VkDeviceSize> offsets;
 	for( const auto& vb : mMesh->getVertexArrayVbos() ) {
-		vertexBuffers.push_back( vb->getBuffer() );
+		vertexBuffers.push_back( vb->vk() );
 		offsets.push_back( 0 );
 	}
-	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
+	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers, offsets );
 	
 	// Binding pipeline
-	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline->getPipeline() );
+	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline );
 			
 	// Bind descriptor sets
-	std::vector<VkDescriptorSet> descSets = { mDescriptorSet->vkObject() };
-	vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout->getPipelineLayout(), 0, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+	std::vector<VkDescriptorSet> descSets = { mDescriptorSet->vk() };
+	vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 
 	// Draw geometry
 	int32_t numIndices = mMesh->getNumIndices();
@@ -384,7 +383,6 @@ void NormalMappingApp::draw()
 
 			// Get current command buffer
 			auto cmdBufRef = vk::context()->getCommandBuffer();
-			auto cmdBuf = cmdBufRef->getCommandBuffer();
 
 			vk::disableAlphaBlending();
 			

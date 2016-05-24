@@ -43,11 +43,19 @@ namespace cinder { namespace vk {
 class CommandBuffer;
 class Device;
 class Fence;
+class IndexBuffer;
+class Pipeline;
+class PipelineLayout;
 class Semaphore;
-using CommandBufferRef = std::shared_ptr<CommandBuffer>
+class VertexBuffer;
+using CommandBufferRef = std::shared_ptr<CommandBuffer>;
 using DeviceRef = std::shared_ptr<Device>;
 using FenceRef = std::shared_ptr<Fence>;
+using IndexBufferRef = std::shared_ptr<IndexBuffer>;
+using PipelineRef = std::shared_ptr<Pipeline>;
+using PipelineLayoutRef = std::shared_ptr<PipelineLayout>;
 using SemaphoreRef = std::shared_ptr<Semaphore>;
+using VertexBufferRef = std::shared_ptr<VertexBuffer>;
 
 } } // namespace cinder::vk
 
@@ -62,4 +70,15 @@ VkResult	vkCreateSemaphore( const ci::vk::Device* device, const VkSemaphoreCreat
 void		vkDestroySemaphore( const ci::vk::Device* device, VkSemaphore semaphore, const VkAllocationCallbacks* pAllocator );
 
 VkResult	vkCreateComputePipelines( const ci::vk::Device* device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkComputePipelineCreateInfo* pCreateInfos, const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines );
-void		vkCmdBindDescriptorSets( VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets )
+
+void		vkCmdBindPipeline( const ci::vk::CommandBufferRef& commandBufferr, VkPipelineBindPoint  pipelineBindPoint, VkPipeline pipeline );
+void		vkCmdBindPipeline( const ci::vk::CommandBufferRef& commandBufferr, VkPipelineBindPoint  pipelineBindPoint, const ci::vk::PipelineRef& pipeline );
+void		vkCmdBindDescriptorSets( const ci::vk::CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets );
+void		vkCmdBindDescriptorSets( const ci::vk::CommandBufferRef& commandBuffer, VkPipelineBindPoint pipelineBindPoint, const ci::vk::PipelineLayoutRef& layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets );
+void		vkCmdBindIndexBuffer( const ci::vk::CommandBufferRef& commandBuffer, const ci::vk::IndexBufferRef& buffer, VkDeviceSize offset = 0 );
+void		vkCmdBindVertexBuffers( const ci::vk::CommandBufferRef& commandBuffer, const ci::vk::VertexBufferRef& buffer, VkDeviceSize offset = 0 );
+void		vkCmdBindVertexBuffers( const ci::vk::CommandBufferRef& commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const std::vector<VkBuffer>& buffers, const std::vector<VkDeviceSize>& offsets );
+void		vkCmdDraw( const ci::vk::CommandBufferRef& commandBuffer, uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0 );
+void		vkCmdDrawIndexed( const ci::vk::CommandBufferRef& commandBuffer, uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0 );
+void		vkCmdPushConstants( const ci::vk::CommandBufferRef& commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues );
+void		vkCmdPushConstants( const ci::vk::CommandBufferRef& commandBuffer, const ci::vk::PipelineLayoutRef& layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues );

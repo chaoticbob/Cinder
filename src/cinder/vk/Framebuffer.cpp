@@ -238,5 +238,10 @@ FramebufferRef Framebuffer::create( VkRenderPass renderPass, const ivec2& size, 
 	return result;
 }
 
+FramebufferRef Framebuffer::create(const vk::RenderPassRef& renderPass, const ivec2& size, const vk::Framebuffer::Format& format, vk::Device *device )
+{
+	FramebufferRef result = Framebuffer::create( renderPass->vk(), size, format, device );
+	return result;
 }
-} // namespace cinder::vk
+
+}} // namespace cinder::vk

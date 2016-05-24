@@ -126,7 +126,7 @@ GpuFlocker::GpuFlocker( FishTornadoApp *app )
 		vk::Framebuffer::Format framebufferFormat = vk::Framebuffer::Format()
 			.addAttachment( vk::Framebuffer::Attachment( mVelocityTextures[i] ) )
 			.addAttachment( vk::Framebuffer::Attachment( mPositionTextures[i] ) );
-		mFbos[i] = vk::Framebuffer::create( mRenderPasses[i]->getRenderPass(), mFboSize, framebufferFormat );
+		mFbos[i] = vk::Framebuffer::create( mRenderPasses[i], mFboSize, framebufferFormat );
 	}
 
 	mMinThresh			= 0.55f;

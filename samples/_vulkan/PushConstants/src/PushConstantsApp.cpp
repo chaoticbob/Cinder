@@ -177,7 +177,7 @@ void drawColorRect( const vk::ShaderProgRef& shader, const Rectf &r )
 		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 		pipelineSelector->setShaderStages( shader->getShaderStages() );
-		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass() );
 		pipelineSelector->setSubPass( ctx->getSubpass() );
 		pipelineSelector->setPipelineLayout( pipelineLayout );
 		pipeline = pipelineSelector->getSelectedPipeline();
@@ -186,43 +186,42 @@ void drawColorRect( const vk::ShaderProgRef& shader, const Rectf &r )
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
 
 	// Push model view projection matrix
 	VkPushConstantRange pcr = shader->getCachedPushConstantRange( "ciBlock0.ciModelViewProjection" );
 	if( 0 != pcr.stageFlags ) {
 		mat4 mvp = vk::getModelViewProjection();
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &mvp );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &mvp );
 	}
 	// Push rect
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciRect" );
 	if( 0 != pcr.stageFlags ) {
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &r );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &r );
 	}
 	// Push texture coords
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciTexCoord" );
 	if( 0 != pcr.stageFlags ) {
 		vec2 texCoords[2] = { vec2( 0, 0 ), vec2( 1, 1 ) };
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, texCoords );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, texCoords );
 	}
 	// Push color
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciColor" );
 	if( 0 != pcr.stageFlags ) {
 		const ColorAf& color = vk::context()->getCurrentColor();
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &color );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &color );
 	}
 
 	// Bind vertex buffer
-	std::vector<VkBuffer> vertexBuffers = { sVertexBufferCache->getBuffer() };
+	std::vector<VkBuffer> vertexBuffers = { sVertexBufferCache->vk() };
 	std::vector<VkDeviceSize> offsets = { 0 };
-	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
+	vkCmdBindVertexBuffers( cmdBufRef, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers, offsets );
 
 	// Bind pipeline
-	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+	vkCmdBindPipeline( cmdBufRef, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
 	// Draw geometry
 	uint32_t numVertices = 4;
-	vkCmdDraw( cmdBuf, numVertices, 1, 0, 0 );
+	vkCmdDraw( cmdBufRef, numVertices, 1, 0, 0 );
 }
 
 void drawTextureRect( const vk::ShaderProgRef& shader, const vk::TextureRef& tex, const Rectf &r )
@@ -246,10 +245,10 @@ void drawTextureRect( const vk::ShaderProgRef& shader, const vk::TextureRef& tex
 	}
 			
 	const vk::UniformLayout& uniformLayout = shader->getUniformLayout();			
-	vk::UniformSetRef transientUniformSet = vk::UniformSet::create( uniformLayout );
+	vk::UniformViewRef transientUniformSet = vk::UniformView::create( uniformLayout );
 	transientUniformSet->uniform( "uTex0", tex );
 	vk::context()->addTransient( transientUniformSet );
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getCachedDescriptorSetLayoutBindings() );
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = vk::context()->getDevice()->getDescriptorSetLayoutSelector()->getSelectedLayout( transientUniformSet->getDescriptorSetLayoutBindings() );
 	vk::DescriptorSetViewRef transientDescriptorView = vk::DescriptorSetView::create( transientUniformSet );
 	transientDescriptorView->allocateDescriptorSets();
 	transientDescriptorView->updateDescriptorSets();
@@ -294,7 +293,7 @@ void drawTextureRect( const vk::ShaderProgRef& shader, const vk::TextureRef& tex
 		pipelineSelector->setDepthWrite( ctx->getDepthWrite() );
 		pipelineSelector->setColorBlendAttachments( ctx->getColorBlendAttachments() );
 		pipelineSelector->setShaderStages( shader->getShaderStages() );
-		pipelineSelector->setRenderPass( ctx->getRenderPass()->getRenderPass() );
+		pipelineSelector->setRenderPass( ctx->getRenderPass() );
 		pipelineSelector->setSubPass( ctx->getSubpass() );
 		pipelineSelector->setPipelineLayout( pipelineLayout );
 		pipeline = pipelineSelector->getSelectedPipeline();
@@ -302,17 +301,17 @@ void drawTextureRect( const vk::ShaderProgRef& shader, const vk::TextureRef& tex
 
 	// Get current command buffer
 	auto cmdBufRef = vk::context()->getCommandBuffer();
-	auto cmdBuf = cmdBufRef->getCommandBuffer();
 
 	vk::context()->setDefaultUniformVars( transientUniformSet );
-	transientUniformSet->bufferPending( cmdBufRef, VK_ACCESS_HOST_WRITE_BIT , VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT );
+	transientUniformSet->bufferPending( cmdBufRef );
+	cmdBufRef->pipelineBarrierGlobalMemoryUniformTransfer();
 
 	// Bind descriptors
 	const auto& descriptorSets = transientDescriptorView->getDescriptorSets();
 	for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 		const auto& ds = descriptorSets[i];
-		std::vector<VkDescriptorSet> descSets = { ds->vkObject() };
-		vkCmdBindDescriptorSets( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+		std::vector<VkDescriptorSet> descSets = { ds->vk() };
+		vkCmdBindDescriptorSets( cmdBufRef, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 	}
 
 
@@ -320,37 +319,37 @@ void drawTextureRect( const vk::ShaderProgRef& shader, const vk::TextureRef& tex
 	VkPushConstantRange pcr = shader->getCachedPushConstantRange( "ciBlock0.ciModelViewProjection" );
 	if( 0 != pcr.stageFlags ) {
 		mat4 mvp = vk::getModelViewProjection();
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &mvp );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &mvp );
 	}
 	// Push rect
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciRect" );
 	if( 0 != pcr.stageFlags ) {
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &r );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &r );
 	}
 	// Push texture coords
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciTexCoord" );
 	if( 0 != pcr.stageFlags ) {
 		vec2 texCoords[2] = { vec2( 0, 0 ), vec2( 1, 1 ) };
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, texCoords );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, texCoords );
 	}
 	// Push color
 	pcr = shader->getCachedPushConstantRange( "ciBlock0.ciColor" );
 	if( 0 != pcr.stageFlags ) {
 		const ColorAf& color = vk::context()->getCurrentColor();
-		vkCmdPushConstants( cmdBuf, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &color );
+		vkCmdPushConstants( cmdBufRef, pipelineLayout, pcr.stageFlags, pcr.offset, pcr.size, &color );
 	}
 
 	// Bind vertex buffer
-	std::vector<VkBuffer> vertexBuffers = { sVertexBufferCache->getBuffer() };
+	std::vector<VkBuffer> vertexBuffers = { sVertexBufferCache->vk() };
 	std::vector<VkDeviceSize> offsets = { 0 };
-	vkCmdBindVertexBuffers( cmdBuf, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers.data(), offsets.data() );
+	vkCmdBindVertexBuffers( cmdBufRef, 0, static_cast<uint32_t>( vertexBuffers.size() ), vertexBuffers, offsets );
 
 	// Bind pipeline
-	vkCmdBindPipeline( cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+	vkCmdBindPipeline( cmdBufRef, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
 	// Draw geometry
 	uint32_t numVertices = 4;
-	vkCmdDraw( cmdBuf, numVertices, 1, 0, 0 );
+	vkCmdDraw( cmdBufRef, numVertices, 1, 0, 0 );
 }
 
 VkBool32 debugReportVk(

@@ -128,7 +128,8 @@ void ComputeBasicApp::update()
 		{
 			float t = 2.0f*getElapsedSeconds();
 			mComputeUniformSet->uniform( "ciBlock0.pos", vec2( 0.5 ) + 0.5f*vec2( cos( t ), sin( t ) ) );
-			mComputeUniformSet->bufferPending( mComputeCmdBuf, VK_ACCESS_UNIFORM_READ_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT );
+			mComputeUniformSet->bufferPending( mComputeCmdBuf );
+			mComputeCmdBuf->pipelineBarrierGlobalMemoryUniformTransfer();
 
 			mComputeCmdBuf->bindPipeline( VK_PIPELINE_BIND_POINT_COMPUTE, mComputePipeline );
 
@@ -137,7 +138,7 @@ void ComputeBasicApp::update()
 			for( uint32_t i = 0; i < descriptorSets.size(); ++i ) {
 				const auto& ds = descriptorSets[i];
 				std::vector<VkDescriptorSet> descSets = { ds->vk() };
-				vkCmdBindDescriptorSets( mComputeCmdBuf->getCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineLayout->vk(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
+				vkCmdBindDescriptorSets( mComputeCmdBuf->vk(), VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineLayout->vk(), i, static_cast<uint32_t>( descSets.size() ), descSets.data(), 0, nullptr );
 			}
 
 			mComputeCmdBuf->dispatch( mTexture->getWidth() / 16, mTexture->getHeight() / 16, 1 );

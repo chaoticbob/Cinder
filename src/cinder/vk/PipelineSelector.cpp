@@ -39,6 +39,7 @@
 #include "cinder/vk/PipelineSelector.h"
 #include "cinder/vk/ConstantConversion.h"
 #include "cinder/vk/Context.h"
+#include "cinder/vk/RenderPass.h"
 #include "cinder/Log.h"
 #include "util/farmhash.h"
 
@@ -207,7 +208,15 @@ void PipelineSelector::setRenderPass( const VkRenderPass& renderPass )
 	}
 }
 
-void PipelineSelector::setSubPass( const uint32_t subPass )
+void PipelineSelector::setRenderPass( const vk::RenderPassRef& renderPass )
+{
+	if( renderPass && ( renderPass->vk() != mPipelineParameters.getData().mRenderPass ) ) {
+		mPipelineParameters.getData().mRenderPass = renderPass->vk();
+		mPipelineParameters.setDirty();
+	}
+}
+
+void PipelineSelector::setSubPass(const uint32_t subPass)
 {
 	if( subPass != mPipelineParameters.getData().mSubPass ) {
 		mPipelineParameters.getData().mSubPass = subPass;
