@@ -104,28 +104,28 @@ TextureBase::~TextureBase()
 void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType )
 {
 	// default is GL_REPEAT
-	if( format.mWrapS != GL_REPEAT )
+	if( ( format.mWrapS != GL_REPEAT ) && ( 1 == format.mSamples ) )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_S, format.mWrapS );
 	// default is GL_REPEAT
-	if( format.mWrapT != GL_REPEAT )
+	if( ( format.mWrapT != GL_REPEAT ) && ( 1 == format.mSamples ) )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_T, format.mWrapT );
 #if ! defined( CINDER_GL_ES_2 )
 	// default is GL_REPEAT
-	if( format.mWrapR != GL_REPEAT )
+	if( ( format.mWrapR != GL_REPEAT ) && ( 1 == format.mSamples ) )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_R, format.mWrapR );
 #endif // ! defined( CINDER_GL_ES )
 
-	if( format.mMipmapping && ! format.mMinFilterSpecified )
+	if( format.mMipmapping && ! format.mMinFilterSpecified && ( 1 == format.mSamples ) )
 		format.mMinFilter = GL_LINEAR_MIPMAP_LINEAR;
 	// default is GL_NEAREST_MIPMAP_LINEAR
-	if( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR )
+	if( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR && ! format.mSamples )
 		glTexParameteri( mTarget, GL_TEXTURE_MIN_FILTER, format.mMinFilter );
 
 	// default is GL_LINEAR
-	if( format.mMagFilter != GL_LINEAR )
+	if( ( format.mMagFilter != GL_LINEAR ) && ( 1 == format.mSamples ) )
 		glTexParameteri( mTarget, GL_TEXTURE_MAG_FILTER, format.mMagFilter );
 	
-	if( format.mMaxAnisotropy > 1.0f )
+	if( ( format.mMaxAnisotropy > 1.0f ) && ( 1 == format.mSamples ) )
 		glTexParameterf( mTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT, format.mMaxAnisotropy );
 
 	if( format.mInternalFormat == -1 )
@@ -154,10 +154,10 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 #endif
 // Compare Mode and Func for Depth Texture
 #if ! defined( CINDER_GL_ES_2 )
-	if( format.mCompareMode > -1 ) {
+	if( format.mCompareMode > -1 && ( 1 == format.mSamples ) ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_MODE, format.mCompareMode );
 	}
-	if( format.mCompareFunc > -1 ) {
+	if( format.mCompareFunc > -1 && ( 1 == format.mSamples ) ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_FUNC, format.mCompareFunc );
 	}
 #else
@@ -181,7 +181,7 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	mSwizzleMask = format.mSwizzleMask;
 	
 	mMipmapping = format.mMipmapping;
-	if( mMipmapping ) {
+	if( mMipmapping && ( 1 == format.mSamples ) ) {
 		mBaseMipmapLevel = format.mBaseMipmapLevel;
 		mMaxMipmapLevel = format.mMaxMipmapLevel;
 #if ! defined( CINDER_GL_ES_2 )
@@ -195,7 +195,7 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	}
 
 #if ! defined( CINDER_GL_ES )
-	if( format.mBorderSpecified ) {
+	if( format.mBorderSpecified && ( 1 == format.mSamples ) ) {
 		glTexParameterfv( mTarget, GL_TEXTURE_BORDER_COLOR, format.mBorderColor.data() );
 	}
 #endif
@@ -654,6 +654,10 @@ TextureBase::Format::Format()
 	mMinFilterSpecified = false;
 	mMinFilter = GL_LINEAR;
 	mMagFilter = GL_LINEAR;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	mSamples = 1;
+	mFixedSampleLocations = false;
+#endif
 	mMipmapping = false;
 	mMipmappingSpecified = false;
 	mBorderSpecified = false;
@@ -886,16 +890,36 @@ Texture2d::Texture2d( int width, int height, Format format )
 	mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
-	ScopedTextureBind texBindScope( mTarget, mTextureId );
-#if ! defined( CINDER_GL_ES_2 )
-	initParams( format, GL_RGBA8, GL_UNSIGNED_BYTE );
-#else
-	initParams( format, GL_RGBA, GL_UNSIGNED_BYTE );
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
+	if( format.getSamples() > 1 ) {
+		if( format.getTarget() == GL_TEXTURE_2D ) {
+			format.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
+		}
+		else {
+			CI_LOG_E( "Multisampling is only supported on GL_TEXTURE_2D and GL_TEXTURE_2D_ARRAY" );
+			format.setSamples( 0 );
+		}
+	}
 #endif
 
+	mTarget = format.getTarget();
+	ScopedTextureBind texBindScope( mTarget, mTextureId );
+
+#if ! defined( CINDER_GL_ES_2 )
+	initParams( format, GL_RGBA8, 0 );
+#else
+	initParams( format, GL_RGBA, 0 );
+#endif
+	
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
+	if( mTarget == GL_TEXTURE_2D_MULTISAMPLE ) {
+		mMaxMipmapLevel = 0;
+	}
+#endif
 	initMaxMipmapLevel();
-	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, format.isImmutableStorage(), format.getDataType() );
+
+	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, format.isImmutableStorage(), format.getDataType(), format.getSamples(), format.hasFixedSampleLocations() );
 }
 
 Texture2d::Texture2d( const void *data, GLenum dataFormat, int width, int height, Format format )
@@ -1617,6 +1641,37 @@ ImageSourceRef Texture2d::createSource()
 #if ! defined( CINDER_GL_ES_2 )
 /////////////////////////////////////////////////////////////////////////////////
 // Texture3d
+GLint Texture3d::sMaxDepth = -1;
+GLint Texture3d::sMaxLayers = -1;
+
+Texture3d::Format::Format( const TextureBase::Format &format )
+	: TextureBase::Format()
+{
+	setTarget( GL_TEXTURE_3D );
+	setWrapS( format.getWrapS() );
+	setWrapT( format.getWrapT() );
+	setWrapR( format.getWrapR() );
+	setMinFilter( format.getMinFilter() );
+	setMagFilter( format.getMagFilter() );
+	setCompareMode( format.getCompareMode() );
+	setCompareFunc( format.getCompareFunc() );
+	enableMipmapping( format.hasMipmapping() );
+	setBaseMipmapLevel( format.getBaseMipmapLevel() );
+	setMaxMipmapLevel( format.getMaxMipmapLevel() );
+	setSamples( format.getSamples(), format.hasFixedSampleLocations() );
+	setImmutableStorage( format.isImmutableStorage() );
+	setMaxAnisotropy( format.getMaxAnisotropy() );
+	setInternalFormat( format.getInternalFormat() );
+	setDataType( format.getDataType() );
+	setSwizzleMask( format.getSwizzleMask() );
+	setBorderColor( format.getBorderColor() );
+	setLabel( format.getLabel() );
+
+	#if ! defined( CINDER_GL_ES )		
+		setIntermediatePbo( format.getIntermediatePbo() );
+	#endif
+}
+
 Texture3dRef Texture3d::create( GLint width, GLint height, GLint depth, const Format &format )
 {
 	if( format.mDeleter )
@@ -1637,12 +1692,31 @@ Texture3d::Texture3d( GLint width, GLint height, GLint depth, Format format )
 	: mWidth( width ), mHeight( height ), mDepth( depth )
 {
 	glGenTextures( 1, &mTextureId );
+	
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_3D_STORAGE_MULTISAMPLE )
+	if( format.getSamples() ) {
+		if( format.getTarget() == GL_TEXTURE_2D_ARRAY || format.getTarget() == GL_TEXTURE_2D_MULTISAMPLE_ARRAY ) {
+			format.setTarget( GL_TEXTURE_2D_MULTISAMPLE_ARRAY );
+		}
+		else {
+			CI_LOG_E( "Multisampling is only supported on GL_TEXTURE_2D and GL_TEXTURE_2D_ARRAY" );
+			format.setSamples( 0 );
+		}
+	}
+#endif
+
 	mTarget = format.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	TextureBase::initParams( format, GL_RGB, GL_UNSIGNED_BYTE );
-
-	ScopedTextureBind tbs( mTarget, mTextureId );
-	env()->allocateTexStorage3d( mTarget, format.mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, format.isImmutableStorage() );
+	TextureBase::initParams( format, GL_RGB8, 0 );
+	
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
+	if( mTarget == GL_TEXTURE_2D_MULTISAMPLE_ARRAY ) {
+		mMaxMipmapLevel = 0;
+	}
+#endif
+	initMaxMipmapLevel();
+	
+	env()->allocateTexStorage3d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, format.isImmutableStorage(), format.getSamples(), format.hasFixedSampleLocations() );
 }
 
 Texture3d::Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format )
@@ -1675,6 +1749,30 @@ void Texture3d::update( const void *data, GLenum dataFormat, GLenum dataType, in
 	glTexSubImage3D( mTarget, mipLevel, xOffset, yOffset, zOffset, width, height, depth, dataFormat, dataType, data );
 }
 
+GLint Texture3d::getMaxDepth()
+{
+	if( sMaxDepth == -1 ) {
+		glGetIntegerv( GL_MAX_3D_TEXTURE_SIZE, &sMaxDepth );
+	}
+	return sMaxDepth;
+}
+
+GLint Texture3d::getMaxLayers()
+{
+	if( sMaxLayers == -1 ) {
+		glGetIntegerv( GL_MAX_ARRAY_TEXTURE_LAYERS, &sMaxLayers );
+	}
+	return sMaxLayers;
+}
+
+void Texture3d::initMaxMipmapLevel()
+{
+	if( mMaxMipmapLevel == -1 )
+		mMaxMipmapLevel = requiredMipLevels( mWidth, mHeight, mDepth ) - 1;
+#if ! defined( CINDER_GL_ES_2 )
+	glTexParameteri( mTarget, GL_TEXTURE_MAX_LEVEL, mMaxMipmapLevel );
+#endif
+}
 void Texture3d::printDims( std::ostream &os ) const
 {
 	os << mWidth << " x " << mHeight << " x " << mDepth;

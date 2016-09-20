@@ -214,6 +214,11 @@ class TextureBase {
 		//! Sets the anisotropic filter amount. A value greater than 1.0 "enables" anisotropic filtering. Maximum of getMaxAnisotropyMax();
 		void    setMaxAnisotropy( GLfloat maxAnisotropy ) { mMaxAnisotropy = maxAnisotropy; }
 		
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		//! Sets the number of samples in the multisample texture's image and whether the image will use identical sample locations and the same number of samples for all texels in the image.
+		void setSamples( GLsizei numSamples, bool fixedSampleLocations = false ) { mSamples = numSamples; mFixedSampleLocations = fixedSampleLocations; }
+#endif
+		
 		//! Returns the texture's target
 		GLenum	getTarget() const { return mTarget; }
 		//! Returns whether the texture has mipmapping enabled
@@ -242,6 +247,13 @@ class TextureBase {
 		GLenum	getMagFilter() const { return mMagFilter; }
 		//! Returns the texture anisotropic filtering amount
 		GLfloat getMaxAnisotropy() const { return mMaxAnisotropy; }
+		
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		//! Returns the number of samples in the multisample texture's image. 
+		GLsizei getSamples() const { return mSamples; }
+		//! Returns whether the image will use identical sample locations and the same number of samples for all texels in the image.
+		bool	hasFixedSampleLocations() const { return mFixedSampleLocations; }
+#endif
 
 #if ! defined( CINDER_GL_ES )
 		//! Supplies an intermediate PBO that Texture constructors optionally make use of. A PBO of an inadequate size may result in an exception.
@@ -253,6 +265,8 @@ class TextureBase {
 		void			setBorderColor( const std::array<GLfloat, 4> &border ) { mBorderColor = border; mBorderSpecified = true; }
 		//! Sets the texture's border color. Ignored in OpenGL ES.
 		void			setBorderColor( const ColorA &color );
+		//! Returns the texture's border color. Ignored in OpenGL ES.
+		ColorA 			getBorderColor() const { return ColorA( mBorderColor[0], mBorderColor[1], mBorderColor[2], mBorderColor[3] ); }
 
 		//! Sets the swizzle mask corresponding to \c GL_TEXTURE_SWIZZLE_RGBA. Expects \c GL_RED through \c GL_ALPHA, or \c GL_ONE or \c GL_ZERO
 		void	setSwizzleMask( const std::array<GLint,4> &swizzleMask ) { mSwizzleMask = swizzleMask; mSwizzleSpecified = true; }
@@ -279,6 +293,10 @@ class TextureBase {
 		bool				mMinFilterSpecified;
 		GLuint				mBaseMipmapLevel;
 		GLint				mMaxMipmapLevel;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		GLsizei				mSamples;
+		bool				mFixedSampleLocations;
+#endif
 		bool				mImmutableStorage;
 		GLfloat				mMaxAnisotropy;
 		GLint				mInternalFormat, mDataType;
@@ -486,6 +504,11 @@ class Texture2d : public TextureBase {
 #endif
 		Format& minFilter( GLenum minFilter ) { setMinFilter( minFilter ); return *this; }
 		Format& magFilter( GLenum magFilter ) { setMagFilter( magFilter ); return *this; }
+		
+#if ! defined( CINDER_GL_ES_2 )
+		//! Specifies the number of samples in the multisample texture's image. 
+		Format& samples( GLsizei numSamples, bool fixedSampleLocations = false ){ setSamples( numSamples, fixedSampleLocations ); return *this; }
+#endif
 		Format& compareMode( GLenum compareMode ) { mCompareMode = compareMode; return *this; }
 		//! Specifies the comparison operator used when \c GL_TEXTURE_COMPARE_MODE is set to \c GL_COMPARE_R_TO_TEXTURE.
 		Format& compareFunc( GLenum compareFunc ) { mCompareFunc = compareFunc; return *this; }		Format& swizzleMask( const std::array<GLint,4> &swizzleMask ) { setSwizzleMask( swizzleMask ); return *this; }
@@ -640,6 +663,8 @@ class Texture3d : public TextureBase {
 	struct Format : public TextureBase::Format {
 		//! Default constructor, sets the target to \c GL_TEXTURE_3D, wrap to \c GL_CLAMP, disables mipmapping, the internal format to "automatic"
 		Format() : TextureBase::Format() { mTarget = GL_TEXTURE_3D; }
+		//! Constructs a Texture3d::Format from a TextureBase::Format
+		Format( const TextureBase::Format &format );
 
 		//! Chaining functions for Format class.
 		//! Sets the target, defaults to \c GL_TEXTURE_3D, also supports \c GL_TEXTURE_2D_ARRAY
@@ -656,6 +681,10 @@ class Texture3d : public TextureBase {
 #endif
 		Format& minFilter( GLenum minFilter ) { setMinFilter( minFilter ); return *this; }
 		Format& magFilter( GLenum magFilter ) { setMagFilter( magFilter ); return *this; }
+#if ! defined( CINDER_GL_ES_2 )
+		//! Specifies the number of samples in the multisample texture's image. Only supported with a GL_TEXTURE_2D_ARRAY target.
+		Format& samples( GLsizei numSamples, bool fixedSampleLocations = false ){ setSamples( numSamples, fixedSampleLocations ); return *this; }
+#endif
 		//! Sets whether the storage for the cannot be changed in the future (making glTexImage3D() calls illegal). More efficient when possible. Default is \c false.
 		Format& immutableStorage( bool immutable = true ) { setImmutableStorage( immutable ); return *this; }
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
@@ -685,14 +714,21 @@ class Texture3d : public TextureBase {
 	GLint			getHeight() const override { return mHeight; }
 	//! Returns the depth of the texture, which is the number of images in a texture array, or the depth of a 3D texture measured in pixels
 	GLint			getDepth() const override { return mDepth; }
+	
+	//! Returns the maximum depth of a 3D texture
+	static GLint	getMaxDepth();
+	//! Returns the maximum depth of a 2D texture array
+	static GLint	getMaxLayers();
 
   protected:
   	Texture3d( GLint width, GLint height, GLint depth, Format format );
 	Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format );
-
+	
+	void	initMaxMipmapLevel();
 	void	printDims( std::ostream &os ) const override;
 
-	GLint		mWidth, mHeight, mDepth;
+	GLint			mWidth, mHeight, mDepth;
+	static GLint	sMaxDepth, sMaxLayers;
 };
 #endif // ! defined( CINDER_GL_ES_2 )
 

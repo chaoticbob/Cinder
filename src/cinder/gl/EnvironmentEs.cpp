@@ -46,11 +46,14 @@ class EnvironmentEs : public Environment {
 	bool	isExtensionAvailable( const std::string &extName ) override;
 	bool	supportsHardwareVao() override;
 	bool	supportsTextureLod() const override;
+	bool	supportsTextureMultisample() const override;
+	bool	supportsTextureStorageMultisample() override;
+
 	void	objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) override;
 	
 	void	allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable ) override;
+	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLsizei samples, GLboolean fixedsamplelocations ) override;
+	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLsizei samples, GLboolean fixedsamplelocations ) override;
 	void	allocateTexStorageCubeMap( GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable ) override;
 
 	std::string		generateVertexShader( const ShaderDef &shader ) override;
@@ -113,6 +116,21 @@ bool EnvironmentEs::supportsTextureLod() const
 #endif
 }
 
+bool EnvironmentEs::supportsTextureMultisample() const 
+{
+	return false;
+}
+
+bool EnvironmentEs::supportsTextureStorageMultisample()
+{
+#if defined( CINDER_GL_ES_2 )
+	return false;
+#else
+	static bool result = isExtensionAvailable( "GL_ARB_texture_storage_multisample" );
+	return result;
+#endif
+}
+
 void EnvironmentEs::objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label )
 {
 #if defined( CINDER_COCOA_TOUCH )
@@ -125,32 +143,50 @@ void EnvironmentEs::allocateTexStorage1d( GLenum target, GLsizei levels, GLenum 
 	throw gl::Exception( "allocateTexStorage1d unimplemented on OpenGL ES" );
 }
 
-void EnvironmentEs::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType )
+void EnvironmentEs::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLsizei samples, GLboolean fixedsamplelocations )
 {
-#if defined( CINDER_GL_ES_2 )
-	// test at runtime for presence of 'glTexStorage2D' and just force mutable storage if it's not available
-	// both ANGLE and iOS support EXT_texture_storage
-	static auto texStorage2DFn = glTexStorage2DEXT;
+	if( samples > 1 ) {
+#if defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
+		if( target != GL_TEXTURE_2D_MULTISAMPLE && target != GL_PROXY_TEXTURE_2D_MULTISAMPLE )
+			throw gl::Exception( "multisampling not supported on this format: " + gl::constantToString( target ) );
+		
+		if( ! immutable )
+			throw gl::Exception( "multisample textures have to be immutable on this platform" );
+		else {		
+			static auto texStorage2DMultisampleFn = glTexStorage2DMultisample;
+			if( supportsTextureStorageMultisample() && texStorage2DMultisampleFn && immutable ) 
+				texStorage2DMultisampleFn( target, samples, internalFormat, width, height, fixedsamplelocations );
+		}
 #else
-	static auto texStorage2DFn = glTexStorage2D;
+		throw gl::Exception( "multisample textures not supported on this platform" );
 #endif
-	if( immutable && texStorage2DFn ) {
-		texStorage2DFn( target, levels, internalFormat, width, height );
 	}
 	else {
-		GLenum dataFormat, dataType;
-		TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
-		if( texImageDataType != -1 )
-			dataType = texImageDataType;
-// on ES 2 non-sized formats are required for internalFormat
-#if defined( CINDER_GL_ES_2 )
-		internalFormat = dataFormat;
-#endif
-		glTexImage2D( target, 0, internalFormat, width, height, 0, dataFormat, dataType, nullptr );
+	#if defined( CINDER_GL_ES_2 )
+		// test at runtime for presence of 'glTexStorage2D' and just force mutable storage if it's not available
+		// both ANGLE and iOS support EXT_texture_storage
+		static auto texStorage2DFn = glTexStorage2DEXT;
+	#else
+		static auto texStorage2DFn = glTexStorage2D;
+	#endif
+		if( immutable && texStorage2DFn ) {
+			texStorage2DFn( target, levels, internalFormat, width, height );
+		}
+		else {
+			GLenum dataFormat, dataType;
+			TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
+			if( texImageDataType != -1 )
+				dataType = texImageDataType;
+	// on ES 2 non-sized formats are required for internalFormat
+	#if defined( CINDER_GL_ES_2 )
+			internalFormat = dataFormat;
+	#endif
+			glTexImage2D( target, 0, internalFormat, width, height, 0, dataFormat, dataType, nullptr );
+		}
 	}
 }
 
-void EnvironmentEs::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable )
+void EnvironmentEs::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLsizei samples, GLboolean fixedsamplelocations )
 {
 #if defined( CINDER_GL_ES_2 )
 	CI_LOG_E( "allocateTexStorage3d called on unsupported platform" );
