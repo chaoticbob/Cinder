@@ -118,7 +118,7 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	if( format.mMipmapping && ! format.mMinFilterSpecified && ( 1 == format.mSamples ) )
 		format.mMinFilter = GL_LINEAR_MIPMAP_LINEAR;
 	// default is GL_NEAREST_MIPMAP_LINEAR
-	if( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR && ! format.mSamples )
+	if( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR && ( 1 == format.mSamples ) )
 		glTexParameteri( mTarget, GL_TEXTURE_MIN_FILTER, format.mMinFilter );
 
 	// default is GL_LINEAR
@@ -154,10 +154,10 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 #endif
 // Compare Mode and Func for Depth Texture
 #if ! defined( CINDER_GL_ES_2 )
-	if( format.mCompareMode > -1 && ( 1 == format.mSamples ) ) {
+	if( ( format.mCompareMode > -1 ) && ( 1 == format.mSamples ) ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_MODE, format.mCompareMode );
 	}
-	if( format.mCompareFunc > -1 && ( 1 == format.mSamples ) ) {
+	if( ( format.mCompareFunc > -1 ) && ( 1 == format.mSamples ) ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_FUNC, format.mCompareFunc );
 	}
 #else
@@ -198,6 +198,10 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	if( format.mBorderSpecified && ( 1 == format.mSamples ) ) {
 		glTexParameterfv( mTarget, GL_TEXTURE_BORDER_COLOR, format.mBorderColor.data() );
 	}
+#endif
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	mSamples = format.mSamples;
 #endif
 
 	if( ! format.mLabel.empty() )
@@ -719,7 +723,7 @@ Texture1dRef Texture1d::create( const void *data, GLenum dataFormat, int width, 
 }
 
 Texture1d::Texture1d( GLint width, Format format )
-	: mWidth( width )
+	: mFormat( format ), mWidth( width )
 {
 	glGenTextures( 1, &mTextureId );
 	mTarget = format.getTarget();
@@ -731,7 +735,7 @@ Texture1d::Texture1d( GLint width, Format format )
 }
 
 Texture1d::Texture1d( const Surface8u &surface, Format format )
-	: mWidth( surface.getWidth() )
+	: mFormat( format ), mWidth( surface.getWidth() )
 {
 	GLint dataFormat;
 	GLenum type;
@@ -747,7 +751,7 @@ Texture1d::Texture1d( const Surface8u &surface, Format format )
 }
 
 Texture1d::Texture1d( const void *data, GLenum dataFormat, int width, Format format )
-	: mWidth( width )
+	: mFormat( format ), mWidth( width )
 {
 	glGenTextures( 1, &mTextureId );
 	mTarget = format.getTarget();
@@ -884,32 +888,33 @@ void Texture2d::initMaxMipmapLevel()
 #endif
 }
 
-Texture2d::Texture2d( int width, int height, Format format )
-	: mActualSize( width, height ),
-	mCleanBounds( 0, 0, width, height ),
-	mTopDown( false )
+Texture2d::Texture2d( int width, int height, const Format &format )
+	: mFormat( format ), mActualSize( width, height ),
+	  mCleanBounds( 0, 0, width, height ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
 
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
-	if( format.getSamples() > 1 ) {
-		if( format.getTarget() == GL_TEXTURE_2D ) {
-			format.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
+	if( mFormat.getSamples() > 1 ) {
+		if( mFormat.getTarget() == GL_TEXTURE_2D ) {
+			mFormat.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
+			mFormat.mipmap( false );
 		}
 		else {
 			CI_LOG_E( "Multisampling is only supported on GL_TEXTURE_2D and GL_TEXTURE_2D_ARRAY" );
-			format.setSamples( 0 );
+			mFormat.setSamples( 0 );
 		}
 	}
 #endif
 
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 
 #if ! defined( CINDER_GL_ES_2 )
-	initParams( format, GL_RGBA8, 0 );
+	initParams( mFormat, GL_RGBA8, 0 );
 #else
-	initParams( format, GL_RGBA, 0 );
+	initParams( mFormat, GL_RGBA, 0 );
 #endif
 	
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
@@ -919,136 +924,137 @@ Texture2d::Texture2d( int width, int height, Format format )
 #endif
 	initMaxMipmapLevel();
 
-	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, format.isImmutableStorage(), format.getDataType(), format.getSamples(), format.hasFixedSampleLocations() );
+	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.isImmutableStorage(), mFormat.getDataType(), mFormat.getSamples(), mFormat.hasFixedSampleLocations() );
 }
 
-Texture2d::Texture2d( const void *data, GLenum dataFormat, int width, int height, Format format )
-	: mActualSize( width, height ),
-	mCleanBounds( 0, 0, width, height ),
-	mTopDown( false )
+Texture2d::Texture2d( const void *data, GLenum dataFormat, int width, int height, const Format &format )
+	: mFormat( format ), mActualSize( width, height ),
+	  mCleanBounds( 0, 0, width, height ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	initParams( format, GL_RGBA, GL_UNSIGNED_BYTE );
+	initParams( mFormat, GL_RGBA, GL_UNSIGNED_BYTE );
 
-	if( format.mLoadTopDown )
+	if( mFormat.mLoadTopDown )
 		CI_LOG_W( "Ignoring request for loadTopDown" );
 
-	initData( data, dataFormat, format );
+	initData( data, dataFormat, mFormat );
 }
 
-Texture2d::Texture2d( const Surface8u &surface, Format format )
-	: mActualSize( surface.getSize() ),
-	mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Surface8u &surface, const Format &format )
+	: mFormat( format ), mActualSize( surface.getSize() ),
+	  mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	initParams( format, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE );
+	initParams( mFormat, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE );
 	setData<uint8_t>( surface, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const Channel8u &channel, Format format )
-	: mActualSize( channel.getSize() ),
-	mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Channel8u &channel, const Format &format )
+	: mFormat( format ), mActualSize( channel.getSize() ), 
+	  mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 #if defined( CINDER_GL_ES )
-	initParams( format, GL_LUMINANCE, GL_UNSIGNED_BYTE );
+	initParams( mFormat, GL_LUMINANCE, GL_UNSIGNED_BYTE );
 #else
-	if( ! format.mSwizzleSpecified ) {
+	if( ! mFormat.mSwizzleSpecified ) {
 		std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
-		format.setSwizzleMask( swizzleMask );
+		mFormat.setSwizzleMask( swizzleMask );
 	}
-	initParams( format, GL_RED, GL_UNSIGNED_BYTE );
+	initParams( mFormat, GL_RED, GL_UNSIGNED_BYTE );
 #endif
 	setData<uint8_t>( channel, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const Surface16u &surface, Format format )
-	: mActualSize( surface.getSize() ),
-	mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Surface16u &surface, const Format &format )
+	: mFormat( format ), mActualSize( surface.getSize() ),
+	  mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 #if defined( CINDER_GL_ES )
-	initParams( format, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_SHORT );
+	initParams( mFormat, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_SHORT );
 #else
-	initParams( format, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_SHORT );
+	initParams( mFormat, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_UNSIGNED_SHORT );
 #endif
 
 	setData<uint16_t>( surface, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const Channel16u &channel, Format format )
-	: mActualSize( channel.getSize() ),
-	mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Channel16u &channel, const Format &format )
+	: mFormat( format ), mActualSize( channel.getSize() ),
+	  mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 #if defined( CINDER_GL_ES )
-	initParams( format, GL_LUMINANCE, GL_UNSIGNED_SHORT );
+	initParams( mFormat, GL_LUMINANCE, GL_UNSIGNED_SHORT );
 #else
-	if( ! format.mSwizzleSpecified ) {
+	if( ! mFormat.mSwizzleSpecified ) {
 		std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
-		format.setSwizzleMask( swizzleMask );
+		mFormat.setSwizzleMask( swizzleMask );
 	}
-	initParams( format, GL_RED, GL_UNSIGNED_SHORT );
+	initParams( mFormat, GL_RED, GL_UNSIGNED_SHORT );
 #endif
 
 	setData<uint16_t>( channel, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const Surface32f &surface, Format format )
-	: mActualSize( surface.getSize() ),
-	mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Surface32f &surface, const Format &format )
+	: mFormat( format ), 
+	  mActualSize( surface.getSize() ),
+	  mCleanBounds( 0, 0, surface.getWidth(), surface.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 #if defined( CINDER_GL_ES_2 )
-	initParams( format, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_FLOAT );
+	initParams( mFormat, surface.hasAlpha() ? GL_RGBA : GL_RGB, GL_FLOAT );
 #else
-	initParams( format, surface.hasAlpha() ? GL_RGBA32F : GL_RGB32F, GL_FLOAT );
+	initParams( mFormat, surface.hasAlpha() ? GL_RGBA32F : GL_RGB32F, GL_FLOAT );
 #endif
 
 	setData<float>( surface, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const Channel32f &channel, Format format )
-	: mActualSize( channel.getSize() ),
-	mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
-	mTopDown( false )
+Texture2d::Texture2d( const Channel32f &channel, const Format &format )
+	: mFormat( format ), mActualSize( channel.getSize() ),
+	  mCleanBounds( 0, 0, channel.getWidth(), channel.getHeight() ),
+	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
 #if defined( CINDER_GL_ES_2 )
-	initParams( format, GL_LUMINANCE, GL_FLOAT );
+	initParams( mFormat, GL_LUMINANCE, GL_FLOAT );
 #else
-	if( ! format.mSwizzleSpecified ) {
+	if( ! mFormat.mSwizzleSpecified ) {
 		std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
-		format.setSwizzleMask( swizzleMask );
+		mFormat.setSwizzleMask( swizzleMask );
 	}
-	initParams( format, GL_RED, GL_FLOAT );
+	initParams( mFormat, GL_RED, GL_FLOAT );
 #endif
 
 	setData<float>( channel, true, 0, ivec2( 0, 0 ) );
 }
 
-Texture2d::Texture2d( const ImageSourceRef &imageSource, Format format )
-	: mActualSize( -1, -1 ), mCleanBounds( 0, 0, -1, -1 ),
-	mTopDown( false )
+Texture2d::Texture2d( const ImageSourceRef &imageSource, const Format &format )
+	: mFormat( format ), mActualSize( -1, -1 ), 
+	  mCleanBounds( 0, 0, -1, -1 ), mTopDown( false )
 {
 	GLint defaultInternalFormat;
 	// Set the internal format based on the image's color space
@@ -1094,11 +1100,11 @@ Texture2d::Texture2d( const ImageSourceRef &imageSource, Format format )
 				break;
 			}
 
-			if( ! format.mSwizzleSpecified ) {
+			if( ! mFormat.mSwizzleSpecified ) {
 				std::array<int,4> swizzleMask = { GL_RED, GL_RED, GL_RED, GL_ONE };
 				if( imageSource->hasAlpha() )
 					swizzleMask[3] = GL_GREEN;
-				format.setSwizzleMask( swizzleMask );
+				mFormat.setSwizzleMask( swizzleMask );
 			}
 #endif
 		}
@@ -1109,26 +1115,26 @@ Texture2d::Texture2d( const ImageSourceRef &imageSource, Format format )
 	}
 
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	initParams( format, defaultInternalFormat, 0 /* unused */ );
-	initData( imageSource, format );
+	initParams( mFormat, defaultInternalFormat, 0 /* unused */ );
+	initData( imageSource, mFormat );
 }
 
 Texture2d::Texture2d( GLenum target, GLuint textureId, int width, int height, bool doNotDispose )
 	: TextureBase( target, textureId, -1 ), mActualSize( width, height ),
-	mCleanBounds( 0, 0, width, height ), mTopDown( false )
+	  mCleanBounds( 0, 0, width, height ), mTopDown( false )
 {
 	mDoNotDispose = doNotDispose;
 }
 
-Texture2d::Texture2d( const TextureData &data, Format format )
-	: mTopDown( false )
+Texture2d::Texture2d( const TextureData &data, const Format &format )
+	: mFormat( format ), mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	initParams( format, 0 /* unused */, 0 /* unused */ );
+	initParams( mFormat, 0 /* unused */, 0 /* unused */ );
 	
 	replace( data );
 
@@ -1689,7 +1695,7 @@ Texture3dRef Texture3d::create( const void *data, GLenum dataFormat, int width, 
 }
 
 Texture3d::Texture3d( GLint width, GLint height, GLint depth, Format format )
-	: mWidth( width ), mHeight( height ), mDepth( depth )
+	: mFormat( format ), mWidth( width ), mHeight( height ), mDepth( depth )
 {
 	glGenTextures( 1, &mTextureId );
 	
@@ -1720,7 +1726,7 @@ Texture3d::Texture3d( GLint width, GLint height, GLint depth, Format format )
 }
 
 Texture3d::Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format )
-	: mWidth( width ), mHeight( height ), mDepth( depth )
+	: mFormat( format ), mWidth( width ), mHeight( height ), mDepth( depth )
 {
 	glGenTextures( 1, &mTextureId );
 	mTarget = format.getTarget();

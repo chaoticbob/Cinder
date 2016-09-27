@@ -145,6 +145,12 @@ class TextureBase {
 	//! Returns whether this hardware supports shadow sampling.
 	static bool		supportsShadowSampler();
 #endif
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	//! Returns the number of samples in the multisample texture's image.
+	virtual GLsizei		getSamples() const { return mSamples; }
+#endif
+
 	//! Returns the debugging label associated with the Texture.
 	const std::string&	getLabel() const { return mLabel; }
 	//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
@@ -326,7 +332,10 @@ class TextureBase {
 	bool				mMipmapping;
 	GLint				mBaseMipmapLevel, mMaxMipmapLevel;
 	bool				mDoNotDispose;
-	std::array<GLint,4>	mSwizzleMask;
+	std::array<GLint,4>	mSwizzleMask;		
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	GLsizei				mSamples;
+#endif
 	std::string			mLabel; // debugging label
 	
 	friend std::ostream& operator<<( std::ostream &os, const TextureBase &rhs );
@@ -462,6 +471,8 @@ class Texture1d : public TextureBase {
 	//! Updates the pixels of a Texture1d with the data pointed to by \a data, of format \a dataFormat (Ex: GL_RGB), and type \a dataType (Ex: GL_UNSIGNED_BYTE) of size \a width.
 	void	update( const void *data, GLenum dataFormat, GLenum dataType, int mipLevel, int width, int offset = 0 );
 	
+	const Format&	getFormat() const { return mFormat; }
+
 	//! Returns the width of the texture in pixels
 	GLint			getWidth() const override { return mWidth; }
 	//! Returns the height of the texture in pixels, which is always \c 1
@@ -476,7 +487,8 @@ class Texture1d : public TextureBase {
 
 	void	printDims( std::ostream &os ) const override;
 
-	GLint		mWidth;
+	Format	mFormat;
+	GLint	mWidth;
 };
 
 #endif // ! defined( CINDER_GL_ES )
@@ -600,6 +612,8 @@ class Texture2d : public TextureBase {
 	//! Replaces the pixels (and data store) of a Texture with contents of \a textureData. Use update() instead if the bounds of \a this match those of \a textureData
 	void			replace( const TextureData &textureData );
 
+	const Format&	getFormat() const { return mFormat; }
+
 	//! Returns the width of the texture in pixels.
 	GLint			getWidth() const override { return mCleanBounds.getWidth(); }
 	//! Returns the height of the texture in pixels.
@@ -618,23 +632,23 @@ class Texture2d : public TextureBase {
 	bool			isTopDown() const { return mTopDown; }
 	//!	Marks whether the scanlines of the image are stored top-down in memory relative to the base address. Default is \c false.
 	void			setTopDown( bool topDown = true ) { mTopDown = topDown; }
-	
+
 	//! Returns an ImageSource pointing to this Texture
 	ImageSourceRef	createSource();
 	
   protected:
 
-	Texture2d( int width, int height, Format format = Format() );
-	Texture2d( const void *data, GLenum dataFormat, int width, int height, Format format = Format() );
-	Texture2d( const Surface8u &surface, Format format = Format() );
-	Texture2d( const Surface16u &surface, Format format = Format() );
-	Texture2d( const Surface32f &surface, Format format = Format() );
-	Texture2d( const Channel8u &channel, Format format = Format() );
-	Texture2d( const Channel16u &channel, Format format = Format() );
-	Texture2d( const Channel32f &channel, Format format = Format() );
-	Texture2d( const ImageSourceRef &imageSource, Format format = Format() );
+	Texture2d( int width, int height, const Format &format = Format() );
+	Texture2d( const void *data, GLenum dataFormat, int width, int height, const Format &format = Format() );
+	Texture2d( const Surface8u &surface, const Format &format = Format() );
+	Texture2d( const Surface16u &surface, const Format &format = Format() );
+	Texture2d( const Surface32f &surface, const Format &format = Format() );
+	Texture2d( const Channel8u &channel, const Format &format = Format() );
+	Texture2d( const Channel16u &channel, const Format &format = Format() );
+	Texture2d( const Channel32f &channel, const Format &format = Format() );
+	Texture2d( const ImageSourceRef &imageSource, const Format &format = Format() );
 	Texture2d( GLenum target, GLuint textureId, int width, int height, bool doNotDispose );
-	Texture2d( const TextureData &data, Format format );
+	Texture2d( const TextureData &data, const Format &format );
 	
 	void	printDims( std::ostream &os ) const override;
 	void	initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType );
@@ -650,9 +664,10 @@ class Texture2d : public TextureBase {
 #endif
 	void	initDataImageSourceImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, GLint dataType, ImageIo::ChannelOrder channelOrder, bool isGray );
 
-	ivec2		mActualSize; // true texture size in pixels, as opposed to clean bounds
-	Area		mCleanBounds; // relative to upper-left origin regardless of top-down
-	bool		mTopDown;
+	Format	mFormat;
+	ivec2	mActualSize; // true texture size in pixels, as opposed to clean bounds
+	Area	mCleanBounds; // relative to upper-left origin regardless of top-down
+	bool	mTopDown;
 	
 	friend class Texture2dCache;
 };
@@ -708,6 +723,8 @@ class Texture3d : public TextureBase {
 
 	void	update( const void *data, GLenum dataFormat, GLenum dataType, int mipLevel, int width, int height, int depth, int xOffset = 0, int yOffset = 0, int zOffset = 0 );
 	
+	const Format&	getFormat() const { return mFormat; }
+
 	//! Returns the width of the texture in pixels
 	GLint			getWidth() const override { return mWidth; }
 	//! Returns the height of the texture in pixels
@@ -727,6 +744,7 @@ class Texture3d : public TextureBase {
 	void	initMaxMipmapLevel();
 	void	printDims( std::ostream &os ) const override;
 
+	Format			mFormat;
 	GLint			mWidth, mHeight, mDepth;
 	static GLint	sMaxDepth, sMaxLayers;
 };

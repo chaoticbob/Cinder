@@ -97,14 +97,22 @@ std::ostream& operator<<( std::ostream &os, const Renderbuffer &rhs );
 
 //! Represents an OpenGL Framebuffer Object.
 class Fbo : public std::enable_shared_from_this<Fbo> {
-  public:
+  protected:
+	struct Attachment;
+	using AttachmentRef = std::shared_ptr<Attachment>;
+
+public:
 	struct Format;
 
+	enum { ALL_ATTACHMENTS = 0xFFFFFFFF };
+	
 	//! Creates an FBO \a width pixels wide and \a height pixels high, using Fbo::Format \a format
-	static FboRef create( int width, int height, const Format &format = Format() );
+	static FboRef	create( int width, int height, const Format &format = Format() );
 	//! Creates an FBO \a width pixels wide and \a height pixels high, a color texture (with optional \a alpha channel), and optionally a \a depth buffer and \a stencil buffer
-	static FboRef create( int width, int height, bool alpha, bool depth = true, bool stencil = false );
+	static FboRef	create( int width, int height, bool alpha, bool depth = true, bool stencil = false );
 	~Fbo();
+	//! Creates an FBO using Fbo::Format \a format. The FBO can have zero attachments
+	static FboRef	create( const Format &format = Format() );
 
 	//! Returns the width of the FBO in pixels
 	int				getWidth() const { return mWidth; }
@@ -121,8 +129,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Returns the Fbo::Format of this FBO
 	Format			getFormat() { return mFormat; }
 
-	//! Returns a reference to the color Texture2d of the FBO (at \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d attached at \c GL_COLOR_ATTACHMENT0
-	Texture2dRef	getColorTexture();	
+	//! Returns a reference to the color Texture2d of the FBO (at \c attachmentPoint, e.g.: GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d attached at \c GL_COLOR_ATTACHMENT0
+	Texture2dRef	getColorTexture( GLenum attachmentPoint = GL_COLOR_ATTACHMENT0 );	
 	//! Returns a reference to the depth Texture2d of the FBO. Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d as a depth attachment.
 	Texture2dRef	getDepthTexture();
 	//! Returns a Texture2dRef attached at \a attachment (such as \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns NULL if a Texture2d is not bound at \a attachment.
@@ -139,7 +147,18 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Unbinds the Fbo as the currently active framebuffer, restoring the primary context as the target for all subsequent rendering
 	static void 	unbindFramebuffer();
 	//! Resolves internal Multisample FBO to attached Textures. Only necessary when not using getColorTexture() or getTexture(), which resolve automatically.
-	void			resolveTextures() const;
+	void			resolveTextures( GLenum attachmentPoint = static_cast<GLenum>( Fbo::ALL_ATTACHMENTS ) ) const;
+	
+	//! Attaches a \a renderbuffer to the Fbo. If \a renderbuffer is multisample, a corresponding resolve texture will automatically be created. Analogous to glFramebufferRenderbuffer().
+	void		attach( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
+	//! Attaches a \a level of a \a texture to the Fbo. If \a texture is multisample, a corresponding resolve texture will automatically be created. Analogous to glFramebufferTexture() and emulated glFramebufferTexture2D() on ES 2 and 3.
+	void		attach( GLenum attachmentPoint, const TextureBaseRef &texture, GLint level = 0 );
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	//! Attaches a \a level of a \a texture and corresponding resolve texture to the Fbo. Analogous to glFramebufferTexture() and emulated glFramebufferTexture2D() on ES 2 and 3.
+	void		attach( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve );
+#endif
+	//! Detaches specified by \a attachmentPoint.
+	void		detach( GLenum attachmentPoint );
 
 	//! Returns the ID of the framebuffer. For antialiased FBOs this is the ID of the output multisampled FBO
 	GLuint		getId() const { if( mMultisampleFramebufferId ) return mMultisampleFramebufferId; else return mId; }
@@ -160,8 +179,10 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Copies from the screen from Area \a srcArea to \a dstArea using filter \a filter. \a mask allows specification of color (\c GL_COLOR_BUFFER_BIT) and/or depth(\c GL_DEPTH_BUFFER_BIT). Calls glBlitFramebufferEXT() and is subject to its constraints and coordinate system.
 	void		blitFromScreen( const Area &srcArea, const Area &dstArea, GLenum filter = GL_NEAREST, GLbitfield mask = GL_COLOR_BUFFER_BIT );
 #endif
-
-	//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for an Fbo
+	
+	//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA (renderbuffer) for an Fbo
+	static GLint	getNumSampleCounts( GLenum internalFormat );
+	//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA (texture) for an Fbo
 	static GLint	getMaxSamples();
 	//! Returns the maximum number of color attachments the graphics card is capable of using for an Fbo
 	static GLint	getMaxAttachments();
@@ -174,6 +195,14 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Returns a copy of the pixels in \a attachment within \a area (cropped to the bounding rectangle of the attachment) as an 8-bit per channel Surface. \a attachment ignored on ES 2.
 	Surface8u		readPixels8u( const Area &area, GLenum attachment = GL_COLOR_ATTACHMENT0 ) const;
 
+	//! Returns whether the Fbo is valid and complete and throw an exception if not.
+	static bool		checkStatus();
+
+	//! Returns whether the Fbo has anything attached to its depth or depth_stencil attachment
+	bool			hasDepthAttachment() const;
+	//! Returns whether the Fbo has anything attached to its stencil or depth_stencil attachment
+	bool			hasStencilAttachment() const;
+
 	//! \brief Defines the Format of the Fbo, which is passed in via create().
 	//!
 	//! The default provides an 8-bit RGBA color texture attachment and a 24-bit depth renderbuffer attachment, multi-sampling and stencil disabled.
@@ -182,35 +211,56 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		//! Default constructor, sets the target to \c GL_TEXTURE_2D with an 8-bit color+alpha, a 24-bit depth texture, and no multisampling or mipmapping
 		Format();
 
+		//! Enables a color renderbuffer at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
+		Format&	colorBuffer( GLenum internalFormat = getDefaultColorInternalFormat( true ) ) { mColorBuffer = true; mColorTexture = false; mColorBufferInternalFormat = internalFormat; return *this; }
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
-		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorTextureFormat = textureFormat; return *this; }
+		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorBuffer = false; mColorTextureFormat = textureFormat; return *this; }
 		//! Disables both a color Texture and a color Buffer
-		Format&	disableColor() { mColorTexture = false; return *this; }
+		Format&	disableColor() { mColorBuffer = false; mColorTexture = false; return *this; }
 		
 		//! Enables a depth renderbuffer with an internal format of \a internalFormat, which defaults to \c GL_DEPTH_COMPONENT24. Disables a depth texture.
 		Format&	depthBuffer( GLenum internalFormat = getDefaultDepthInternalFormat() ) { mDepthTexture = false; mDepthBuffer = true; mDepthBufferInternalFormat = internalFormat; return *this; }
 		//! Enables a depth texture with a format of \a textureFormat, which defaults to \c GL_DEPTH_COMPONENT24. Disables a depth renderbuffer.
 		Format&	depthTexture( const Texture::Format &textureFormat = getDefaultDepthTextureFormat()) { mDepthTexture = true; mDepthBuffer = false; mDepthTextureFormat = textureFormat; return *this; }
-		//! Disables both a depth Texture and a depth Buffer
-		Format&	disableDepth() { mDepthBuffer = false; return *this; }
-		
+		//! Disables both a depth texture and depth buffer
+		Format&	disableDepth() { mDepthBuffer = false; mDepthTexture = false; return *this; }
+
+		//! Enables or disables auto resolve of mulitsample attachments.
+		Format& autoResolve( bool value = true ) { mAutoResolve = value; return *this; }
+		//! Enables or disables auto mipmap generation on resolve.
+		Format& autoMipmap( bool value = true ) { mAutoMipmap = value; return *this; }
 		//! Sets the number of MSAA samples. Defaults to none.
-		Format& samples( int samples ) { mSamples = samples; return *this; }
+		Format& samples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; return *this; }
 		//! Sets the number of CSAA samples. Defaults to none.
 		Format& coverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; return *this; }
 		//! Enables a stencil buffer. Defaults to false.
 		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; return *this; }
 
-		//! Adds a Renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
-		Format&	attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, RenderbufferRef multisampleBuffer = RenderbufferRef() );
-		//! Adds a Texture attachment \a texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
-		Format&	attachment( GLenum attachmentPoint, const TextureBaseRef &texture, RenderbufferRef multisampleBuffer = RenderbufferRef() );
-		
+		////! Adds a Renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+		//Format&	attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, RenderbufferRef multisampleBuffer = RenderbufferRef() );
+		////! Adds a Texture attachment \a texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+		//Format&	attachment( GLenum attachmentPoint, const TextureBaseRef &texture, RenderbufferRef multisampleBuffer = RenderbufferRef() );
+
+		//! Adds a texture attachment \a texture and an optional resolve texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 or GL_DEPTH_ATTACHMENT, or GL_DEPTH_STENCIL_ATTACHMENT). Replaces any existing attachment at the same attachment point.
+		Format&	attach( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
+		//! Adds a texture attachment \a texture and an optional resolve texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 or GL_DEPTH_ATTACHMENT, or GL_DEPTH_STENCIL_ATTACHMENT). Replaces any existing attachment at the same attachment point.
+		Format&	attach( GLenum attachmentPoint, const TextureBaseRef &texture );
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		//! Adds a texture attachment \a texture and an optional resolve texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 or GL_DEPTH_ATTACHMENT, or GL_DEPTH_STENCIL_ATTACHMENT). Replaces any existing attachment at the same attachment point.
+		Format&	attach( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve );
+#endif
+		//! Removes a buffer or texture attached at \a attachmentPoint
+		void	detach( GLenum attachmentPoint );
+
 		//! Sets the internal format for the depth buffer. Defaults to \c GL_DEPTH_COMPONENT24. Common options also include \c GL_DEPTH_COMPONENT16 and \c GL_DEPTH_COMPONENT32
 		void	setDepthBufferInternalFormat( GLint depthInternalFormat ) { mDepthBufferInternalFormat = depthInternalFormat; }
+		//! Enables or disables auto mipmap generation on resolve.
+		void	setAutoResolve( bool value = true ) { mAutoResolve = value; }
+		//! Enables or disables auto mipmap generation on resolve.
+		void	setAutoMipmap( bool value = true ) { mAutoMipmap = value; }
 		//! Sets the number of samples used in MSAA-style antialiasing. Defaults to none, disabling multisampling. Note that not all implementations support multisampling.
 		void	setSamples( int samples ) { mSamples = samples; }
-		//! Sets the number of coverage samples used in CSAA-style antialiasing. Defaults to none. Note that not all implementations support CSAA, and is currenlty Windows-only Nvidia. Ignored on OpenGL ES.
+		//! Sets the number of coverage samples used in CSAA-style antialiasing. Defaults to none. Note that not all implementations support CSAA, and is currently Windows-only Nvidia. Ignored on OpenGL ES.
 		void	setCoverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; }
 		//! Sets the Color Texture::Format for use in the creation of the color texture.
 		void	setColorTextureFormat( const Texture::Format &format ) { mColorTextureFormat = format; }
@@ -218,8 +268,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		void	enableDepthBuffer( bool depthBuffer = true ) { mDepthBuffer = depthBuffer; }
 		//! Enables or disables the creation of a stencil buffer.
 		void	enableStencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; }
-		//! Removes a buffer or texture attached at \a attachmentPoint
-		void	removeAttachment( GLenum attachmentPoint );
 
 		//! Returns the GL internal format for the depth buffer. Defaults to \c GL_DEPTH_COMPONENT24.
 		GLint	getDepthBufferInternalFormat() const { return mDepthBufferInternalFormat; }
@@ -257,48 +305,96 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format&				label( const std::string &label ) { setLabel( label ); return *this; }
 		
 	  protected:
+		GLenum			mColorBufferInternalFormat;
 		GLenum			mDepthBufferInternalFormat;
-		int				mSamples, mCoverageSamples;
-		bool			mColorTexture, mDepthTexture;
+		bool			mAutoResolve;
+		bool			mAutoMipmap;
+		int				mSamples;
+		int				mCoverageSamples;
+		bool			mColorTexture;
+		bool			mColorBuffer;
+		bool			mDepthTexture;
 		bool			mDepthBuffer;
+		bool			mStencilTexture;
 		bool			mStencilBuffer;
-		Texture::Format	mColorTextureFormat, mDepthTextureFormat;
+		Texture::Format	mColorTextureFormat;
+		Texture::Format mDepthTextureFormat;
 		std::string		mLabel; // debug label
 
-		
+		/*
 		std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer;
 		std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer;
 		std::map<GLenum,TextureBaseRef>		mAttachmentsTexture;
+		*/
+		std::map<GLenum, AttachmentRef>	mAttachments;
 
 		friend class Fbo;
 	};
 
  protected:
+	Fbo( const Format &format );
 	Fbo( int width, int height, const Format &format );
+
+	struct AttachmentCounts;
  
 	void		init();
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
-	void		prepareAttachments( const Format &format, bool multisampling );
+	static void	validateAttachments( const std::map<GLenum, AttachmentRef> &attachments, const Format &format, struct AttachmentCounts *outCounts );
+	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
-	void		initMultisample( const Format &format );
-	void		updateMipmaps( GLenum attachment ) const;
-	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
+	void		privateAttach( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
+	//void		initMultisample( const Format &format );
+	void		updateMipmaps( GLenum attachmentPoint ) const;
+	ivec2		findEffectiveSize( const std::map<GLenum,RenderbufferRef> &buffers, const std::map<GLenum,TextureBaseRef> &textures ) const;
+	ivec2		findEffectiveSize( const std::map<GLenum, Fbo::AttachmentRef>& colorAttachments, const Fbo::AttachmentRef &depthAttachment, const Fbo::AttachmentRef &stencilAttachment );
+	static bool	checkStatus( class FboExceptionInvalidSpecification *resultExc );
 	void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
 
-	int					mWidth, mHeight;
+	int					mWidth;
+	int					mHeight;
 	Format				mFormat;
 	GLuint				mId;
 	GLuint				mMultisampleFramebufferId;
 	
+/*
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
 	std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer; // map from attachment ID to Renderbuffer	
 	std::map<GLenum,TextureBaseRef>		mAttachmentsTexture; // map from attachment ID to Texture
+*/
+
+	// Used for validation
+	struct AttachmentCounts {
+		uint8_t mTotalAttachmentCount	= 0;
+		uint8_t mColor1DAttachmentCount	= 0;
+		uint8_t mColor2DAttachmentCount	= 0;
+		uint8_t mColor3DAttachmentCount	= 0;
+		uint8_t mDepthAttachmentCount	= 0; // accounts for stencil as well
+		uint8_t mArrayAttachmentCount	= 0;
+		uint16_t mMinArraySize			= 0;
+		uint16_t mMaxArraySize			= 0;
+		std::vector<uint8_t> mSampleCounts;
+	};
+
+	struct Attachment {
+		TextureBaseRef		mTexture;
+		RenderbufferRef		mBuffer;
+		TextureBaseRef		mResolve;
+		bool				mNeedsMipmapUpdate = false;
+		bool				mNeedsResolve = false;
+	};
+
+	std::map<GLenum, AttachmentRef>	mAttachments;
+	AttachmentCounts				mAttachmentCounts;
+	std::vector<GLenum>				mDrawBuffers;
 
 	std::string			mLabel; // debugging label
 
-	mutable bool		mNeedsResolve, mNeedsMipmapUpdate;
+	//mutable bool		mNeedsResolve;
+	//mutable bool		mNeedsMipmapUpdate;
 	
-	static GLint		sMaxSamples, sMaxAttachments;
+	static std::map<GLenum, GLint>	sNumSampleCounts;	// Max samples count for renderbuffers
+	static GLint					sMaxSamples;		// Max sample count for textures
+	static GLint					sMaxAttachments;
 	
 	friend std::ostream& operator<<( std::ostream &os, const Fbo &rhs );
 };
@@ -354,6 +450,12 @@ class FboExceptionInvalidSpecification : public FboException {
   public:
 	FboExceptionInvalidSpecification()	{}
 	FboExceptionInvalidSpecification( const std::string &description ) : FboException( description )	{}
+};
+
+class FboExceptionInvalidAttachmentFormat : public FboException {
+  public:
+	FboExceptionInvalidAttachmentFormat() {}
+	FboExceptionInvalidAttachmentFormat( GLenum attachment, GLenum format );
 };
 
 } } // namespace cinder::gl

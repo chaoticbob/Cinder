@@ -39,6 +39,10 @@ namespace cinder { namespace gl {
 
 typedef std::shared_ptr<class GlslProg>			GlslProgRef;
 typedef std::shared_ptr<class BufferObj>		BufferObjRef;
+typedef std::shared_ptr<class Renderbuffer>		RenderbufferRef;
+typedef std::shared_ptr<class TextureBase>		TextureBaseRef;
+typedef std::shared_ptr<class Texture3d>		Texture3dRef;
+typedef std::shared_ptr<class TextureCubeMap>	TextureCubeMapRef;
 
 // Remember to add a matching case to uniformSemanticToString
 enum UniformSemantic {
@@ -330,12 +334,47 @@ void	bindBuffer( GLenum target, GLuint buffer );
 void	readBuffer( GLenum src );
 //! Specifies an array of buffers into which fragment color values or fragment data will be written for subsequent draw calls. Analogous to glDrawBuffers().
 void	drawBuffers( GLsizei num, const GLenum *bufs );
+//! Specifies an array of buffers into which fragment color values or fragment data will be written for subsequent draw calls. Analogous to glDrawBuffers().
+void	drawBuffers( const std::vector<GLenum> &bufs );
 //! Specifies a color buffer as the destination for subsequent draw calls. Analogous to glDrawBuffer(), and emulated on ES 3
 void	drawBuffer( GLenum dst );
 #endif
 
+// FrameBuffers
+
+//! Attaches a \a renderbuffer to a framebuffer object. Analogous to glFramebufferRenderbuffer().
+void	framebufferRenderbuffer( const RenderbufferRef &renderbuffer, GLenum attachment );
+//! Attaches a \a renderbuffer to a framebuffer object. Analogous to glFramebufferRenderbuffer(). renderbuffertarget must be GL_RENDERBUFFER. 
+void	framebufferRenderbuffer( GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer );
+
+//! Attaches a \a level of a \a texture to a framebuffer object. Analogous to glFramebufferTexture() and emulated glFramebufferTexture2D() on ES 2 and 3.
+void	framebufferTexture( const TextureBaseRef &texture, GLenum attachment, GLint level );
+#if ! defined( CINDER_GL_ES )
+//! Attaches a \a level of a \a texture to a framebuffer object. Analogous to glFramebufferTexture().
+void	framebufferTexture( GLenum target, GLenum attachment, GLuint texture, GLint level );
+#endif
+//! Attaches a \a level of a \a texture to a framebuffer object. Analogous to glFramebufferTexture2d().
+void	framebufferTexture2d( GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level );
+
+
+#if ! defined( CINDER_GL_ES_2 )
+//! Attaches a single \a layer of a \a texture3d to a framebuffer object. Analogous to glFramebufferTextureLayer().
+void	framebufferTextureLayer( const Texture3dRef &texture, GLenum attachment, GLint level, GLint layer );
+//! Attaches a single \a layer of a \a textureCubeMap to a framebuffer object. Analogous to glFramebufferTextureLayer().
+void	framebufferTextureLayer( const TextureCubeMapRef &texture, GLenum attachment, GLint level, GLint layer );
+//! Attaches a single \a layer of a \a texture to a framebuffer object. Analogous to glFramebufferTextureLayer().
+void	framebufferTextureLayer( GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer );
+#endif
+
 //! Reads a block of pixels from the framebuffer. Analogous to glReadPixels().
 void	readPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *data );
+
+//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for an Fbo
+GLint	getMaxSamples();
+//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for a color TextureMultisample 
+GLint	getMaxColorTextureSamples();
+//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for a depth TextureMultisample 
+GLint	getMaxDepthTextureSamples();
 
 // Compute
 #if defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )

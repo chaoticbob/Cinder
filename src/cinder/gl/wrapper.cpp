@@ -24,6 +24,8 @@
 #include "cinder/gl/wrapper.h"
 #include "cinder/gl/Environment.h"
 #include "cinder/gl/Batch.h"
+#include "cinder/gl/Fbo.h"
+#include "cinder/gl/Texture.h"
 #include "cinder/gl/scoped.h"
 #include "cinder/Log.h"
 
@@ -933,23 +935,130 @@ void readBuffer( GLenum src )
 
 void drawBuffers( GLsizei num, const GLenum *bufs )
 {
-	glDrawBuffers( num, bufs );
+	context()->drawBuffers( num, bufs );
+}
+
+void drawBuffers( const std::vector<GLenum> &bufs )
+{
+	context()->drawBuffers( bufs.size(), &bufs[0] );
 }
 
 void drawBuffer( GLenum dst )
 {
-#if ! defined( CINDER_GL_ES )
-	glDrawBuffer( dst );
-#else
-	const GLenum bufs[] = { dst };
-	glDrawBuffers( 1, bufs );
-#endif
+	context()->drawBuffer( dst );
 }
 #endif // ! defined( CINDER_GL_ES_2 )
+
+void framebufferRenderbuffer( const RenderbufferRef &renderbuffer, GLenum attachment )
+{
+	glFramebufferRenderbuffer( GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderbuffer->getId() );
+}
+
+void framebufferRenderbuffer( GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer )
+{
+	glFramebufferRenderbuffer( target, attachment, renderbuffertarget, renderbuffer );
+}
+
+void framebufferTexture( const TextureBaseRef &texture, GLenum attachment, GLint level )
+{
+#if ! defined( CINDER_GL_ES )
+	glFramebufferTexture( GL_FRAMEBUFFER, attachment, texture->getId(), level );
+#else
+	GLenum texTarget = texture->getTarget();
+	if( ! ( texTarget == GL_TEXTURE_2D || 
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		texTarget == GL_TEXTURE_2D_MULTISAMPLE ||
+#endif
+		texTarget == GL_TEXTURE_CUBE_MAP_POSITIVE_X ||
+		texTarget == GL_TEXTURE_CUBE_MAP_NEGATIVE_X ||
+		texTarget == GL_TEXTURE_CUBE_MAP_POSITIVE_Y ||
+		texTarget == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y ||
+		texTarget == GL_TEXTURE_CUBE_MAP_POSITIVE_Z ||
+		texTarget == GL_TEXTURE_CUBE_MAP_NEGATIVE_Z ) ) {
+		CI_LOG_E( "frameBufferTexture target not supported on this platform" );
+		CI_ASSERT( 0 );
+	}
+
+	glFramebufferTexture2D( GL_FRAMEBUFFER, attachment, texTarget, texture->getId(), level );
+
+#endif
+}
+
+#if ! defined( CINDER_GL_ES )
+void framebufferTexture( GLenum target, GLenum attachment, GLuint texture, GLint level )
+{
+	glFramebufferTexture( target, attachment, texture, level );
+}
+#endif
+void framebufferTexture2d( GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level )
+{
+	glFramebufferTexture2D( target, attachment, textarget, texture, level );
+}
+
+
+#if ! defined( CINDER_GL_ES_2 )
+void framebufferTextureLayer( const Texture3dRef &texture, GLenum attachment, GLint level, GLint layer )
+{
+	glFramebufferTextureLayer( GL_FRAMEBUFFER, attachment, texture->getId(), level, layer );
+}
+
+void framebufferTextureLayer( const TextureCubeMapRef &texture, GLenum attachment, GLint level, GLint layer )
+{
+	glFramebufferTextureLayer( GL_FRAMEBUFFER, attachment, texture->getId(), level, layer );
+}
+
+void framebufferTextureLayer( GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer )
+{
+	glFramebufferTextureLayer( target, attachment, texture, level, layer );
+}
+#endif
 
 void readPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *data )
 {
 	glReadPixels( x, y, width, height, format, type, data );
+}
+
+GLint getMaxSamples()
+{
+	static GLint sMaxSamples = -1;
+#if ! defined( CINDER_GL_ES_2 )
+	if( sMaxSamples < 0 ) {
+		glGetIntegerv( GL_MAX_SAMPLES, &sMaxSamples);
+	}
+	
+	return sMaxSamples;
+#elif defined( CINDER_COCOA_TOUCH )
+	if( sMaxSamples < 0 )
+		glGetIntegerv( GL_MAX_SAMPLES_APPLE, &sMaxSamples);
+	
+	return sMaxSamples;
+#else
+	return 0;
+#endif
+}
+GLint getMaxColorTextureSamples()
+{
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	static GLint sMaxSamples = -1;
+	if( sMaxSamples < 0 ) {
+		glGetIntegerv( GL_MAX_COLOR_TEXTURE_SAMPLES, &sMaxSamples);
+	}
+	return sMaxSamples;
+#else
+	return 0;
+#endif
+}
+GLint getMaxDepthTextureSamples()
+{
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	static GLint sMaxSamples = -1;
+	if( sMaxSamples < 0 ) {
+		glGetIntegerv( GL_MAX_DEPTH_TEXTURE_SAMPLES, &sMaxSamples);
+	}
+	return sMaxSamples;
+#else
+	return 0;
+#endif
 }
 
 // Compute

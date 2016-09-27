@@ -24,6 +24,7 @@
 
 #include "cinder/gl/platform.h"
 #include "cinder/gl/Environment.h"
+#include "cinder/gl/ConstantConversions.h"
 #include "cinder/Log.h"
 
 #if defined( CINDER_GL_ES )

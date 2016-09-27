@@ -105,7 +105,7 @@ void TextureMulitSampleApp::draw()
 		gl::clear( Color( 0.3f, 0.3f, 0.5f ) );
 		drawScene();
 
-		mMultiSampleFbo->blitTo( mSingleSampleFbo, mMultiSampleFbo->getBounds(), mSingleSampleFbo->getBounds() );
+		//mMultiSampleFbo->blitTo( mSingleSampleFbo, mMultiSampleFbo->getBounds(), mSingleSampleFbo->getBounds() );
 	}
 	else {
 		gl::ScopedFramebuffer scopedFbo( mSingleSampleFbo );
@@ -116,7 +116,7 @@ void TextureMulitSampleApp::draw()
 
 	gl::clear( Color( 0, 0, 0 ) ); 
 
-	gl::draw( mSingleSampleFbo->getColorTexture() );
+	gl::draw( mUseMultiSample ? mMultiSampleFbo->getColorTexture() : mSingleSampleFbo->getColorTexture() );
 }
 
 CINDER_APP( TextureMulitSampleApp, RendererGl )
