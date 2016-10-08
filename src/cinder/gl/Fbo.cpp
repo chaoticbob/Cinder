@@ -791,7 +791,7 @@ void Fbo::prepareAttachments( bool multisample )
 		}
 		else {
 			// Combined depth and stencil texture
-			if( mFormat.mDepthTexture && mFormat.mStencilTexture ) {
+			if( ( mFormat.mDepthTexture && mFormat.mStencilTexture ) || ( mFormat.mDepthTexture && mFormat.mStencilBuffer ) || ( mFormat.mDepthBuffer && mFormat.mStencilTexture ) ) {
 				auto depthStencilFormat = mFormat.mDepthTextureFormat;
 				depthStencilFormat.setSamples( mFormat.mSamples );
 				TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthStencilFormat );
@@ -813,7 +813,7 @@ void Fbo::prepareAttachments( bool multisample )
 				RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, internalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
 				TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( internalFormat ).samples( 1 ) );
 				privateAttach( GL_DEPTH_STENCIL_ATTACHMENT, nullptr, buffer, resolve );
-			}
+			} 
 			else {
 				// Depth texture
 				if( mFormat.mDepthTexture ) {
@@ -1705,6 +1705,51 @@ Surface8u Fbo::readPixels8u( const Area &area, GLenum attachment ) const
 	// we need to determine the bounds of the attachment so that we can crop against it and subtract from its height
 	Area attachmentBounds = getBounds();
 	auto attachedBufferIt = mAttachmentsBuffer.find( attachment );
+	if( attachedBufferIt != mAttachmentsBuffer.end() ) {
+		attachmentBounds = attachedBufferIt->second->getBounds();
+	}
+	else {
+		auto attachedTextureIt = mAttachmentsTexture.find( attachment );	
+		// a texture attachment can be either of type Texture2d or TextureCubeMap but this only makes sense for the former
+		if( attachedTextureIt != mAttachmentsTexture.end() ) {
+			if( typeid(*(attachedTextureIt->second)) == typeid(Texture2d) ) {
+				attachmentBounds = static_cast<const Texture2d*>( attachedTextureIt->second.get() )->getBounds();
+			}
+			else {
+				CI_LOG_W( "Reading from an unsupported texture attachment" );	
+			}
+		}
+		else { // the user has attempted to read from an attachment we have no record of
+			CI_LOG_W( "Reading from unknown attachment" );
+		}
+	}
+	
+	Area clippedArea = area.getClipBy( attachmentBounds );
+
+#if ! defined( CINDER_GL_ES_2 )	
+	glReadBuffer( attachment );
+#endif
+	Surface8u result( clippedArea.getWidth(), clippedArea.getHeight(), true );
+	glReadPixels( clippedArea.x1, attachmentBounds.getHeight() - clippedArea.y2, clippedArea.getWidth(), clippedArea.getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, result.getData() );
+	
+	// glReadPixels returns pixels which are bottom-up
+	ip::flipVertical( &result );
+	
+	// by binding we marked ourselves as needing to be resolved, but since this was a read-only
+	// operation and we resolved at the top, we can mark ourselves as not needing resolve
+	mNeedsResolve = false;
+	
+	return result;
+*/
+
+/*
+	// resolve first, before our own bind so that we don't force a resolve unnecessarily
+	resolveTextures();
+	ScopedFramebuffer readScp( GL_FRAMEBUFFER, mId );
+
+	// we need to determine the bounds of the attachment so that we can crop against it and subtract from its height
+	Area attachmentBounds = getBounds();
+	auto attachedBufferIt = mAttachmentsBuffer.find( attachment );
 	if( attachedBufferIt != mAttachmentsBuffer.end() )
 		attachmentBounds = attachedBufferIt->second->getBounds();
 	else {
@@ -1750,7 +1795,12 @@ bool Fbo::checkStatus()
 
 bool Fbo::hasDepthAttachment() const 
 {
-	return false;
+#if defined( CINDER_GL_ES_2 )
+	return ( mAttachments.find( GL_DEPTH_ATTACHMENT ) != mAttachments.end() );
+#else
+	return ( mAttachments.find( GL_DEPTH_ATTACHMENT ) != mAttachments.end() ) ||
+		   ( mAttachments.find( GL_DEPTH_STENCIL_ATTACHMENT ) != mAttachments.end() );
+#endif
 }
 
 /*
@@ -1768,7 +1818,13 @@ bool Fbo::hasDepthAttachment() const
 
 bool Fbo::hasStencilAttachment() const 
 {
-	return false;
+
+#if defined( CINDER_GL_ES_2 )
+	return ( mAttachments.find( GL_STENCIL_ATTACHMENT ) != mAttachments.end() );
+#else
+	return ( mAttachments.find( GL_STENCIL_ATTACHMENT ) != mAttachments.end() ) ||
+		   ( mAttachments.find( GL_DEPTH_STENCIL_ATTACHMENT ) != mAttachments.end() );
+#endif
 }
 
 /*

@@ -27,7 +27,7 @@ void FboAttachmentsApp::setup()
 	try {
 		gl::Fbo::Format fmt = gl::Fbo::Format()
 			.colorTexture()
-			.samples( 2 )
+			.samples( 32 )
 			.stencilBuffer()
 			.depthTexture( gl::Texture2d::Format().internalFormat( GL_DEPTH24_STENCIL8 ) );
 		mSingleSampleFbo = gl::Fbo::create( getWindowWidth(), getWindowHeight(), fmt );
