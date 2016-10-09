@@ -101,8 +101,9 @@ Renderbuffer::Renderbuffer( int width, int height, GLenum internalFormat, int ms
 	if( mCoverageSamples ) { // create a CSAA buffer
 		glRenderbufferStorageMultisampleCoverageNV( GL_RENDERBUFFER, mCoverageSamples, mSamples, mInternalFormat, mWidth, mHeight );
 	}
-	else {
+	else
   #endif
+	{
 		if( mSamples ) {
 			glRenderbufferStorageMultisample( GL_RENDERBUFFER, mSamples, mInternalFormat, mWidth, mHeight );
 		}
@@ -174,6 +175,8 @@ Fbo::Format::Format()
 	mAutoMipmap = true;
 	mSamples = 0;
 	mCoverageSamples = 0;
+
+	mOverrideTextureSamples = false;
 
 	mStencilTexture = false;
 	mStencilBuffer = false;
@@ -523,35 +526,172 @@ void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *forma
 	}
 #endif
 
-	if( format->mSamples > Fbo::getMaxSamples() ) {
-		format->mSamples = Fbo::getMaxSamples();
+	// Cap samples to max samples
+	format->mSamples = std::min( static_cast<GLint>( format->mSamples ), Fbo::getMaxSamples() );
+	if( format->mOverrideTextureSamples ) {
+		// Color
+		format->mColorTextureFormat.setSamples( format->mSamples );
+		// Depth
+		format->mColorTextureFormat.setSamples( format->mSamples );
 	}
+	
+	// For multisample textures - disable immutable storage if not supported
+	bool supportsTextureStorageMultisample = gl::env()->supportsTextureStorageMultisample();
+	if( ! supportsTextureStorageMultisample ) {
+		// Color
+		if( format->mColorTextureFormat.getSamples() > 1 ) {
+			format->mColorTextureFormat.setImmutableStorage( false );
+		}
+		// Depth
+		if( format->mDepthTextureFormat.getSamples() > 1 ) {
+			format->mDepthTextureFormat.setImmutableStorage( false );
+		}
+	}
+	
+//	if( format->mSamples > Fbo::getMaxSamples() ) {
+//		format->mSamples = Fbo::getMaxSamples();
+//	}
 
 	// Cap the samples to the max renderbuffer sample size
 	if( format->mColorBuffer ) {
 		GLint samples = Fbo::getNumSampleCounts( format->mColorBufferInternalFormat );
-		if( format->mSamples > samples ) {
-			format->mSamples = samples;
-		}
+		format->mSamples = std::min( static_cast<GLint>( format->mSamples ), samples );
 	}
 	if( format->mDepthBuffer ) {
 		GLint samples = Fbo::getNumSampleCounts( format->mDepthBufferInternalFormat );
-		if( format->mSamples > samples ) {
-			format->mSamples = samples;
+		format->mSamples = std::min( static_cast<GLint>( format->mSamples ), samples );
+	}
+}
+
+void Fbo::init()
+{
+	// Validate attachments
+	mAttachments = mFormat.mAttachments;
+	mAttachmentCounts = {};
+	validateAttachments( mAttachments, mFormat, &mAttachmentCounts );
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	bool hasMultisampleAttachments = ( ! mAttachmentCounts.mSampleCounts.empty() ) ||
+									 ( mFormat.mColorTexture && ( ( mFormat.getSamples() > 1 ) ||
+                                     ( mFormat.mColorTextureFormat.getSamples() > 1 ) ) );
+	// Multisample textures and depth renderbuffer do not mix
+	if( hasMultisampleAttachments && mFormat.mDepthBuffer ) {
+		CI_LOG_W( "Cannot mix renderbuffer depth attachments with multisample color texture attachments. Forcing texture depth attachments instead." );
+		mFormat.mDepthBuffer = false;
+		mFormat.mDepthTexture = true;
+	}
+	// Multisample textures and depth renderbuffer do not mix
+	if( hasMultisampleAttachments && mFormat.mStencilBuffer ) {
+		CI_LOG_W( "Cannot mix renderbuffer stencil attachments with multisample color texture attachments. Forcing texture stencil attachments instead." );
+		mFormat.mStencilBuffer = false;
+		mFormat.mStencilTexture = true;
+	}
+#endif
+
+	// allocate the single sample framebuffer
+	glGenFramebuffers( 1, &mId );
+	
+	// determine multisampling settings
+	bool useMsaa = false;
+	bool useCsaa = false;
+	initMultisamplingSettings( &useMsaa, &useCsaa, &mFormat );
+
+	// Make sample counts uniform
+	if( ! mAttachmentCounts.mSampleCounts.empty() ) {
+		mFormat.setSamples( mAttachmentCounts.mSampleCounts[0] );
+		if( mFormat.getSamples() > 1 ) {
+			useMsaa = true;
 		}
+	}
+
+	// allocate the multisample framebuffer
+	if( useMsaa || useCsaa ) {
+		glGenFramebuffers( 1, &mMultisampleFramebufferId );
+	}
+    
+    // Force buffer on platforms that do not support texture multisample
+    if( ( 0 != mMultisampleFramebufferId ) && ( ! gl::env()->supportsTextureMultisample() ) ) {
+        // Color
+        if( ( ! mAttachmentCounts.hasColor() ) && mFormat.mColorTexture ) {
+            mFormat.mColorBuffer = false;
+            mFormat.mColorTexture = true;
+            CI_LOG_W( "Platform does not support ARB_texture_multisample - using buffer for color attachment." );
+        }
+		// Depth/stencil combined
+		if( ( ! mAttachmentCounts.hasDepthStencil() ) && mFormat.mDepthTexture && mFormat.mStencilTexture ) {
+			mFormat.mDepthTexture = false;
+			mFormat.mStencilTexture = false;
+			mFormat.mDepthBuffer = true;
+			mFormat.mStencilBuffer = true;
+			CI_LOG_W( "Platform does not support ARB_texture_multisample - using buffer for depth/stencil attachment." );
+		}
+		else {
+			// Depth
+			if( mFormat.mDepthTexture ) {
+				mFormat.mDepthTexture = false;
+				mFormat.mDepthBuffer = true;
+				CI_LOG_W( "Platform does not support ARB_texture_multisample - using buffer for depth attachment." );
+			}
+			// Stencil
+			if( mFormat.mStencilTexture ) {
+				mFormat.mStencilTexture = false;
+				mFormat.mStencilBuffer = true;
+				CI_LOG_W( "Platform does not support ARB_texture_multisample - using buffer for stencil attachment." );
+			}
+		}
+    }
+    
+	// Prepare the attachments
+	prepareAttachments( useMsaa || useCsaa );
+	// Build initial draw buffers
+	for( auto &it : mAttachments ) {
+		GLenum attachmentPoint = it.first;
+		if( ( attachmentPoint > GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
+			mDrawBuffers.push_back( attachmentPoint );
+		}
+	}
+	// Attach attachments
+	attachAttachments();
+
+/*
+	if( useCsaa || useMsaa ) {
+		initMultisample( mFormat );
+	}
+
+	setDrawBuffers( mId, mAttachmentsBuffer, mAttachmentsTexture );
+	if( mMultisampleFramebufferId ) { // using multisampling and setup succeeded
+		setDrawBuffers( mMultisampleFramebufferId, mAttachmentsMultisampleBuffer, map<GLenum,TextureBaseRef>() );
+	}
+
+	if( ! mAttachmentsBuffer.empty() && ! mAttachmentsTexture.empty() && ! mAttachmentsMultisampleBuffer.empty() ) {
+		FboExceptionInvalidSpecification exc;
+		if( ! checkStatus( &exc ) ) {
+			throw exc;
+		}
+	}
+
+	mNeedsResolve = false;
+	mNeedsMipmapUpdate = false;
+*/	
+
+	mLabel = mFormat.mLabel;
+	if( ! mLabel.empty() ) {
+		env()->objectLabel( GL_FRAMEBUFFER, mId, (GLsizei)mLabel.size(), mLabel.c_str() );
 	}
 }
 
 void Fbo::validateAttachments( const std::map<GLenum, AttachmentRef> &attachments, const Format &format, struct AttachmentCounts *outCounts )
 {
-	uint8_t totalAttachmentCount	= 0;
-	uint8_t color1DAttachmentCount	= 0;
-	uint8_t color2DAttachmentCount	= 0;
-	uint8_t color3DAttachmentCount	= 0;
-	uint8_t depthAttachmentCount	= 0;
-	uint8_t arrayAttachmentCount	= 0;
-	uint16_t minArraySize			= 0;
-	uint16_t maxArraySize			= 0;
+	uint8_t totalAttachmentCount		= 0;
+	uint8_t color1DAttachmentCount		= 0;
+	uint8_t color2DAttachmentCount		= 0;
+	uint8_t color3DAttachmentCount		= 0;
+	uint8_t depthAttachmentCount		= 0;
+	uint8_t stencilAttachmentCount		= 0;
+	uint8_t depthStencilAttachmentCount	= 0;
+	uint8_t arrayAttachmentCount		= 0;
+	uint16_t minArraySize				= 0;
+	uint16_t maxArraySize				= 0;
 	std::vector<uint8_t> sampleCounts;
 
 	// Validate attachments
@@ -607,9 +747,20 @@ void Fbo::validateAttachments( const std::map<GLenum, AttachmentRef> &attachment
 			}
 			break;
 			// Depth stencil
-			case GL_DEPTH:
-			case GL_STENCIL:
-			case GL_DEPTH_STENCIL: ++depthAttachmentCount; break;
+			case GL_DEPTH: {
+				++depthAttachmentCount;
+			}
+			break;
+			
+			case GL_STENCIL: {
+			}
+				++stencilAttachmentCount;
+			break;
+			
+			case GL_DEPTH_STENCIL: {
+				++depthStencilAttachmentCount;
+			}
+			break;
 		}
 	}
 
@@ -635,19 +786,22 @@ void Fbo::validateAttachments( const std::map<GLenum, AttachmentRef> &attachment
 		throw FboException( "GL_TEXTURE_3D targets do not support stencil formats" );
 	}
 
-	outCounts->mTotalAttachmentCount	= totalAttachmentCount;
-	outCounts->mColor1DAttachmentCount	= color1DAttachmentCount;	
-	outCounts->mColor2DAttachmentCount	= color2DAttachmentCount;	
-	outCounts->mColor3DAttachmentCount	= color3DAttachmentCount;	
-	outCounts->mDepthAttachmentCount	= depthAttachmentCount;
-	outCounts->mArrayAttachmentCount	= arrayAttachmentCount;
-	outCounts->mMinArraySize			= minArraySize;
-	outCounts->mMaxArraySize			= maxArraySize;		
-	outCounts->mSampleCounts			= sampleCounts;
+	outCounts->mTotalAttachmentCount		= totalAttachmentCount;
+	outCounts->mColor1DAttachmentCount		= color1DAttachmentCount;
+	outCounts->mColor2DAttachmentCount		= color2DAttachmentCount;
+	outCounts->mColor3DAttachmentCount		= color3DAttachmentCount;
+	outCounts->mDepthAttachmentCount		= depthAttachmentCount;
+	outCounts->mStencilAttachmentCount		= stencilAttachmentCount;
+	outCounts->mDepthStencilAttachmentCount	= depthStencilAttachmentCount;
+	outCounts->mArrayAttachmentCount		= arrayAttachmentCount;
+	outCounts->mMinArraySize				= minArraySize;
+	outCounts->mMaxArraySize				= maxArraySize;
+	outCounts->mSampleCounts				= sampleCounts;
 }
 
 // Iterate the Format's requested attachments and create any we don't already have attachments for
 #if defined( CINDER_GL_ES_2 )
+/*
 void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
 {
 	mAttachmentsBuffer = format.mAttachmentsBuffer;
@@ -705,6 +859,7 @@ void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
 		CI_LOG_W( "Stencil Buffer only not compatible with Texture3d. Use a DEPTH_STENCIL format instead." );
 	}
 }
+*/
 #else 
 void Fbo::prepareAttachments( bool multisample )
 {
@@ -1000,90 +1155,6 @@ void Fbo::setDrawBuffers( GLuint fbId, const map<GLenum,RenderbufferRef> &attach
 		glDrawBuffers( 1, &none );
 	}*/
 #endif
-}
-
-void Fbo::init()
-{
-	// Validate attachments
-	mAttachments = mFormat.mAttachments;
-	mAttachmentCounts = {};
-	validateAttachments( mAttachments, mFormat, &mAttachmentCounts );
-
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	bool hasMultisampleAttachments = ( ! mAttachmentCounts.mSampleCounts.empty() ) ||
-									 ( mFormat.mColorTexture && ( ( mFormat.getSamples() > 1 ) || ( mFormat.mColorTextureFormat.getSamples() > 1 ) ) );
-	// Multisample textures and depth renderbuffer do not mix
-	if( hasMultisampleAttachments && mFormat.mDepthBuffer ) {
-		CI_LOG_W( "Cannot mix renderbuffer depth attachments with multisample color texture attachments. Forcing texture depth attachments instead." );
-		mFormat.mDepthBuffer = false;
-		mFormat.mDepthTexture = true;
-	}
-	// Multisample textures and depth renderbuffer do not mix
-	if( hasMultisampleAttachments && mFormat.mStencilBuffer ) {
-		CI_LOG_W( "Cannot mix renderbuffer stencil attachments with multisample color texture attachments. Forcing texture stencil attachments instead." );
-		mFormat.mStencilBuffer = false;
-		mFormat.mStencilTexture = true;
-	}
-#endif
-
-	// allocate the single sample framebuffer
-	glGenFramebuffers( 1, &mId );
-	
-	// determine multisampling settings
-	bool useMsaa = false;
-	bool useCsaa = false;
-	initMultisamplingSettings( &useMsaa, &useCsaa, &mFormat );
-
-	// Make sample counts uniform
-	if( ! mAttachmentCounts.mSampleCounts.empty() ) {
-		mFormat.setSamples( mAttachmentCounts.mSampleCounts[0] );
-		if( mFormat.getSamples() > 1 ) {
-			useMsaa = true;
-		}
-	}
-
-	// allocate the multisample framebuffer
-	if( useMsaa || useCsaa ) {
-		glGenFramebuffers( 1, &mMultisampleFramebufferId );
-	}
-
-	// Prepare the attachments
-	prepareAttachments( useMsaa || useCsaa );
-	// Build initial draw buffers
-	for( auto &it : mAttachments ) {
-		GLenum attachmentPoint = it.first;
-		if( ( attachmentPoint > GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
-			mDrawBuffers.push_back( attachmentPoint );
-		}
-	}
-	// Attach attachments
-	attachAttachments();
-
-/*
-	if( useCsaa || useMsaa ) {
-		initMultisample( mFormat );
-	}
-
-	setDrawBuffers( mId, mAttachmentsBuffer, mAttachmentsTexture );
-	if( mMultisampleFramebufferId ) { // using multisampling and setup succeeded
-		setDrawBuffers( mMultisampleFramebufferId, mAttachmentsMultisampleBuffer, map<GLenum,TextureBaseRef>() );
-	}
-
-	if( ! mAttachmentsBuffer.empty() && ! mAttachmentsTexture.empty() && ! mAttachmentsMultisampleBuffer.empty() ) {
-		FboExceptionInvalidSpecification exc;
-		if( ! checkStatus( &exc ) ) {
-			throw exc;
-		}
-	}
-
-	mNeedsResolve = false;
-	mNeedsMipmapUpdate = false;
-*/	
-
-	mLabel = mFormat.mLabel;
-	if( ! mLabel.empty() ) {
-		env()->objectLabel( GL_FRAMEBUFFER, mId, (GLsizei)mLabel.size(), mLabel.c_str() );
-	}
 }
 
 /*

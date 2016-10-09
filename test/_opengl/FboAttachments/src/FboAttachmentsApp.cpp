@@ -24,17 +24,27 @@ void FboAttachmentsApp::setup()
 {
 	mFont = gl::TextureFont::create( Font( "Helvetica", 64.0f ) );
 
+    auto texFmt =  gl::Texture2d::Format().samples( 2 ).immutableStorage();
+    auto tex = gl::Texture2d::create( 512, 512, texFmt );
+
+/*
 	try {
+//		gl::Fbo::Format fmt = gl::Fbo::Format()
+//			.colorTexture()
+//			.samples( 8 )
+//			.stencilBuffer()
+//			.depthTexture( gl::Texture2d::Format().internalFormat( GL_DEPTH24_STENCIL8 ) );
 		gl::Fbo::Format fmt = gl::Fbo::Format()
-			.colorTexture()
-			.samples( 32 )
+			.samples( 8 )
+            //.colorBuffer()
 			.stencilBuffer()
-			.depthTexture( gl::Texture2d::Format().internalFormat( GL_DEPTH24_STENCIL8 ) );
+            .depthBuffer();
 		mSingleSampleFbo = gl::Fbo::create( getWindowWidth(), getWindowHeight(), fmt );
 	}
 	catch( const std::exception& e ) {
 		CI_LOG_E( "Single sample FBO error: " << e.what() );
 	}
+*/
 }
 
 void FboAttachmentsApp::mouseDown( MouseEvent event )
@@ -47,6 +57,7 @@ void FboAttachmentsApp::update()
 
 void FboAttachmentsApp::draw()
 {
+/*
 	{
 		gl::ScopedFramebuffer scopedFbo( mSingleSampleFbo );
 		gl::ScopedBlendAlpha scopedBlend;
@@ -70,6 +81,7 @@ void FboAttachmentsApp::draw()
 	gl::clear( Color( 0, 0, 0 ) );
 	gl::color( Color::white() );
 	gl::draw( mSingleSampleFbo->getColorTexture() );
+*/
 }
 
 CINDER_APP( FboAttachmentsApp, RendererGl )

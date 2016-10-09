@@ -230,7 +230,7 @@ public:
 		//! Enables or disables auto mipmap generation on resolve.
 		Format& autoMipmap( bool value = true ) { mAutoMipmap = value; return *this; }
 		//! Sets the number of MSAA samples. Defaults to none.
-		Format& samples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; return *this; }
+		Format& samples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; mOverrideTextureSamples = true; return *this; }
 		//! Sets the number of CSAA samples. Defaults to none.
 		Format& coverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; return *this; }
 		//! Enables a stencil buffer. Defaults to false.
@@ -259,11 +259,13 @@ public:
 		//! Enables or disables auto mipmap generation on resolve.
 		void	setAutoMipmap( bool value = true ) { mAutoMipmap = value; }
 		//! Sets the number of samples used in MSAA-style antialiasing. Defaults to none, disabling multisampling. Note that not all implementations support multisampling.
-		void	setSamples( int samples ) { mSamples = samples; }
+		void	setSamples( int samples ) { mSamples = samples; mOverrideTextureSamples = true; }
 		//! Sets the number of coverage samples used in CSAA-style antialiasing. Defaults to none. Note that not all implementations support CSAA, and is currently Windows-only Nvidia. Ignored on OpenGL ES.
 		void	setCoverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; }
-		//! Sets the Color Texture::Format for use in the creation of the color texture.
+		//! Sets the color Texture::Format for use in the creation of the color texture.
 		void	setColorTextureFormat( const Texture::Format &format ) { mColorTextureFormat = format; }
+		//! Sets the depth/stencil Texture::Format for use in the creation of the depth/stencil texture.
+		void	setDepthTextureFormat( const Texture::Format &format ) { mDepthTextureFormat = format; }
 		//! Enables or disables the creation of a depth buffer for the FBO.
 		void	enableDepthBuffer( bool depthBuffer = true ) { mDepthBuffer = depthBuffer; }
 		//! Enables or disables the creation of a stencil buffer.
@@ -319,6 +321,7 @@ public:
 		bool			mStencilBuffer;
 		Texture::Format	mColorTextureFormat;
 		Texture::Format mDepthTextureFormat;
+		bool			mOverrideTextureSamples;
 		std::string		mLabel; // debug label
 
 		/*
@@ -364,15 +367,22 @@ public:
 
 	// Used for validation
 	struct AttachmentCounts {
-		uint8_t mTotalAttachmentCount	= 0;
-		uint8_t mColor1DAttachmentCount	= 0;
-		uint8_t mColor2DAttachmentCount	= 0;
-		uint8_t mColor3DAttachmentCount	= 0;
-		uint8_t mDepthAttachmentCount	= 0; // accounts for stencil as well
-		uint8_t mArrayAttachmentCount	= 0;
-		uint16_t mMinArraySize			= 0;
-		uint16_t mMaxArraySize			= 0;
+		uint8_t mTotalAttachmentCount			= 0;
+		uint8_t mColor1DAttachmentCount			= 0;
+		uint8_t mColor2DAttachmentCount			= 0;
+		uint8_t mColor3DAttachmentCount			= 0;
+		uint8_t mDepthAttachmentCount			= 0;
+		uint8_t mStencilAttachmentCount			= 0;
+		uint8_t mDepthStencilAttachmentCount	= 0;
+		uint8_t mArrayAttachmentCount			= 0;
+		uint16_t mMinArraySize					= 0;
+		uint16_t mMaxArraySize					= 0;
 		std::vector<uint8_t> mSampleCounts;
+		
+		bool hasColor() const { return ( mColor1DAttachmentCount > 0 ) || ( mColor2DAttachmentCount > 0 ) || ( mColor3DAttachmentCount > 0 ); }
+		bool hasDepth() const { return mDepthAttachmentCount > 0; }
+		bool hasStencil() const { return mStencilAttachmentCount > 0; }
+		bool hasDepthStencil() const { return mDepthStencilAttachmentCount > 0; }
 	};
 
 	struct Attachment {

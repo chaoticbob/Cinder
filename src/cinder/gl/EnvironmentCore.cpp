@@ -41,8 +41,8 @@ class EnvironmentCore : public Environment {
 
 	bool	isExtensionAvailable( const std::string &extName ) override;
 	bool	supportsHardwareVao() override;
-	bool	supportsTextureLod() const override;
-	bool	supportsTextureMultisample() const override;
+	bool	supportsTextureLod() override;
+	bool	supportsTextureMultisample() override;
 	bool	supportsTextureStorageMultisample() override;
 
 	void	objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) override;
@@ -100,14 +100,15 @@ bool EnvironmentCore::supportsHardwareVao()
 	return true;
 }
 
-bool EnvironmentCore::supportsTextureLod() const
+bool EnvironmentCore::supportsTextureLod()
 {
 	return true;
 }
 
-bool EnvironmentCore::supportsTextureMultisample() const 
+bool EnvironmentCore::supportsTextureMultisample()
 {
-	return true;
+	static bool result = isExtensionAvailable( "ARB_texture_multisample" );
+	return result;
 }
 
 bool EnvironmentCore::supportsTextureStorageMultisample()

@@ -894,16 +894,33 @@ Texture2d::Texture2d( int width, int height, const Format &format )
 	  mTopDown( false )
 {
 	glGenTextures( 1, &mTextureId );
-
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE ) || defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
-	if( mFormat.getSamples() > 1 ) {
-		if( mFormat.getTarget() == GL_TEXTURE_2D ) {
-			mFormat.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
-			mFormat.mipmap( false );
+	
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	// Validate multisample requests
+	if( ( GL_TEXTURE_2D_MULTISAMPLE == mFormat.getTarget() ) || ( mFormat.getSamples() > 1 ) ) {
+		if( gl::env()->supportsTextureMultisample() ) {
+			if( ( GL_TEXTURE_2D == mFormat.getTarget() ) || ( GL_TEXTURE_2D_MULTISAMPLE == mFormat.getTarget() ) ) {
+				mFormat.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
+				mFormat.mipmap( false );
+			}
+			else {
+				CI_LOG_W( "Target must be GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE" );
+				mFormat.setSamples( 1 );
+			}
 		}
 		else {
-			CI_LOG_E( "Multisampling is only supported on GL_TEXTURE_2D and GL_TEXTURE_2D_ARRAY" );
-			mFormat.setSamples( 0 );
+			CI_LOG_W( "Platform does not support ARB_texture_multisample - forcing samples to 1" );
+			mFormat.setTarget( GL_TEXTURE_2D );
+			mFormat.setSamples( 1 );
+		}
+	}
+#endif
+
+#if defined( CINDER_GL_HAS_TEXTURE_2D_STORAGE_MULTISAMPLE )
+	if( ( GL_TEXTURE_2D_MULTISAMPLE == mFormat.getTarget() ) || ( mFormat.getSamples() > 1 ) ) {
+		if( mFormat.isImmutableStorage() && ( ! gl::env()->supportsTextureStorageMultisample() ) ) {
+			CI_LOG_W( "Platform does not support GL_ARB_texture_storage_multisample - forcing storage to mutable" );
+			mFormat.setImmutableStorage( false );
 		}
 	}
 #endif
