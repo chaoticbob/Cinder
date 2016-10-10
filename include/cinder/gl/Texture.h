@@ -262,6 +262,11 @@ class TextureBase {
 		void	setSwizzleMask( GLint r, GLint g, GLint b, GLint a );
 		//! Returns the swizzle mask corresponding to \c GL_TEXTURE_SWIZZLE_RGBA.
 		const std::array<GLint,4>&	getSwizzleMask() const { return mSwizzleMask; }
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		void				setSamples( GLint samples ) { mSamples = samples; }
+		GLint				getSamples() const { return mSamples; }
+#endif
 		
 		//! Returns the debugging label associated with the Texture.
 		const std::string&	getLabel() const { return mLabel; }
@@ -273,22 +278,25 @@ class TextureBase {
 	protected:
 		Format();
 	
-		GLenum				mTarget;
-		GLenum				mWrapS, mWrapT, mWrapR;
-		GLenum				mMinFilter, mMagFilter;
-		GLint				mCompareMode, mCompareFunc;		
-		bool				mMipmapping, mMipmappingSpecified;
-		bool				mMinFilterSpecified;
-		GLuint				mBaseMipmapLevel;
-		GLint				mMaxMipmapLevel;
-		bool				mImmutableStorage;
-		GLfloat				mMaxAnisotropy;
-		GLint				mInternalFormat, mDataType;
-		bool				mSwizzleSpecified;
-		std::array<GLint,4>	mSwizzleMask;
-		bool				mBorderSpecified;
+		GLenum					mTarget;
+		GLenum					mWrapS, mWrapT, mWrapR;
+		GLenum					mMinFilter, mMagFilter;
+		GLint					mCompareMode, mCompareFunc;		
+		bool					mMipmapping, mMipmappingSpecified;
+		bool					mMinFilterSpecified;
+		GLuint					mBaseMipmapLevel;
+		GLint					mMaxMipmapLevel;
+		bool					mImmutableStorage;
+		GLfloat					mMaxAnisotropy;
+		GLint					mInternalFormat, mDataType;
+		bool					mSwizzleSpecified;
+		std::array<GLint,4>		mSwizzleMask;
+		bool					mBorderSpecified;
 		std::array<GLfloat,4>	mBorderColor;
-		std::string			mLabel; // debug label
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		GLint					mSamples;
+#endif
+		std::string				mLabel; // debug label
 
 #if ! defined( CINDER_GL_ES )		
 		PboRef				mIntermediatePbo;
@@ -603,17 +611,17 @@ class Texture2d : public TextureBase {
 	
   protected:
 
-	Texture2d( int width, int height, Format format = Format() );
-	Texture2d( const void *data, GLenum dataFormat, int width, int height, Format format = Format() );
-	Texture2d( const Surface8u &surface, Format format = Format() );
-	Texture2d( const Surface16u &surface, Format format = Format() );
-	Texture2d( const Surface32f &surface, Format format = Format() );
-	Texture2d( const Channel8u &channel, Format format = Format() );
-	Texture2d( const Channel16u &channel, Format format = Format() );
-	Texture2d( const Channel32f &channel, Format format = Format() );
-	Texture2d( const ImageSourceRef &imageSource, Format format = Format() );
+	Texture2d( int width, int height, const Format &format = Format() );
+	Texture2d( const void *data, GLenum dataFormat, int width, int height, const Format &format = Format() );
+	Texture2d( const Surface8u &surface, const Format &format = Format() );
+	Texture2d( const Surface16u &surface, const Format &format = Format() );
+	Texture2d( const Surface32f &surface, const Format &format = Format() );
+	Texture2d( const Channel8u &channel, const Format &format = Format() );
+	Texture2d( const Channel16u &channel, const Format &format = Format() );
+	Texture2d( const Channel32f &channel, const Format &format = Format() );
+	Texture2d( const ImageSourceRef &imageSource, const Format &format = Format() );
 	Texture2d( GLenum target, GLuint textureId, int width, int height, bool doNotDispose );
-	Texture2d( const TextureData &data, Format format );
+	Texture2d( const TextureData &data, const Format &format );
 	
 	void	printDims( std::ostream &os ) const override;
 	void	initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType );
@@ -629,6 +637,7 @@ class Texture2d : public TextureBase {
 #endif
 	void	initDataImageSourceImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, GLint dataType, ImageIo::ChannelOrder channelOrder, bool isGray );
 
+	Format		mFormat;
 	ivec2		mActualSize; // true texture size in pixels, as opposed to clean bounds
 	Area		mCleanBounds; // relative to upper-left origin regardless of top-down
 	bool		mTopDown;
