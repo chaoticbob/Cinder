@@ -310,11 +310,14 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		const TextureBaseRef&	getResolve() const {  return mResolve; };
 		bool					isTexture() const { return mTexture ? true : false; }
 		bool					isBuffer() const { return mBuffer ? true : false; }
+		bool					isResolvable() const { return mResolve ? true : false; }
+		GLenum					getInternalFormat() const { return ( mTexture ? mTexture->getInternalFormat() : ( mBuffer ? mBuffer->getInternalFormat() : GL_INVALID_ENUM ) ); }
 	private:
 		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve );
 		TextureBaseRef			mTexture;
 		RenderbufferRef			mBuffer;
 		TextureBaseRef			mResolve;
+		friend class Fbo;
 	};
 	
 	bool								mHasColorAttachments;
