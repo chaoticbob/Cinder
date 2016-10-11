@@ -267,7 +267,7 @@ class TextureBase {
 		void	setSamples( GLint samples ) { mSamples = std::max( 1, samples ); }
 		GLint	getSamples() const { return mSamples; }
 		void	setFixedSampleLocations( bool fixedSampleLocations = true ) { mFixedSampleLocations = fixedSampleLocations; }
-		bool	getFixedSampleLocations() const { return mFixedSampleLocations; }
+		bool	isFixedSampleLocations() const { return mFixedSampleLocations; }
 #endif
 		
 		//! Returns the debugging label associated with the Texture.
@@ -471,6 +471,7 @@ class Texture1d : public TextureBase {
 
 	void	printDims( std::ostream &os ) const override;
 
+	Format		mFormat;
 	GLint		mWidth;
 };
 
@@ -678,9 +679,14 @@ class Texture3d : public TextureBase {
 		Format& magFilter( GLenum magFilter ) { setMagFilter( magFilter ); return *this; }
 		//! Sets whether the storage for the cannot be changed in the future (making glTexImage3D() calls illegal). More efficient when possible. Default is \c false.
 		Format& immutableStorage( bool immutable = true ) { setImmutableStorage( immutable ); return *this; }
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		Format&	samples( GLint samples ) { setSamples( samples ); return *this; }
+		bool	isMultisample() const { return ( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == mTarget ) || ( mSamples > 1 ); }
+#endif
+
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
-		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
-		
+		Format&	label( const std::string &label ) { setLabel( label ); return *this; }		
 		//! Sets a custom deleter for destruction of the shared_ptr<Texture3d>
 		Format&	deleter( const std::function<void(Texture3d*)> &sharedPtrDeleter ) { mDeleter = sharedPtrDeleter; return *this; }
 		
@@ -707,11 +713,13 @@ class Texture3d : public TextureBase {
 	GLint			getDepth() const override { return mDepth; }
 
   protected:
-  	Texture3d( GLint width, GLint height, GLint depth, Format format );
-	Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format );
+  	Texture3d( GLint width, GLint height, GLint depth, const Format &format );
+	Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, const Format &format );
 
+	void	initMaxMipmapLevel();
 	void	printDims( std::ostream &os ) const override;
 
+	Format		mFormat;
 	GLint		mWidth, mHeight, mDepth;
 };
 #endif // ! defined( CINDER_GL_ES_2 )

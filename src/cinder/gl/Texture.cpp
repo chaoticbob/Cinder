@@ -1035,10 +1035,11 @@ Texture2d::Texture2d( int width, int height, const Format &format )
 	if( mTarget == GL_TEXTURE_2D_MULTISAMPLE ) {
 		mMaxMipmapLevel = 0;
 	}
-#endif
+#else
 	initMaxMipmapLevel();
+#endif
 	
-	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.getSamples(), mFormat.isImmutableStorage(), mFormat.getDataType() );
+	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.isImmutableStorage(), mFormat.getDataType(), mFormat.getSamples(), mFormat.isFixedSampleLocations() );
 }
 
 Texture2d::Texture2d( const void *data, GLenum dataFormat, int width, int height, const Format &format )
@@ -1778,27 +1779,77 @@ Texture3dRef Texture3d::create( const void *data, GLenum dataFormat, int width, 
 		return Texture3dRef( new Texture3d( data, dataFormat, width, height, depth, format ) );
 }
 
-Texture3d::Texture3d( GLint width, GLint height, GLint depth, Format format )
-	: mWidth( width ), mHeight( height ), mDepth( depth )
+void Texture3d::initMaxMipmapLevel()
 {
-	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
-	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	TextureBase::initParams( format, GL_RGB, GL_UNSIGNED_BYTE );
-
-	ScopedTextureBind tbs( mTarget, mTextureId );
-	env()->allocateTexStorage3d( mTarget, format.mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, format.isImmutableStorage(), format.getSamples(), format.getFixedSampleLocations() );
+	if( mMaxMipmapLevel == -1 )
+		mMaxMipmapLevel = requiredMipLevels( mWidth, mHeight, mDepth ) - 1;
+#if ! defined( CINDER_GL_ES_2 )
+	glTexParameteri( mTarget, GL_TEXTURE_MAX_LEVEL, mMaxMipmapLevel );
+#endif
 }
 
-Texture3d::Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format )
-	: mWidth( width ), mHeight( height ), mDepth( depth )
+Texture3d::Texture3d( GLint width, GLint height, GLint depth, const Format &format )
+	: mFormat( format ), mWidth( width ), mHeight( height ), mDepth( depth )
+{
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	// Validate requested texture format
+	//
+	// NOTE: We don't force the target to be GL_TEXTURE_2D when Format::mSamples == 1
+	//       in the event client code needs to check for texture type.
+	//
+	if( mFormat.isMultisample() ) {
+		if( gl::env()->supportsTextureMultisample() ) {
+			if( ( GL_TEXTURE_2D_ARRAY  == mFormat.getTarget() ) || ( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == mFormat.getTarget() ) ) {
+				mFormat.setTarget( GL_TEXTURE_2D_MULTISAMPLE_ARRAY );
+			}
+			else {
+				CI_LOG_W( "Target must be GL_TEXTURE_2D_ARRAY or GL_TEXTURE_2D_MULTISAMPLE_ARRAY for multisample textures" );
+				mFormat.setSamples( 1 );
+			}
+		}
+		else {
+			if( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == mFormat.getTarget() ) {
+				mFormat.setTarget( GL_TEXTURE_2D_ARRAY );
+			}
+			mFormat.setSamples( 1 );
+			CI_LOG_W( "Multisample texture arrays are not supported on this platform, forcing single sample" );
+		}
+	}
+	
+  #if defined( CINDER_GL_HAS_TEXTURE_STORAGE_MULTISAMPLE )
+	if( mFormat.isMultisample() && mFormat.isImmutableStorage() && ( ! gl::env()->supportsTextureStorageMultisample() ) ) {
+		mFormat.setImmutableStorage( false );
+		CI_LOG_W( "Multisample immutable texture array storage is not supported on this platform, forcing mutable storage" );
+	}
+  #endif
+#endif
+
+	glGenTextures( 1, &mTextureId );
+	mTarget = mFormat.getTarget();
+	ScopedTextureBind texBindScope( mTarget, mTextureId );
+	TextureBase::initParams( mFormat, GL_RGB, GL_UNSIGNED_BYTE );
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	if( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == mTarget ) {
+		mMaxMipmapLevel = 0;
+	}
+#else
+	initMaxMipmapLevel();
+#endif
+
+	//ScopedTextureBind tbs( mTarget, mTextureId );
+	env()->allocateTexStorage3d( mTarget, mFormat.mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, mFormat.isImmutableStorage(), mFormat.getSamples(), mFormat.isFixedSampleLocations() );
+}
+
+Texture3d::Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, const Format &format )
+	: mFormat( format ), mWidth( width ), mHeight( height ), mDepth( depth )
 {
 	glGenTextures( 1, &mTextureId );
-	mTarget = format.getTarget();
+	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
-	TextureBase::initParams( format, GL_RGB, GL_UNSIGNED_BYTE );
+	TextureBase::initParams( mFormat, GL_RGB, GL_UNSIGNED_BYTE );
 
-	glTexImage3D( mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, dataFormat, format.getDataType(), data );
+	glTexImage3D( mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, dataFormat, mFormat.getDataType(), data );
 }
 
 void Texture3d::update( const Surface8u &surface, int depth, int mipLevel )

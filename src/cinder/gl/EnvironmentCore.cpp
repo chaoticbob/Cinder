@@ -130,12 +130,26 @@ bool EnvironmentCore::supportsTextureLod() const
 
 bool EnvironmentCore::supportsGeometryShader() const
 {
-	return isExtensionAvailable( "GL_EXT_geometry_shader" );
+	static bool result = isExtensionAvailable( "GL_EXT_geometry_shader" );
+	return result;
 }
 
 bool EnvironmentCore::supportsTessellationShader() const
 {
-	return isExtensionAvailable( "GL_EXT_tessellation_shader" );
+	static bool result = isExtensionAvailable( "GL_EXT_tessellation_shader" );
+	return result;
+}
+
+bool EnvironmentCore::supportsTextureMultisample() const
+{
+	static bool result = isExtensionAvailable( "GL_ARB_texture_multisample" );
+	return result;
+}
+
+bool EnvironmentCore::supportsTextureStorageMultisample() const
+{
+	static bool result = isExtensionAvailable( "GL_ARB_texture_storage_multisample" );
+	return result;
 }
 
 GLenum EnvironmentCore::getPreferredIndexType() const
