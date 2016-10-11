@@ -85,12 +85,15 @@ class Environment {
 	virtual bool			supportsTextureLod() const = 0;
 	virtual bool 			supportsGeometryShader() const = 0;
 	virtual bool 			supportsTessellationShader() const = 0;
+	
+	virtual bool			supportsTextureMultisample() const = 0;
+	virtual bool			supportsTextureStorageMultisample() const = 0;
 
 	virtual GLenum			getPreferredIndexType() const  = 0;
 
 	virtual void			allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) = 0;
-	virtual void			allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType ) = 0;
-	virtual void			allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable ) = 0;
+	virtual void			allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLint samples = 1, bool fixedSampleLocations = false ) = 0;
+	virtual void			allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLint samples = 1, bool fixedSampleLocation = false ) = 0;
 	virtual void			allocateTexStorageCubeMap( GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable ) = 0;	
 
 	virtual void			objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) = 0;

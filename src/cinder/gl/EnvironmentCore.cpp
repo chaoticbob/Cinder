@@ -29,6 +29,7 @@
 #include "cinder/gl/Context.h"
 #include "cinder/gl/Vao.h"
 #include "cinder/gl/Texture.h"
+#include "cinder/gl/ConstantConversions.h"
 
 #if ! defined( CINDER_GL_ES )
 
@@ -47,14 +48,16 @@ class EnvironmentCore : public Environment {
 	bool	supportsTextureLod() const override;
 	bool	supportsGeometryShader() const override;
 	bool	supportsTessellationShader() const override;
+	bool	supportsTextureMultisample() const override;
+	bool	supportsTextureStorageMultisample() const override;
 
 	GLenum	getPreferredIndexType() const override;
 
 	void	objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) override;
 
 	void	allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable ) override;
+	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLint sample = 1, bool fixedSampleLocations = false ) override;
+	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLint samples = 1, bool fixedSampleLocations = false ) override;
 	void	allocateTexStorageCubeMap( GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable ) override;
 	
 	std::string		generateVertexShader( const ShaderDef &shader ) override;
@@ -150,41 +153,88 @@ void EnvironmentCore::objectLabel( GLenum identifier, GLuint name, GLsizei lengt
 void EnvironmentCore::allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType )
 {
 	static auto texStorage1DFn = glTexStorage1D;
-	if( texStorage1DFn && immutable )
+	if( texStorage1DFn && immutable ) {
 		texStorage1DFn( target, levels, internalFormat, width );
+	}
 	else {
 		GLenum dataFormat, dataType;
 		TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
-		if( texImageDataType != -1 )
+		if( texImageDataType != -1 ) {
 			dataType = texImageDataType;
+		}
 		glTexImage1D( target, 0, internalFormat, width, 0, dataFormat, dataType, nullptr );
 	}
 }
 
-void EnvironmentCore::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType )
+void EnvironmentCore::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLint samples, bool fixedSampleLocations )
 {
-	static auto texStorage2DFn = glTexStorage2D;
-	if( texStorage2DFn && immutable )
-		texStorage2DFn( target, levels, internalFormat, width, height );
-	else {
-		GLenum dataFormat, dataType;
-		TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
-		if( texImageDataType != -1 )
-			dataType = texImageDataType;
-		glTexImage2D( target, 0, internalFormat, width, height, 0, dataFormat, dataType, nullptr );
+	bool allocateSingleSample = true;
+
+#if defined( CINDER_GL_HAS_TEXTURE_STORAGE_MULTISAMPLE )
+	if( ( GL_TEXTURE_2D_MULTISAMPLE == target) && ( GL_PROXY_TEXTURE_2D_MULTISAMPLE == target ) ) {
+		throw gl::Exception( "Unsupported multisampling texture format " + gl::constantToString( target ) );
+	}
+
+	if( samples > 1 ) {
+		static auto texStorage2DMultisampleFn = glTexStorage2DMultisample;
+		if( supportsTextureStorageMultisample() && texStorage2DMultisampleFn && immutable ) {
+			texStorage2DMultisampleFn( target, samples, internalFormat, width, height, fixedSampleLocations );
+		}
+		else {
+			glTexImage2DMultisample( target, samples, internalFormat, width, height, fixedSampleLocations );
+		}
+		allocateSingleSample = false;
+	}
+#endif
+	
+	if( allocateSingleSample ) {
+		static auto texStorage2DFn = glTexStorage2D;
+		if( texStorage2DFn && immutable ) {
+			texStorage2DFn( target, levels, internalFormat, width, height );
+		}
+		else {
+			GLenum dataFormat, dataType;
+			TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
+			if( texImageDataType != -1 ) {
+				dataType = texImageDataType;
+			}
+			glTexImage2D( target, 0, internalFormat, width, height, 0, dataFormat, dataType, nullptr );
+		}
 	}
 }
 
-void EnvironmentCore::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable )
+void EnvironmentCore::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLint samples, bool fixedSampleLocations )
 {
-	static auto texStorage3DFn = glTexStorage3D;
-	if( texStorage3DFn && immutable )
-		texStorage3DFn( target, levels, internalFormat, width, height, depth );
-	else {
-		GLenum dataFormat, dataType;
-		TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
-		glTexImage3D( target, 0, internalFormat, width, height, depth, 0, dataFormat, dataType, nullptr );
-	}	
+	bool allocateSingleSample = true;
+
+#if defined( CINDER_GL_HAS_TEXTURE_STORAGE_MULTISAMPLE )
+	if( ( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == target) && ( GL_PROXY_TEXTURE_2D_MULTISAMPLE_ARRAY == target ) ) {
+		throw gl::Exception( "Unsupported multisampling texture format " + gl::constantToString( target ) );
+	}
+
+	if( samples > 1 ) {
+		static auto texStorage3DMultisampleFn = glTexStorage3DMultisample;
+		if( supportsTextureStorageMultisample() && texStorage3DMultisampleFn && immutable ) {
+			texStorage3DMultisampleFn( target, samples, internalFormat, width, height, depth, fixedSampleLocations );
+		}
+		else {
+			glTexImage3DMultisample( target, samples, internalFormat, width, height, depth, fixedSampleLocations );
+		}
+		allocateSingleSample = false;
+	}
+#endif
+	
+	if( allocateSingleSample ) {
+		static auto texStorage3DFn = glTexStorage3D;
+		if( texStorage3DFn && immutable ) {
+			texStorage3DFn( target, levels, internalFormat, width, height, depth );
+		}
+		else {
+			GLenum dataFormat, dataType;
+			TextureBase::getInternalFormatInfo( internalFormat, &dataFormat, &dataType );
+			glTexImage3D( target, 0, internalFormat, width, height, depth, 0, dataFormat, dataType, nullptr );
+		}
+	}
 }
 
 void EnvironmentCore::allocateTexStorageCubeMap( GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable )

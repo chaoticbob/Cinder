@@ -264,8 +264,10 @@ class TextureBase {
 		const std::array<GLint,4>&	getSwizzleMask() const { return mSwizzleMask; }
 
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-		void				setSamples( GLint samples ) { mSamples = samples; }
-		GLint				getSamples() const { return mSamples; }
+		void	setSamples( GLint samples ) { mSamples = std::max( 1, samples ); }
+		GLint	getSamples() const { return mSamples; }
+		void	setFixedSampleLocations( bool fixedSampleLocations = true ) { mFixedSampleLocations = fixedSampleLocations; }
+		bool	getFixedSampleLocations() const { return mFixedSampleLocations; }
 #endif
 		
 		//! Returns the debugging label associated with the Texture.
@@ -295,6 +297,7 @@ class TextureBase {
 		std::array<GLfloat,4>	mBorderColor;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		GLint					mSamples;
+		bool					mFixedSampleLocations;
 #endif
 		std::string				mLabel; // debug label
 
@@ -506,7 +509,13 @@ class Texture2d : public TextureBase {
 		Format& immutableStorage( bool immutable = true ) { setImmutableStorage( immutable ); return *this; }
 #if ! defined( CINDER_GL_ES )
 		Format& intermediatePbo( const PboRef &intermediatePbo ) { setIntermediatePbo( intermediatePbo ); return *this; }
-#endif		
+#endif	
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		Format&	samples( GLint samples ) { setSamples( samples ); return *this; }
+		bool	isMultisample() const { return ( GL_TEXTURE_2D_MULTISAMPLE == mTarget ) || ( mSamples > 1 ); }
+#endif
+	
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
 		//! Sets a custom deleter for destruction of the shared_ptr<Texture2d>

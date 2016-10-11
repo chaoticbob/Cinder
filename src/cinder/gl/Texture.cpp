@@ -156,30 +156,35 @@ TextureBase::~TextureBase()
 // Expects texture to be bound and mTarget,mTextureId and getWidth(), getHeight() and getDepth() functional
 void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType )
 {
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	bool singleSample = ( 1== format.mSamples );
+#else
+	bool singleSample = true;
+#endif
+
 	// default is GL_REPEAT
-	if( format.mWrapS != GL_REPEAT )
+	if( ( format.mWrapS != GL_REPEAT ) && singleSample )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_S, format.mWrapS );
 	// default is GL_REPEAT
-	if( format.mWrapT != GL_REPEAT )
+	if( ( format.mWrapT != GL_REPEAT ) && singleSample )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_T, format.mWrapT );
-
 #if defined( CINDER_GL_HAS_WRAP_R )
 	// default is GL_REPEAT
-	if( format.mWrapR != GL_REPEAT )
+	if( ( format.mWrapR != GL_REPEAT ) && singleSample )
 		glTexParameteri( mTarget, GL_TEXTURE_WRAP_R, format.mWrapR );
 #endif
 
-	if( format.mMipmapping && ! format.mMinFilterSpecified )
+	if( ( format.mMipmapping && ! format.mMinFilterSpecified ) && singleSample )
 		format.mMinFilter = GL_LINEAR_MIPMAP_LINEAR;
 	// default is GL_NEAREST_MIPMAP_LINEAR
-	if( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR )
+	if( ( format.mMinFilter != GL_NEAREST_MIPMAP_LINEAR ) && singleSample )
 		glTexParameteri( mTarget, GL_TEXTURE_MIN_FILTER, format.mMinFilter );
 
 	// default is GL_LINEAR
-	if( format.mMagFilter != GL_LINEAR )
+	if( ( format.mMagFilter != GL_LINEAR ) && singleSample )
 		glTexParameteri( mTarget, GL_TEXTURE_MAG_FILTER, format.mMagFilter );
 	
-	if( format.mMaxAnisotropy > 1.0f )
+	if( ( format.mMaxAnisotropy > 1.0f ) && singleSample )
 		glTexParameterf( mTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT, format.mMaxAnisotropy );
 
 	if( format.mInternalFormat == -1 ) {
@@ -243,16 +248,16 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	}
   #endif
 #else 
-	if( format.mCompareMode > -1 ) {
+	if( ( format.mCompareMode > -1 ) && singleSample ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_MODE, format.mCompareMode );
 	}
-	if( format.mCompareFunc > -1 ) {
+	if( ( format.mCompareFunc > -1 ) && singleSample ) {
 		glTexParameteri( mTarget, GL_TEXTURE_COMPARE_FUNC, format.mCompareFunc );
 	}	
 #endif
 	
 	mMipmapping = format.mMipmapping;
-	if( mMipmapping ) {
+	if( mMipmapping && singleSample ) {
 		mBaseMipmapLevel = format.mBaseMipmapLevel;
 		mMaxMipmapLevel = format.mMaxMipmapLevel;
 #if ! defined( CINDER_GL_ES_2 )
@@ -266,13 +271,14 @@ void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint
 	}
 
 #if ! defined( CINDER_GL_ES )
-	if( format.mBorderSpecified ) {
+	if( format.mBorderSpecified && singleSample ) {
 		glTexParameterfv( mTarget, GL_TEXTURE_BORDER_COLOR, format.mBorderColor.data() );
 	}
 #endif
 
-	if( ! format.mLabel.empty() )
+	if( ! format.mLabel.empty() ) {
 		setLabel( format.mLabel );
+	}
 }
 
 GLint TextureBase::getInternalFormat() const
@@ -763,6 +769,7 @@ TextureBase::Format::Format()
 
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 	mSamples = 1;
+	mFixedSampleLocations = false;
 #endif
 }
 
@@ -982,6 +989,39 @@ Texture2d::Texture2d( int width, int height, const Format &format )
 	mCleanBounds( 0, 0, width, height ),
 	mTopDown( false )
 {
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	// Validate requested texture format
+	//
+	// NOTE: We don't force the target to be GL_TEXTURE_2D when Format::mSamples == 1
+	//       in the event client code needs to check for texture type.
+	//
+	if( mFormat.isMultisample() ) {
+		if( gl::env()->supportsTextureMultisample() ) {
+			if( ( GL_TEXTURE_2D == mFormat.getTarget() ) || ( GL_TEXTURE_2D_MULTISAMPLE == mFormat.getTarget() ) ) {
+				mFormat.setTarget( GL_TEXTURE_2D_MULTISAMPLE );
+			}
+			else {
+				CI_LOG_W( "Target must be GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE for multisample textures" );
+				mFormat.setSamples( 1 );
+			}
+		}
+		else {
+			if( GL_TEXTURE_2D_MULTISAMPLE == mFormat.getTarget() ) {
+				mFormat.setTarget( GL_TEXTURE_2D );
+			}
+			mFormat.setSamples( 1 );
+			CI_LOG_W( "Multisample textures are not supported on this platform, forcing single sample" );
+		}
+	}
+	
+  #if defined( CINDER_GL_HAS_TEXTURE_STORAGE_MULTISAMPLE )
+	if( mFormat.isMultisample() && mFormat.isImmutableStorage() && ( ! gl::env()->supportsTextureStorageMultisample() ) ) {
+		mFormat.setImmutableStorage( false );
+		CI_LOG_W( "Multisample immutable texture storage is not supported on this platform, forcing mutable storage" );
+	}
+  #endif
+#endif
+
 	glGenTextures( 1, &mTextureId );
 	mTarget = mFormat.getTarget();
 	ScopedTextureBind texBindScope( mTarget, mTextureId );
@@ -991,8 +1031,14 @@ Texture2d::Texture2d( int width, int height, const Format &format )
 	initParams( mFormat, GL_RGBA, GL_UNSIGNED_BYTE );
 #endif
 
-	//initMaxMipmapLevel();
-	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.isImmutableStorage(), mFormat.getDataType() );
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	if( mTarget == GL_TEXTURE_2D_MULTISAMPLE ) {
+		mMaxMipmapLevel = 0;
+	}
+#endif
+	initMaxMipmapLevel();
+	
+	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.getSamples(), mFormat.isImmutableStorage(), mFormat.getDataType() );
 }
 
 Texture2d::Texture2d( const void *data, GLenum dataFormat, int width, int height, const Format &format )
@@ -1741,7 +1787,7 @@ Texture3d::Texture3d( GLint width, GLint height, GLint depth, Format format )
 	TextureBase::initParams( format, GL_RGB, GL_UNSIGNED_BYTE );
 
 	ScopedTextureBind tbs( mTarget, mTextureId );
-	env()->allocateTexStorage3d( mTarget, format.mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, format.isImmutableStorage() );
+	env()->allocateTexStorage3d( mTarget, format.mMaxMipmapLevel + 1, mInternalFormat, mWidth, mHeight, mDepth, format.isImmutableStorage(), format.getSamples(), format.getFixedSampleLocations() );
 }
 
 Texture3d::Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format )
