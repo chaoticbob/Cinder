@@ -97,6 +97,10 @@ std::ostream& operator<<( std::ostream &os, const Renderbuffer &rhs );
 
 //! Represents an OpenGL Framebuffer Object.
 class Fbo : public std::enable_shared_from_this<Fbo> {
+  private:
+	class Attachment;
+	using AttachmentRef = std::shared_ptr<Attachment>;
+
   public:
 	struct Format;
 
@@ -218,6 +222,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		void	enableDepthBuffer( bool depthBuffer = true ) { mDepthBuffer = depthBuffer; }
 		//! Enables or disables the creation of a stencil buffer.
 		void	enableStencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; }
+
+		void	addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve = TextureBaseRef() );
+		void	addAttachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
 		//! Removes a buffer or texture attached at \a attachmentPoint
 		void	removeAttachment( GLenum attachmentPoint );
 
@@ -265,6 +272,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Texture::Format	mColorTextureFormat, mDepthTextureFormat;
 		std::string		mLabel; // debug label
 
+
+		std::map<GLenum, AttachmentRef>		mAttachments;
 		
 		std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer;
 		std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer;
@@ -277,10 +286,11 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Fbo( int width, int height, const Format &format );
  
 	void		init();
+	void		validate();
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
+	void		initMultisample( const Format &format );
 	void		prepareAttachments( const Format &format, bool multisampling );
 	void		attachAttachments();
-	void		initMultisample( const Format &format );
 	void		updateMipmaps( GLenum attachment ) const;
 	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
 	void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
@@ -289,7 +299,30 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Format				mFormat;
 	GLuint				mId;
 	GLuint				mMultisampleFramebufferId;
+
+	class Attachment {
+	public:
+		virtual ~Attachment() {}
+		static AttachmentRef	create( const TextureBaseRef &texture, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( texture, nullptr, resolve ) ); }
+		static AttachmentRef	create( const RenderbufferRef &buffer, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( nullptr, buffer, resolve ) ); }
+		const TextureBaseRef&	getTexture() const {  return mTexture; }
+		const RenderbufferRef&	getBuffer() const {  return mBuffer; };
+		const TextureBaseRef&	getResolve() const {  return mResolve; };
+		bool					isTexture() const { return mTexture ? true : false; }
+		bool					isBuffer() const { return mBuffer ? true : false; }
+	private:
+		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve );
+		TextureBaseRef			mTexture;
+		RenderbufferRef			mBuffer;
+		TextureBaseRef			mResolve;
+	};
 	
+	bool								mHasColorAttachments;
+	bool								mHasDepthAttachment;
+	bool								mHasStencilAttachment;
+	bool								mHasDepthStencilAttachment;
+	std::map<GLenum, AttachmentRef>		mAttachments;
+
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
 	std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer; // map from attachment ID to Renderbuffer	
 	std::map<GLenum,TextureBaseRef>		mAttachmentsTexture; // map from attachment ID to Texture
