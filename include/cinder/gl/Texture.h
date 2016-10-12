@@ -622,7 +622,7 @@ class Texture2d : public TextureBase {
 	void			setTopDown( bool topDown = true ) { mTopDown = topDown; }
 	
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	virtual GLint	getSamples() const { mFormat.getSamples(); }
+	virtual GLint	getSamples() const { return mFormat.getSamples(); }
 #endif
 	
 	//! Returns an ImageSource pointing to this Texture

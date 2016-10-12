@@ -167,6 +167,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 
 	//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for an Fbo
 	static GLint	getMaxSamples();
+	//! Returns the maximum number of samples the graphics card is capable of using per pixel in MSAA for renderbuffer attachments in Fbos
+	static GLint	getNumSampleCounts( GLenum internalFormat );
 	//! Returns the maximum number of color attachments the graphics card is capable of using for an Fbo
 	static GLint	getMaxAttachments();
 	
@@ -187,6 +189,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format();
 
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
+		Format&	colorBuffer( GLenum internalFormat = getDefaultColorInternalFormat() ) { mColorBuffer = true; mColorTexture = false; mColorBufferInternalFormat = internalFormat; return *this; }
+		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
 		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorTextureFormat = textureFormat; return *this; }
 		//! Disables both a color Texture and a color Buffer
 		Format&	disableColor() { mColorTexture = false; return *this; }
@@ -199,7 +203,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format&	disableDepth() { mDepthBuffer = false; return *this; }
 		
 		//! Sets the number of MSAA samples. Defaults to none.
-		Format& samples( int samples ) { mSamples = samples; return *this; }
+		Format& samples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; mOverrideTextureSamples = true; return *this; }
 		//! Sets the number of CSAA samples. Defaults to none.
 		Format& coverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; return *this; }
 		//! Enables a stencil buffer. Defaults to false.
@@ -213,7 +217,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		//! Sets the internal format for the depth buffer. Defaults to \c GL_DEPTH_COMPONENT24. Common options also include \c GL_DEPTH_COMPONENT16 and \c GL_DEPTH_COMPONENT32
 		void	setDepthBufferInternalFormat( GLint depthInternalFormat ) { mDepthBufferInternalFormat = depthInternalFormat; }
 		//! Sets the number of samples used in MSAA-style antialiasing. Defaults to none, disabling multisampling. Note that not all implementations support multisampling.
-		void	setSamples( int samples ) { mSamples = samples; }
+		void	setSamples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; mOverrideTextureSamples = true; }
 		//! Sets the number of coverage samples used in CSAA-style antialiasing. Defaults to none. Note that not all implementations support CSAA, and is currenlty Windows-only Nvidia. Ignored on OpenGL ES.
 		void	setCoverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; }
 		//! Sets the Color Texture::Format for use in the creation of the color texture.
@@ -264,12 +268,19 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format&				label( const std::string &label ) { setLabel( label ); return *this; }
 		
 	  protected:
+		GLenum			mColorBufferInternalFormat;
 		GLenum			mDepthBufferInternalFormat;
-		int				mSamples, mCoverageSamples;
-		bool			mColorTexture, mDepthTexture;
+		int				mSamples;
+		int				mCoverageSamples;
+		bool			mColorTexture;
+		bool			mColorBuffer;
+		bool			mDepthTexture;
 		bool			mDepthBuffer;
+		bool			mStencilTexture;
 		bool			mStencilBuffer;
-		Texture::Format	mColorTextureFormat, mDepthTextureFormat;
+		Texture::Format	mColorTextureFormat;
+		Texture::Format mDepthTextureFormat;
+		bool			mOverrideTextureSamples;
 		std::string		mLabel; // debug label
 
 
@@ -286,9 +297,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Fbo( int width, int height, const Format &format );
  
 	void		init();
-	void		validate();
+	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil );
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
-	void		initMultisample( const Format &format );
+	//void		initMultisample( const Format &format );
 	void		prepareAttachments( const Format &format, bool multisampling );
 	void		attachAttachments();
 	void		updateMipmaps( GLenum attachment ) const;
@@ -329,7 +340,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasColorAttachments;
 	bool								mHasDepthAttachment;
 	bool								mHasStencilAttachment;
-	bool								mHasDepthStencilAttachment;
 	std::map<GLenum, AttachmentRef>		mAttachments;
 
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
@@ -340,7 +350,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 
 	mutable bool		mNeedsResolve, mNeedsMipmapUpdate;
 	
-	static GLint		sMaxSamples, sMaxAttachments;
+	static std::map<GLenum, GLint>	sNumSampleCounts;
+	static GLint		sMaxSamples;
+	static GLint		sMaxAttachments;
 	
 	friend std::ostream& operator<<( std::ostream &os, const Fbo &rhs );
 };
