@@ -415,22 +415,124 @@ void Fbo::init()
 void Fbo::validate()
 {
 	struct Validation {
-		uint8_t					mNumColorTexture1D;
-		uint8_t					mNumColorTexture2D;
-		uint8_t					mNumColorTexture3D;
-		uint8_t					mNumColorBuffer1D;
-		uint8_t					mNumColorBuffer2D;
-		uint8_t					mNumColorBuffer3D;
-		uint8_t					mNumDepthTexture;
-		uint8_t					mNumDepthBuffer;
-		uint8_t					mNumStencilTexture;
-		uint8_t					mNumStencilBuffer;
-		uint8_t					mNumDepthStencilTexture;
-		uint8_t					mNumDepthStencilBuffer;
-		std::vector<uint8_t>	mSampleCounts;
+		uint8_t						mNumColorTexture1D;
+		uint8_t						mNumColorTexture2D;
+		uint8_t						mNumColorTexture3D;
+		uint8_t						mNumColorBuffer2D;
+		uint8_t						mNumDepthTexture;
+		uint8_t						mNumDepthBuffer;
+		uint8_t						mNumStencilTexture;
+		uint8_t						mNumStencilBuffer;
+		uint8_t						mNumDepthStencilTexture;
+		uint8_t						mNumDepthStencilBuffer;
+		uint8_t						mNumTextureArray;
+		std::map<GLenum, uint32_t>	mSampleCounts;
+		uint32_t					mMinArraySize;
+		uint32_t					mMaxArraySize;
 	};
-
 	
+	Validation validation = {};
+
+	for( const auto &it : mAttachments ) {
+		GLenum attachmentPoint = it.first;
+		const auto &attachment = it.second;
+		// Sample count
+		validation.mSampleCounts[attachmentPoint] = static_cast<uint32_t>( attachment->getSamples() );
+		// Process propeties
+		GLenum aspect = determineAspectFromFormat( attachment->getInternalFormat() );
+		switch( aspect ) {
+			// Color
+			case GL_COLOR: {
+				const auto& attachment = it.second;
+				GLenum target = attachment->mTexture ? attachment->mTexture->getTarget() : GL_INVALID_ENUM;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+				switch( target ) {
+					case GL_TEXTURE_1D: ++validation.mNumColorTexture1D; break;
+					case GL_TEXTURE_2D_MULTISAMPLE:
+					case GL_TEXTURE_2D: ++validation.mNumColorTexture2D; break;
+					case GL_TEXTURE_3D: ++validation.mNumColorTexture3D; break;
+					case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+					case GL_TEXTURE_2D_ARRAY: {
+						++(validation.mNumTextureArray);
+						uint32_t depth = attachment->mTexture->getDepth();
+						validation.mMinArraySize = ( 0 == validation.mMinArraySize ) ? depth : std::min( validation.mMinArraySize, depth );
+						validation.mMaxArraySize = ( 0 == validation.mMaxArraySize ) ? depth : std::max( validation.mMaxArraySize, depth );
+					}
+					case GL_RENDERBUFFER: ++validation.mNumColorBuffer2D;
+					break;
+				}
+#else
+				switch( target ) {
+					case GL_TEXTURE_1D: ++validation.mNumColorTexture1D; break;
+					case GL_TEXTURE_2D: ++validation.mNumColorTexture2D; break;
+					case GL_TEXTURE_3D: ++validation.mNumColorTexture3D; break;
+					case GL_TEXTURE_2D_ARRAY: {
+						++validation.mNumTextureArray;
+						uint32_t depth = attachment->mTexture->getDepth();
+						validation.mMinArraySize = ( 0 == validation.mMinArraySize ) ? depth : std::min( validation.mMinArraySize, depth );
+						validation.mMaxArraySize = ( 0 == validation.mMaxArraySize ) ? depth : std::max( validation.mMaxArraySize, depth );
+					}
+					break;
+					case GL_RENDERBUFFER: ++validation.mNumColorBuffer2D;
+					break;
+				}
+#endif
+			}
+			break;
+			// Depth
+			case GL_DEPTH: {
+				if( attachment->isTexture() ) {
+					++validation.mNumDepthTexture;
+				}
+				else if( attachment->isBuffer() ) {
+					++validation.mNumDepthBuffer;
+				}
+			}
+			break;
+			// Stencil
+			case GL_STENCIL: {
+				if( attachment->isTexture() ) {
+					++validation.mNumStencilTexture;
+				}
+				else if( attachment->isBuffer() ) {
+					++validation.mNumStencilBuffer;
+				}
+			}
+			break;
+			// Depth stencil
+			case GL_DEPTH_STENCIL: {
+				if( attachment->isTexture() ) {
+					++validation.mNumDepthStencilTexture;
+				}
+				else if( attachment->isBuffer() ) {
+					++validation.mNumDepthStencilBuffer;
+				}
+			}
+			break;
+		}
+	}
+
+	bool has1D = ( validation.mNumColorTexture1D > 0 );
+	bool has2D = ( ( validation.mNumColorTexture2D > 0 ) || ( validation.mNumColorBuffer2D > 0 ) );
+	bool has3D = ( validation.mNumColorTexture3D > 0 );
+	bool hasArray = ( validation.mNumTextureArray > 0 );
+	
+	if( mFormat.mColorTexture ) {
+		switch( mFormat.mColorTextureFormat.getTarget() ) {
+			case GL_TEXTURE_1D: has1D |= true; break;
+			case GL_TEXTURE_2D: has2D |= true; break;
+			case GL_TEXTURE_3D: has3D |= true; break;
+			case GL_TEXTURE_2D_ARRAY: hasArray |= true; break;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			case GL_TEXTURE_2D_MULTISAMPLE: has2D |= true; break;
+			case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: hasArray |= true; break;
+#endif
+		}
+	}
+	
+	// Cannot mix target types
+	if( ( has1D && has2D ) || ( has1D && has3D ) || ( has1D && hasArray ) || ( has2D && has3D ) || ( has2D && hasArray ) || ( has3D && hasArray ) ) {
+	}
 }
 
 void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format )

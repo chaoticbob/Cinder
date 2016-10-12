@@ -121,6 +121,10 @@ class TextureBase {
 	// Specifies the comparison operator used when \c GL_TEXTURE_COMPARE_MODE is set to \c GL_COMPARE_R_TO_TEXTURE
 	void			setCompareFunc( GLenum compareFunc );
 
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	virtual GLint	getSamples() const { return 1; }
+#endif
+
 	//! Returns the appropriate parameter to glGetIntegerv() for a specific target; ie GL_TEXTURE_2D -> GL_TEXTURE_BINDING_2D. Returns 0 on failure.
 	static GLenum	getBindingConstantForTarget( GLenum target );
 	//! Returns the corresponding legal values for glTexImage*D() calls for dataFormat and dataType based on \a internalFormat, as well as whether the internal format contains an alpha channel, is compressed, and is in the sRGB color space.
@@ -147,6 +151,7 @@ class TextureBase {
 	//! Returns whether this hardware supports shadow sampling.
 	static bool		supportsShadowSampler();
 #endif
+
 	//! Returns the debugging label associated with the Texture.
 	const std::string&	getLabel() const { return mLabel; }
 	//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
@@ -616,6 +621,10 @@ class Texture2d : public TextureBase {
 	//!	Marks whether the scanlines of the image are stored top-down in memory relative to the base address. Default is \c false.
 	void			setTopDown( bool topDown = true ) { mTopDown = topDown; }
 	
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	virtual GLint	getSamples() const { mFormat.getSamples(); }
+#endif
+	
 	//! Returns an ImageSource pointing to this Texture
 	ImageSourceRef	createSource();
 	
@@ -711,6 +720,10 @@ class Texture3d : public TextureBase {
 	GLint			getHeight() const override { return mHeight; }
 	//! Returns the depth of the texture, which is the number of images in a texture array, or the depth of a 3D texture measured in pixels
 	GLint			getDepth() const override { return mDepth; }
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	virtual GLint	getSamples() const { return mFormat.getSamples(); }
+#endif
 
   protected:
   	Texture3d( GLint width, GLint height, GLint depth, const Format &format );

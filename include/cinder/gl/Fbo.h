@@ -97,7 +97,7 @@ std::ostream& operator<<( std::ostream &os, const Renderbuffer &rhs );
 
 //! Represents an OpenGL Framebuffer Object.
 class Fbo : public std::enable_shared_from_this<Fbo> {
-  private:
+  protected:
 	class Attachment;
 	using AttachmentRef = std::shared_ptr<Attachment>;
 
@@ -311,7 +311,13 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool					isTexture() const { return mTexture ? true : false; }
 		bool					isBuffer() const { return mBuffer ? true : false; }
 		bool					isResolvable() const { return mResolve ? true : false; }
+		GLenum					getTarget() const { return ( mTexture ? mTexture->getTarget() : ( mBuffer ? GL_RENDERBUFFER : GL_INVALID_ENUM ) ); }
 		GLenum					getInternalFormat() const { return ( mTexture ? mTexture->getInternalFormat() : ( mBuffer ? mBuffer->getInternalFormat() : GL_INVALID_ENUM ) ); }
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		GLint					getSamples() const { return ( mTexture ? mTexture->getSamples() : ( mBuffer ? mBuffer->getSamples() : -1 ) ); }
+#else
+		GLint					getSamples() const { return ( mBuffer ? mBuffer->getSamples() : -1 ); }
+#endif
 	private:
 		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve );
 		TextureBaseRef			mTexture;
