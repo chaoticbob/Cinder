@@ -228,9 +228,12 @@ Fbo::Format::Format()
 	mCoverageSamples = 0;
 	mStencilTexture = false;
 	mStencilBuffer = false;
+	
+	mAutoResolve = true;
+	mAutoMipmap = true;
 }
 
-GLint Fbo::Format::getDefaultColorInternalFormat( bool alpha )
+GLenum Fbo::Format::getDefaultColorInternalFormat( bool alpha )
 {
 #if defined( CINDER_GL_ES_2 )
 	return GL_RGBA;
@@ -239,7 +242,7 @@ GLint Fbo::Format::getDefaultColorInternalFormat( bool alpha )
 #endif
 }
 
-GLint Fbo::Format::getDefaultDepthInternalFormat()
+GLenum Fbo::Format::getDefaultDepthInternalFormat()
 {
 #if defined( CINDER_GL_ES_2 )
 	return GL_DEPTH_COMPONENT24_OES;
@@ -302,6 +305,7 @@ void Fbo::Format::getDepthStencilFormats( GLint depthInternalFormat, GLint *resu
 	}
 }
 
+/*
 Fbo::Format& Fbo::Format::attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, RenderbufferRef multisampleBuffer )
 {
 	mAttachmentsBuffer[attachmentPoint] = buffer;
@@ -317,24 +321,32 @@ Fbo::Format& Fbo::Format::attachment( GLenum attachmentPoint, const TextureBaseR
 	mAttachmentsBuffer.erase( attachmentPoint );
 	return *this;
 }
+*/
 
-void Fbo::Format::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve )
+Fbo::Format& Fbo::Format::attachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve )
 {
 	Fbo::AttachmentRef attachment = Fbo::Attachment::create( texture, resolve );
 	mAttachments[attachmentPoint] = attachment;
+	return *this;
 }
 
-void Fbo::Format::addAttachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
+Fbo::Format& Fbo::Format::attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
 {
 	Fbo::AttachmentRef attachment = Fbo::Attachment::create( buffer, resolve );
 	mAttachments[attachmentPoint] = attachment;
+	return *this;
 }
 
-void Fbo::Format::removeAttachment( GLenum attachmentPoint )
+Fbo::Format& Fbo::Format::removeAttachment( GLenum attachmentPoint )
 {
+	mAttachments.erase( attachmentPoint );
+	return *this;
+	
+/*
 	mAttachmentsBuffer.erase( attachmentPoint );
 	mAttachmentsMultisampleBuffer.erase( attachmentPoint );	
 	mAttachmentsTexture.erase( attachmentPoint );
+*/
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -793,6 +805,25 @@ void Fbo::setDrawBuffers( GLuint fbId, const map<GLenum,RenderbufferRef> &attach
 		glDrawBuffers( 1, &none );
 	}
 #endif
+}
+
+void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
+{
+}
+
+void Fbo::attachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve )
+{
+	addAttachment( attachmentPoint, texture, nullptr, resolve );
+}
+
+void Fbo::attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
+{
+	addAttachment( attachmentPoint, nullptr, buffer, resolve );
+}
+
+void Fbo::detach( GLenum attachmentPoint )
+{
+	mAttachments.erase( attachmentPoint );
 }
 
 Texture2dRef Fbo::getColorTexture()

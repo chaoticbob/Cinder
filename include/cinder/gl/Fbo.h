@@ -125,6 +125,13 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Returns the Fbo::Format of this FBO
 	Format			getFormat() { return mFormat; }
 
+	//! Attaches a single sample or multisample texture attachment \a texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+	void			attachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve = TextureBaseRef() );
+	//! Attaches a single sample or multisample renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+	void			attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
+	//! Detaches a buffer or texture attached at \a attachmentPoint
+	void			detach( GLenum attachmentPoint );
+
 	//! Returns a reference to the color Texture2d of the FBO (at \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d attached at \c GL_COLOR_ATTACHMENT0
 	Texture2dRef	getColorTexture();	
 	//! Returns a reference to the depth Texture2d of the FBO. Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d as a depth attachment.
@@ -189,7 +196,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format();
 
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
-		Format&	colorBuffer( GLenum internalFormat = getDefaultColorInternalFormat() ) { mColorBuffer = true; mColorTexture = false; mColorBufferInternalFormat = internalFormat; return *this; }
+		Format&	colorBuffer( GLenum internalFormat = getDefaultColorInternalFormat( true ) ) { mColorBuffer = true; mColorTexture = false; mColorBufferInternalFormat = internalFormat; return *this; }
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
 		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorTextureFormat = textureFormat; return *this; }
 		//! Disables both a color Texture and a color Buffer
@@ -209,10 +216,18 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		//! Enables a stencil buffer. Defaults to false.
 		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; return *this; }
 
+/*
 		//! Adds a Renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
 		Format&	attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, RenderbufferRef multisampleBuffer = RenderbufferRef() );
 		//! Adds a Texture attachment \a texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
 		Format&	attachment( GLenum attachmentPoint, const TextureBaseRef &texture, RenderbufferRef multisampleBuffer = RenderbufferRef() );
+*/
+		//! Adds a single sample or multisample texture attachment \a texture at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+		Format&	attachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve = TextureBaseRef() );
+		//! Adds a single sample or multisample renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
+		Format&	attachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
+		//! Removes a buffer or texture attached at \a attachmentPoint
+		Format&	removeAttachment( GLenum attachmentPoint );
 		
 		//! Sets the internal format for the depth buffer. Defaults to \c GL_DEPTH_COMPONENT24. Common options also include \c GL_DEPTH_COMPONENT16 and \c GL_DEPTH_COMPONENT32
 		void	setDepthBufferInternalFormat( GLint depthInternalFormat ) { mDepthBufferInternalFormat = depthInternalFormat; }
@@ -226,11 +241,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		void	enableDepthBuffer( bool depthBuffer = true ) { mDepthBuffer = depthBuffer; }
 		//! Enables or disables the creation of a stencil buffer.
 		void	enableStencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; }
-
-		void	addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve = TextureBaseRef() );
-		void	addAttachment( GLenum attachmentPoint, const RenderbufferRef &buffer, const TextureBaseRef &resolve = TextureBaseRef() );
-		//! Removes a buffer or texture attached at \a attachmentPoint
-		void	removeAttachment( GLenum attachmentPoint );
 
 		//! Returns the GL internal format for the depth buffer. Defaults to \c GL_DEPTH_COMPONENT24.
 		GLint	getDepthBufferInternalFormat() const { return mDepthBufferInternalFormat; }
@@ -254,9 +264,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		//! Returns the default depth Texture::Format for this platform
 		static Texture::Format	getDefaultDepthTextureFormat();
 		//! Returns the default internalFormat for a color Renderbuffer for this platform
-		static GLint			getDefaultColorInternalFormat( bool alpha = true );
+		static GLenum			getDefaultColorInternalFormat( bool alpha = true );
 		//! Returns the default internalFormat for a depth Renderbuffer for this platform
-		static GLint			getDefaultDepthInternalFormat();
+		static GLenum			getDefaultDepthInternalFormat();
 		// Returns the +stencil complement of a given internalFormat; ie GL_DEPTH_COMPONENT24 -> GL_DEPTH24_STENCIL8, as well as appropriate pixelDataType for glTexImage2D
 		static void				getDepthStencilFormats( GLint depthInternalFormat, GLint *resultInternalFormat, GLenum *resultPixelDataType );
 
@@ -280,15 +290,19 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool			mStencilBuffer;
 		Texture::Format	mColorTextureFormat;
 		Texture::Format mDepthTextureFormat;
+		bool			mAutoResolve;
+		bool			mAutoMipmap;
 		bool			mOverrideTextureSamples;
 		std::string		mLabel; // debug label
 
 
 		std::map<GLenum, AttachmentRef>		mAttachments;
 		
+		/*
 		std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer;
 		std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer;
 		std::map<GLenum,TextureBaseRef>		mAttachmentsTexture;
+		*/
 
 		friend class Fbo;
 	};
@@ -305,6 +319,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void		updateMipmaps( GLenum attachment ) const;
 	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
 	void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
+	void		addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
 
 	int					mWidth, mHeight;
 	Format				mFormat;
