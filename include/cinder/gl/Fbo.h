@@ -314,7 +314,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil );
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
 	//void		initMultisample( const Format &format );
-	void		prepareAttachments( const Format &format, bool multisampling );
+	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
 	void		updateMipmaps( GLenum attachment ) const;
 	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
@@ -355,6 +355,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasColorAttachments;
 	bool								mHasDepthAttachment;
 	bool								mHasStencilAttachment;
+	bool								mHasArrayAttachment;
 	std::map<GLenum, AttachmentRef>		mAttachments;
 
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer

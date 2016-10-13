@@ -432,7 +432,7 @@ void Fbo::init()
 	}
 }
 
-void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil )
+void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray )
 {
 	struct Validation {
 		uint8_t						mNumColorTexture1D;
@@ -592,6 +592,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil )
 	*outHasColor = has1D || has2D || has3D || hasArray;
 	*outHasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
 	*outHasDepth = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
+	*outHasArray = hasArray;
 }
 
 void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format )
@@ -744,8 +745,205 @@ void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
 	}
 }
 #else
-void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
+void Fbo::prepareAttachments( bool multisample )
 {
+	// Create color attachment
+	if( ! mHasColorAttachments ) {
+		// Create attachment using texture
+		if( mFormat.mColorTexture ) {
+			TextureBaseRef texture;
+			TextureBaseRef resolve;
+			auto colorFormat = mFormat.mColorTextureFormat;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			if( multisample && ( mFormat.mSamples > 1 ) && ( 1 == colorFormat.getSamples() ) ) {
+				colorFormat.setSamples( mFormat.mSamples, colorFormat.isFixedSampleLocations() );
+			}
+#endif
+			texture = Texture::create( mWidth, mHeight, colorFormat );
+			if( texture->getSamples() > 1 ) {
+				auto resolveFormat = mFormat.mColorTextureFormat;
+				resolveFormat.setSamples( 1 );
+				resolve = Texture::create( mWidth, mHeight, resolveFormat );
+			}
+			addAttachment( GL_COLOR_ATTACHMENT0, texture, nullptr, resolve );
+			mHasColorAttachments = true;
+		}
+		// Create attachment using renderbuffer
+		else if( mFormat.mColorBuffer ) {
+			// Create renderbuffer mirror FBO
+			glGenFramebuffers( 1, &mMultisampleFramebufferId );
+			ScopedFramebuffer fbScp( GL_FRAMEBUFFER, mMultisampleFramebufferId );
+			// Create renderbuffer storage
+			RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, mFormat.mColorBufferInternalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+			auto resolveFormat = Texture2d::Format().internalFormat( mFormat.mColorBufferInternalFormat ).samples( 1 );
+			TextureBaseRef resolve = Texture::create( mWidth, mHeight, resolveFormat );
+			addAttachment( GL_COLOR_ATTACHMENT0, nullptr, buffer, resolve );
+			mHasColorAttachments = true;
+		}
+	}
+
+	bool needsDepth = ( ! mHasDepthAttachment ) && ( mFormat.mDepthTexture || mFormat.mDepthBuffer );
+	bool needsStencil = ( ! mHasStencilAttachment ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer );
+	if( mHasArrayAttachment && ( needsDepth || needsStencil ) ) {
+	}
+	else if( needsDepth && needsStencil ) {
+	}
+	else if( needsDepth ) {
+		if( mFormat.mDepthTexture ) {
+			auto depthFormat = mFormat.mDepthTextureFormat;
+			depthFormat.setSamples( mFormat.mSamples );
+			TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthFormat );
+			TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			if( depthFormat.getSamples() > 1 ) {
+				auto resolveFormat = depthFormat;
+				resolveFormat.setSamples( 1 );
+				resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+			}
+#endif
+			addAttachment( GL_DEPTH_ATTACHMENT, texture, nullptr, resolve );
+			mHasDepthAttachment = true;
+		}
+		else if( mFormat.mDepthBuffer ) {
+			RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, mFormat.mDepthBufferInternalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+			TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( mFormat.mDepthBufferInternalFormat ).samples( 1 ) );
+			addAttachment( GL_DEPTH_ATTACHMENT, nullptr, buffer, resolve );
+			mHasDepthAttachment = true;
+		}
+	}
+	else if( needsStencil ) {
+		if( mFormat.mStencilTexture ) {
+			auto stencilFormat = Texture2d::Format().internalFormat( GL_STENCIL_INDEX8 );
+			stencilFormat.setSamples( mFormat.mSamples );
+			TextureBaseRef texture = Texture2d::create( mWidth, mHeight, stencilFormat );
+			TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			if( stencilFormat.getSamples() > 1 ) {
+				auto resolveFormat = stencilFormat;
+				resolveFormat.setSamples( 1 );
+				resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+			}
+#endif
+			addAttachment( GL_STENCIL_ATTACHMENT, texture, nullptr, resolve );
+			mHasStencilAttachment = true;
+		}
+		else if( mFormat.mStencilBuffer ) {
+			GLint internalFormat = GL_STENCIL_INDEX8;
+			RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, internalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+			TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( internalFormat ).samples( 1 ) );
+			addAttachment( GL_STENCIL_ATTACHMENT, nullptr, buffer, resolve );
+		}
+	}
+
+/*
+	// Create depth/stencil attachment
+	bool needsDepthStencil = ( mFormat.mDepthTexture || mFormat.mDepthBuffer || mFormat.mStencilTexture || mFormat.mStencilBuffer );
+	if( ( ( ! mHasDepthAttachment ) || ( ! mHasStencilAttachment ) ) && needsDepthStencil ) {
+		// Force a texture if depth/stencil is requested with array attachments - RenderBuffers do not have array support.
+		if( mHasArrayAttachment && ( mFormat.mDepthTexture || mFormat.mDepthBuffer ) ) {
+			// Find the first color attachment
+			auto it = std::find_if( std::begin( mAttachments ), std::end( mAttachments ),
+				[]( const std::pair<GLenum, Fbo::AttachmentRef>& elem ) -> bool {
+					GLenum attachmentPoint = elem.first;
+					bool isColorAttachment = ( ( attachmentPoint >= GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) );
+					return isColorAttachment;
+				}
+			);
+			Fbo::AttachmentRef colorAttachment =  ( it != mAttachments.end() ) ? it->second : Fbo::AttachmentRef();
+			// If an attachment is not found here, something has gone horribly wrong!
+			if( ( ! colorAttachment ) || ( colorAttachment && ( ! colorAttachment->mTexture ) ) ) {
+				throw FboException( "Couldn't find color texture array attachment to configure depth attachment" );
+			}
+			// Create depth/stencil buffer based on the found color attachment
+			GLint depth = colorAttachment->mTexture->getDepth();
+			GLenum target = colorAttachment->mTexture->getTarget();
+			if( mFormat.mStencilBuffer ) {
+				// Get internal format
+				GLint internalFormat;
+				GLenum pixelDataType;
+				Format::getDepthStencilFormats( mFormat.mDepthBufferInternalFormat, &internalFormat, &pixelDataType );
+				// Create texture
+				TextureBaseRef texture = Texture3d::create( mWidth, mHeight, depth, Texture3d::Format( mFormat.mDepthTextureFormat ).internalFormat( internalFormat ).target( target ) );
+				addAttachment( GL_DEPTH_STENCIL_ATTACHMENT, texture, nullptr, nullptr );
+			}
+			else {
+				TextureBaseRef texture = Texture3d::create( mWidth, mHeight, depth, Texture3d::Format( mFormat.mDepthTextureFormat ).target( target ) );
+				addAttachment( GL_DEPTH_ATTACHMENT, texture, nullptr, nullptr );
+			}
+		}
+		else {
+			// Combined depth and stencil texture
+			if( ( mFormat.mDepthTexture && mFormat.mStencilTexture ) || ( mFormat.mDepthTexture && mFormat.mStencilBuffer ) || ( mFormat.mDepthBuffer && mFormat.mStencilTexture ) ) {
+				auto depthStencilFormat = mFormat.mDepthTextureFormat;
+				depthStencilFormat.setSamples( mFormat.mSamples );
+				TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthStencilFormat );
+				TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+				if( depthStencilFormat.getSamples() > 1 ) {
+					auto resolveFormat = depthStencilFormat;
+					resolveFormat.setSamples( 1 );
+					resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+				}
+#endif
+				addAttachment( GL_DEPTH_STENCIL_ATTACHMENT, texture, nullptr, resolve );
+			}
+			// Combined depth and stencil buffer
+			else if( mFormat.mDepthBuffer && mFormat.mStencilBuffer ) {
+				GLint internalFormat;
+				GLenum pixelDataType;
+				Format::getDepthStencilFormats( mFormat.mDepthBufferInternalFormat, &internalFormat, &pixelDataType );
+				RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, internalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+				TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( internalFormat ).samples( 1 ) );
+				addAttachment( GL_DEPTH_STENCIL_ATTACHMENT, nullptr, buffer, resolve );
+			} 
+			else {
+				// Depth texture
+				if( mFormat.mDepthTexture ) {
+					auto depthFormat = mFormat.mDepthTextureFormat;
+					depthFormat.setSamples( mFormat.mSamples );
+					TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthFormat );
+					TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+					if( depthFormat.getSamples() > 1 ) {
+						auto resolveFormat = depthFormat;
+						resolveFormat.setSamples( 1 );
+						resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+					}
+#endif
+					addAttachment( GL_DEPTH_ATTACHMENT, texture, nullptr, resolve );
+				}
+				// Depth buffer
+				if( mFormat.mDepthBuffer ) {
+					RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, mFormat.mDepthBufferInternalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+					TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( mFormat.mDepthBufferInternalFormat ).samples( 1 ) );
+					addAttachment( GL_DEPTH_ATTACHMENT, nullptr, buffer, resolve );
+				}
+				// Stencil texture
+				if( mFormat.mStencilTexture ) {
+					auto stencilFormat = Texture2d::Format().internalFormat( GL_STENCIL_INDEX8 );
+					stencilFormat.setSamples( mFormat.mSamples );
+					TextureBaseRef texture = Texture2d::create( mWidth, mHeight, stencilFormat );
+					TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+					if( stencilFormat.getSamples() > 1 ) {
+						auto resolveFormat = stencilFormat;
+						resolveFormat.setSamples( 1 );
+						resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+					}
+#endif
+					addAttachment( GL_STENCIL_ATTACHMENT, texture, nullptr, resolve );
+				}
+				// Stencil buffer
+				if( mFormat.mStencilBuffer ) {
+					GLint internalFormat = GL_STENCIL_INDEX8;
+					RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, internalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+					TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( internalFormat ).samples( 1 ) );
+					addAttachment( GL_STENCIL_ATTACHMENT, nullptr, buffer, resolve );
+				}
+			}
+		}
+	}
+*/
 }
 #endif
 
@@ -809,6 +1007,19 @@ void Fbo::setDrawBuffers( GLuint fbId, const map<GLenum,RenderbufferRef> &attach
 
 void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
 {
+	// @TODO: Add validation check
+
+	Fbo::AttachmentRef attachment;
+	if( texture ) {
+		attachment = Fbo::Attachment::create( texture, resolve );
+	}
+	else if( buffer ) {
+		attachment = Fbo::Attachment::create( buffer, resolve );
+	}
+
+	if( attachment ) {
+		mAttachments[attachmentPoint] = attachment;
+	}
 }
 
 void Fbo::attachment( GLenum attachmentPoint, const TextureBaseRef &texture, const TextureBaseRef &resolve )
