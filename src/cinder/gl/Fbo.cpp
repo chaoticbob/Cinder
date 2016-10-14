@@ -393,7 +393,7 @@ Fbo::~Fbo()
 void Fbo::init()
 {
 	mAttachments = mFormat.mAttachments;
-	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment );
+	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment );
 
 	// allocate the framebuffer itself
 	glGenFramebuffers( 1, &mId );
@@ -404,7 +404,7 @@ void Fbo::init()
 	bool useCsaa = false;
 	initMultisamplingSettings( &useMsaa, &useCsaa, &mFormat );
 
-	prepareAttachments( mFormat, useMsaa || useCsaa );
+	prepareAttachments( useMsaa || useCsaa );
 	attachAttachments();
 
 /*
@@ -756,7 +756,7 @@ void Fbo::prepareAttachments( bool multisample )
 			auto colorFormat = mFormat.mColorTextureFormat;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 			if( multisample && ( mFormat.mSamples > 1 ) && ( 1 == colorFormat.getSamples() ) ) {
-				colorFormat.setSamples( mFormat.mSamples, colorFormat.isFixedSampleLocations() );
+				colorFormat.setSamples( mFormat.mSamples );
 			}
 #endif
 			texture = Texture::create( mWidth, mHeight, colorFormat );
@@ -782,6 +782,7 @@ void Fbo::prepareAttachments( bool multisample )
 		}
 	}
 
+	// Create depth/stencil attachment
 	bool needsDepth = ( ! mHasDepthAttachment ) && ( mFormat.mDepthTexture || mFormat.mDepthBuffer );
 	bool needsStencil = ( ! mHasStencilAttachment ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer );
 	if( mHasArrayAttachment && ( needsDepth || needsStencil ) ) {
@@ -795,7 +796,7 @@ void Fbo::prepareAttachments( bool multisample )
 			TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthFormat );
 			TextureBaseRef resolve;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-			if( depthFormat.getSamples() > 1 ) {
+			if( depthFormat.isMultisample() ) {
 				auto resolveFormat = depthFormat;
 				resolveFormat.setSamples( 1 );
 				resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
@@ -818,7 +819,7 @@ void Fbo::prepareAttachments( bool multisample )
 			TextureBaseRef texture = Texture2d::create( mWidth, mHeight, stencilFormat );
 			TextureBaseRef resolve;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-			if( stencilFormat.getSamples() > 1 ) {
+			if( stencilFormat.isMultisample() ) {
 				auto resolveFormat = stencilFormat;
 				resolveFormat.setSamples( 1 );
 				resolve = Texture2d::create( mWidth, mHeight, resolveFormat );

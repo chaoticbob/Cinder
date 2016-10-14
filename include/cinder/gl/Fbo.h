@@ -311,7 +311,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Fbo( int width, int height, const Format &format );
  
 	void		init();
-	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil );
+	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray );
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
 	//void		initMultisample( const Format &format );
 	void		prepareAttachments( bool multisampling );
