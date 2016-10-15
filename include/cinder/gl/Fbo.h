@@ -104,6 +104,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
   public:
 	struct Format;
 
+	enum { ALL_ATTACHMENTS = 0xFFFFFFFF };
+
 	//! Creates an FBO \a width pixels wide and \a height pixels high, using Fbo::Format \a format
 	static FboRef create( int width, int height, const Format &format = Format() );
 	//! Creates an FBO \a width pixels wide and \a height pixels high, a color texture (with optional \a alpha channel), and optionally a \a depth buffer and \a stencil buffer
@@ -150,7 +152,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Unbinds the Fbo as the currently active framebuffer, restoring the primary context as the target for all subsequent rendering
 	static void 	unbindFramebuffer();
 	//! Resolves internal Multisample FBO to attached Textures. Only necessary when not using getColorTexture() or getTexture(), which resolve automatically.
-	void			resolveTextures() const;
+	void			resolveTextures( GLenum attachmentPoint = static_cast<GLenum>( Fbo::ALL_ATTACHMENTS ) ) const;
+	void			updateMipmaps( GLenum attachmentPoint = static_cast<GLenum>( Fbo::ALL_ATTACHMENTS ) ) const;
+	
 
 	//! Returns the ID of the framebuffer. For antialiased FBOs this is the ID of the output multisampled FBO
 	GLuint		getId() const { if( mMultisampleFramebufferId ) return mMultisampleFramebufferId; else return mId; }
@@ -316,10 +320,10 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//void		initMultisample( const Format &format );
 	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
-	void		updateMipmaps( GLenum attachment ) const;
-	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
-	void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
 	void		addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
+	void		updateDrawBuffers();
+	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
+	//void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
 
 	int					mWidth, mHeight;
 	Format				mFormat;
@@ -357,10 +361,14 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasStencilAttachment;
 	bool								mHasArrayAttachment;
 	std::map<GLenum, AttachmentRef>		mAttachments;
+	std::vector<GLenum>					mDrawBuffers;
+	GLenum								mDepthStencilAttachmentPoint;
 
+	/*
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
 	std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer; // map from attachment ID to Renderbuffer	
 	std::map<GLenum,TextureBaseRef>		mAttachmentsTexture; // map from attachment ID to Texture
+	*/
 
 	std::string			mLabel; // debugging label
 

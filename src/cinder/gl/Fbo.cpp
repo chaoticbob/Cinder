@@ -392,6 +392,8 @@ Fbo::~Fbo()
 
 void Fbo::init()
 {
+	mDepthStencilAttachmentPoint = GL_INVALID_ENUM;
+
 	mAttachments = mFormat.mAttachments;
 	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment );
 
@@ -404,20 +406,27 @@ void Fbo::init()
 	bool useCsaa = false;
 	initMultisamplingSettings( &useMsaa, &useCsaa, &mFormat );
 
+	// allocate the multisample framebuffer
+	if( useMsaa || useCsaa ) {
+		glGenFramebuffers( 1, &mMultisampleFramebufferId );
+	}
+
 	prepareAttachments( useMsaa || useCsaa );
+	updateDrawBuffers();
 	attachAttachments();
 
 /*
 	if( useCsaa || useMsaa ) {
 		initMultisample( mFormat );
 	}
-*/
+
 	
 	setDrawBuffers( mId, mAttachmentsBuffer, mAttachmentsTexture );
 	if( mMultisampleFramebufferId ) { // using multisampling and setup succeeded
 		setDrawBuffers( mMultisampleFramebufferId, mAttachmentsMultisampleBuffer, map<GLenum,TextureBaseRef>() );
 	}
-		
+*/		
+
 	FboExceptionInvalidSpecification exc;
 	if( ! checkStatus( &exc ) ) { // failed creation; throw
 		throw exc;
@@ -948,33 +957,57 @@ void Fbo::prepareAttachments( bool multisample )
 }
 #endif
 
+#if defined( CINDER_GL_ES )
+#else
 void Fbo::attachAttachments()
 {
-	// attach Renderbuffers
-	for( auto &bufferAttachment : mAttachmentsBuffer ) {
-		glFramebufferRenderbuffer( GL_FRAMEBUFFER, bufferAttachment.first, GL_RENDERBUFFER, bufferAttachment.second->getId() );
-	}
-	
-	// attach Textures
-	for( auto &textureAttachment : mAttachmentsTexture ) {
-		auto textureTarget = textureAttachment.second->getTarget();
-#if ! defined( CINDER_GL_ES )
-		if( textureTarget == GL_TEXTURE_CUBE_MAP ) {
-			textureTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
-			glFramebufferTexture2D( GL_FRAMEBUFFER, textureAttachment.first, textureTarget, textureAttachment.second->getId(), 0 );
-		}
-		else {
-			glFramebufferTexture( GL_FRAMEBUFFER, textureAttachment.first, textureAttachment.second->getId(), 0 );
-		}
-#else
-		if( textureTarget == GL_TEXTURE_CUBE_MAP ) {
-			textureTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
-		}
-		glFramebufferTexture2D( GL_FRAMEBUFFER, textureAttachment.first, textureTarget, textureAttachment.second->getId(), 0 );
-#endif
-	}	
-}
+	// Attach images
+	{
+		ScopedFramebuffer fbScp( GL_FRAMEBUFFER, ( 0 != mMultisampleFramebufferId ) ? mMultisampleFramebufferId : mId );
 
+		for( auto &it : mAttachments ) {
+			GLenum attachmentPoint = it.first;
+			auto& attachment = it.second;
+			if( attachment->mTexture ) {
+				GLenum target = attachment->mTexture->getTarget();
+				GLuint id = attachment->mTexture->getId();
+				if( GL_TEXTURE_CUBE_MAP == target ) {
+					target = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+					//framebufferTexture2d( GL_FRAMEBUFFER, attachmentPoint, target, id, 0 );
+					glFramebufferTexture2D( GL_FRAMEBUFFER, attachmentPoint, target, id, 0 );
+				}
+				else {
+					//framebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+					glFramebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+				}
+			}
+			else if( attachment->mBuffer ) {
+				GLuint id = attachment->mBuffer->getId();
+				//framebufferRenderbuffer( GL_FRAMEBUFFER, attachmentPoint, GL_RENDERBUFFER, id );
+				glFramebufferRenderbuffer( GL_FRAMEBUFFER, attachmentPoint, GL_RENDERBUFFER, id );
+			}
+		}
+	}
+
+	// Attach resolves
+	{
+		ScopedFramebuffer fbScp( GL_FRAMEBUFFER, mId );
+
+		for( auto &it : mAttachments ) {
+			GLenum attachmentPoint = it.first;
+			auto& attachment = it.second;
+			if( ! attachment->mResolve ) {
+				continue;
+			}
+			GLuint id = attachment->mResolve->getId();
+			//framebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+			glFramebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+		}
+	}
+}
+#endif
+
+/*
 // call glDrawBuffers against all color attachments
 void Fbo::setDrawBuffers( GLuint fbId, const map<GLenum,RenderbufferRef> &attachmentsBuffer, const map<GLenum,TextureBaseRef> &attachmentsTexture )
 {
@@ -1005,6 +1038,7 @@ void Fbo::setDrawBuffers( GLuint fbId, const map<GLenum,RenderbufferRef> &attach
 	}
 #endif
 }
+*/
 
 void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve )
 {
@@ -1020,6 +1054,17 @@ void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, 
 
 	if( attachment ) {
 		mAttachments[attachmentPoint] = attachment;
+	}
+}
+
+void Fbo::updateDrawBuffers()
+{
+	mDrawBuffers.clear();
+	for( auto &it : mAttachments ) {
+		GLenum attachmentPoint = it.first;
+		if( ( attachmentPoint > GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
+			mDrawBuffers.push_back( attachmentPoint );
+		}
 	}
 }
 
@@ -1040,6 +1085,10 @@ void Fbo::detach( GLenum attachmentPoint )
 
 Texture2dRef Fbo::getColorTexture()
 {
+	Texture2dRef result = dynamic_pointer_cast<Texture2d>( getTextureBase( GL_COLOR_ATTACHMENT0 ) );
+	return result;
+
+/*
 	auto attachedTextureIt = mAttachmentsTexture.find( GL_COLOR_ATTACHMENT0 );
 	if( attachedTextureIt != mAttachmentsTexture.end() && ( typeid(*attachedTextureIt->second) == typeid(Texture2d) ) ) {
 		resolveTextures();
@@ -1048,8 +1097,24 @@ Texture2dRef Fbo::getColorTexture()
 	}
 	else
 		return Texture2dRef();
+*/
 }
 
+#if defined( CINDER_GL_ES_2 )
+Texture2dRef Fbo::getDepthTexture()
+{
+	Texture2dRef result;
+	return result;
+}
+#else
+Texture2dRef Fbo::getDepthTexture()
+{
+	Texture2dRef result;
+	return result;
+}
+#endif
+
+/*
 Texture2dRef Fbo::getDepthTexture()
 {
 	TextureBaseRef result;
@@ -1073,6 +1138,7 @@ Texture2dRef Fbo::getDepthTexture()
 	else
 		return Texture2dRef();
 }
+*/
 
 Texture2dRef Fbo::getTexture2d( GLenum attachment )
 {
@@ -1081,6 +1147,10 @@ Texture2dRef Fbo::getTexture2d( GLenum attachment )
 
 TextureBaseRef Fbo::getTextureBase( GLenum attachment )
 {
+	Texture2dRef result;
+	return result;
+
+/*
 	if( ( (attachment < GL_COLOR_ATTACHMENT0) || (attachment > MAX_COLOR_ATTACHMENT) ) && (attachment != GL_DEPTH_ATTACHMENT)
 #if ! defined( CINDER_GL_ES_2 )
 		&& (attachment != GL_DEPTH_STENCIL_ATTACHMENT) )
@@ -1099,6 +1169,7 @@ TextureBaseRef Fbo::getTextureBase( GLenum attachment )
 	}
 	else
 		return TextureBaseRef();
+*/
 }
 
 void Fbo::bindTexture( int textureUnit, GLenum attachment )
@@ -1115,8 +1186,9 @@ void Fbo::unbindTexture( int textureUnit, GLenum attachment )
 		tex->unbind( textureUnit );
 }
 
-void Fbo::resolveTextures() const
+void Fbo::resolveTextures( GLenum attachmentPoint ) const
 {
+/*
 	if( ! mNeedsResolve )
 		return;
 
@@ -1169,10 +1241,12 @@ void Fbo::resolveTextures() const
 #endif
 
 	mNeedsResolve = false;
+*/
 }
 
-void Fbo::updateMipmaps( GLenum attachment ) const
+void Fbo::updateMipmaps( GLenum attachmentPoint ) const
 {
+/*
 	if( ! mNeedsMipmapUpdate )
 		return;
 	else {
@@ -1184,10 +1258,12 @@ void Fbo::updateMipmaps( GLenum attachment ) const
 	}
 
 	mNeedsMipmapUpdate = false;
+*/
 }
 
 void Fbo::markAsDirty()
 {
+/*
 	if( mMultisampleFramebufferId )
 		mNeedsResolve = true;
 
@@ -1195,6 +1271,7 @@ void Fbo::markAsDirty()
 		if( textureAttachment.second->hasMipmapping() )
 			mNeedsMipmapUpdate = true;
 	}
+*/
 }
 
 void Fbo::bindFramebuffer( GLenum target )
@@ -1305,6 +1382,10 @@ void Fbo::setLabel( const std::string &label )
 
 Surface8u Fbo::readPixels8u( const Area &area, GLenum attachment ) const
 {
+	Surface8u result;
+	return result;
+
+/*
 	// resolve first, before our own bind so that we don't force a resolve unnecessarily
 	resolveTextures();
 	ScopedFramebuffer readScp( GL_FRAMEBUFFER, mId );
@@ -1343,6 +1424,7 @@ Surface8u Fbo::readPixels8u( const Area &area, GLenum attachment ) const
 	mNeedsResolve = false;
 	
 	return result;
+*/
 }
 
 #if ! defined( CINDER_GL_ES )
@@ -1373,6 +1455,7 @@ void Fbo::blitFromScreen( const Area &srcArea, const Area &dstArea, GLenum filte
 
 std::ostream& operator<<( std::ostream &os, const Fbo &rhs )
 {
+/*
 	os << "ID: " << rhs.mId;
 	if( rhs.mMultisampleFramebufferId )
 		os << "  Multisample ID: " << rhs.mMultisampleFramebufferId;
@@ -1388,7 +1471,8 @@ std::ostream& operator<<( std::ostream &os, const Fbo &rhs )
 		os << "-Renderbuffer Attachment: " << gl::constantToString( ren.first ) << std::endl;
 		os << *ren.second << std::endl;
 	}
-	
+*/
+
 	return os;
 }
 
