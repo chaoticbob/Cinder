@@ -315,7 +315,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Fbo( int width, int height, const Format &format );
  
 	void		init();
-	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray );
+	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture  );
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
 	//void		initMultisample( const Format &format );
 	void		prepareAttachments( bool multisampling );
@@ -349,7 +349,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		GLint					getSamples() const { return ( mBuffer ? mBuffer->getSamples() : -1 ); }
 #endif
 	private:
-		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve );
+		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve )
+			: mTexture( texture ), mBuffer( buffer ), mResolve( resolve ) {}
 		TextureBaseRef			mTexture;
 		RenderbufferRef			mBuffer;
 		TextureBaseRef			mResolve;
@@ -360,6 +361,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasDepthAttachment;
 	bool								mHasStencilAttachment;
 	bool								mHasArrayAttachment;
+	bool								mHasMultisampleTexture;
 	std::map<GLenum, AttachmentRef>		mAttachments;
 	std::vector<GLenum>					mDrawBuffers;
 	GLenum								mDepthStencilAttachmentPoint;

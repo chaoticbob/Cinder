@@ -368,7 +368,7 @@ FboRef Fbo::create( int width, int height, bool alpha, bool depth, bool stencil 
 
 Fbo::Fbo( int width, int height, const Format &format )
 	: mWidth( width ), mHeight( height ), mFormat( format ), mId( 0 ), mMultisampleFramebufferId( 0 ),
-	mHasColorAttachments( false ),	mHasDepthAttachment( false ), mHasStencilAttachment( false )
+	mHasColorAttachments( false ),	mHasDepthAttachment( false ), mHasStencilAttachment( false ), mHasMultisampleTexture( false )
 {
 	init();
 	gl::context()->framebufferCreated( this );
@@ -395,7 +395,32 @@ void Fbo::init()
 	mDepthStencilAttachmentPoint = GL_INVALID_ENUM;
 
 	mAttachments = mFormat.mAttachments;
-	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment );
+	int32_t validationSampleCount = -1;
+	bool hasMultisampleTexture = false;
+	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment, &validationSampleCount, &mHasMultisampleTexture );
+
+	if( -1 != validationSampleCount ) {
+		mFormat.setSamples( validationSampleCount );
+	}
+	
+	// Force all requested buffers to textures if there is a multisample texture present
+	if( mHasMultisampleTexture ) {
+		// Color
+		if( mFormat.mColorBuffer ) {
+			mFormat.mColorBuffer = false;
+			mFormat.mColorTexture = true;
+		}
+		// Depth
+		if( mFormat.mDepthBuffer ) {
+			mFormat.mDepthBuffer = false;
+			mFormat.mDepthTexture = true;
+		}
+		// Stencil
+		if( mFormat.mStencilBuffer ) {
+			mFormat.mStencilBuffer = false;
+			mFormat.mStencilTexture = true;
+		}
+	}
 
 	// allocate the framebuffer itself
 	glGenFramebuffers( 1, &mId );
@@ -410,7 +435,7 @@ void Fbo::init()
 	if( useMsaa || useCsaa ) {
 		glGenFramebuffers( 1, &mMultisampleFramebufferId );
 	}
-
+	
 	prepareAttachments( useMsaa || useCsaa );
 	updateDrawBuffers();
 	attachAttachments();
@@ -441,7 +466,7 @@ void Fbo::init()
 	}
 }
 
-void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray )
+void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture )
 {
 	struct Validation {
 		uint8_t						mNumColorTexture1D;
@@ -455,7 +480,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		uint8_t						mNumDepthStencilTexture;
 		uint8_t						mNumDepthStencilBuffer;
 		uint8_t						mNumTextureArray;
-		std::map<GLenum, uint32_t>	mSampleCounts;
+		std::map<GLenum, int32_t>	mSampleCounts;
 		uint32_t					mMinArraySize;
 		uint32_t					mMaxArraySize;
 	};
@@ -590,6 +615,14 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 	}
 #endif
 
+	// Depth and stencil must use combined format if both are used
+	bool hasDepthStencil = ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
+	bool hasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 );
+	bool hasStencil = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 );
+	if( hasDepth && hasStencil && ( ! hasDepthStencil ) ) {
+		throw FboException( "Depth and stencil must use combined format if both are used" );
+	}
+
 	// GL_TEXTURE_3D targets do not support any depth or stencil attachments
 	bool hasAnyDepthStencilTexture = ( val.mNumDepthTexture > 0 ) || ( val.mNumStencilTexture > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || mFormat.mDepthTexture || mFormat.mStencilTexture;
 	bool hasAnyDepthStencilBuffer = ( val.mNumDepthBuffer > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilBuffer > 0 ) || mFormat.mDepthBuffer || mFormat.mStencilBuffer;
@@ -602,6 +635,8 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 	*outHasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
 	*outHasDepth = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
 	*outHasArray = hasArray;
+	*outSampleCount = ( ! val.mSampleCounts.empty() ) ? val.mSampleCounts.begin()->second : -1;
+	*outHasMultisampleTexture = ( has2D || hasArray ) && ( *outSampleCount > 1 );
 }
 
 void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format )
@@ -623,12 +658,6 @@ void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *forma
 		*useMsaa = ( format->mSamples > 1 ) || ( format->mColorTextureFormat.getSamples() > 1 );
 	}
 #endif
-
-	/*
-	if( format->mSamples > getMaxSamples() ) {
-		format->mSamples = getMaxSamples();
-	}
-	*/
 
 	// Cap samples to max samples
 	format->mSamples = std::min( static_cast<GLint>( format->mSamples ), Fbo::getMaxSamples() );
@@ -707,6 +736,7 @@ void Fbo::initMultisample( const Format &format )
 #if defined( CINDER_GL_ES_2 )
 void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
 {
+/*
 	mAttachmentsBuffer = format.mAttachmentsBuffer;
 	mAttachmentsTexture = format.mAttachmentsTexture;
 
@@ -752,6 +782,7 @@ void Fbo::prepareAttachments( const Fbo::Format &format, bool multisampling )
 		RenderbufferRef stencilBuffer = Renderbuffer::create( mWidth, mHeight, internalFormat );
 		mAttachmentsBuffer[GL_STENCIL_ATTACHMENT] = stencilBuffer;
 	}
+*/
 }
 #else
 void Fbo::prepareAttachments( bool multisample )
