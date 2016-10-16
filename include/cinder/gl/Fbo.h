@@ -135,13 +135,19 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void			detach( GLenum attachmentPoint );
 
 	//! Returns a reference to the color Texture2d of the FBO (at \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d attached at \c GL_COLOR_ATTACHMENT0
-	Texture2dRef	getColorTexture();	
+	Texture2dRef	getColorTexture( GLenum attachmentPoint = GL_COLOR_ATTACHMENT0 );	
 	//! Returns a reference to the depth Texture2d of the FBO. Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d as a depth attachment.
-	Texture2dRef	getDepthTexture();
+	Texture2dRef	getDepthTexture( GLenum attachmentPoint = GL_DEPTH_ATTACHMENT );
+#if ! defined( CINDER_GL_ES )
+	//! Returns a reference to the depth Texture2d of the FBO. Requires OpenGL 4.4+. Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d as a stencil attachment.
+	Texture2dRef	getStencilTexture( GLenum attachmentPoint = GL_STENCIL_ATTACHMENT );
+#endif
+	//! Returns a reference to the depth/stencil Texture2d of the FBO. Resolves multisampling and renders mipmaps if necessary. Returns an empty Ref if there is no Texture2d as a depth/stencil attachment.
+	Texture2dRef	getDepthStencilTexture( GLenum attachmentPoint = GL_DEPTH_STENCIL_ATTACHMENT );
 	//! Returns a Texture2dRef attached at \a attachment (such as \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns NULL if a Texture2d is not bound at \a attachment.
-	Texture2dRef	getTexture2d( GLenum attachment );
+	Texture2dRef	getTexture2d( GLenum attachmentPoint );
 	//! Returns a TextureBaseRef attached at \a attachment (such as \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns NULL if a Texture is not bound at \a attachment.
-	TextureBaseRef	getTextureBase( GLenum attachment );
+	TextureBaseRef	getTextureBase( GLenum attachmentPoint );
 	
 	//! Binds the color texture associated with an Fbo to its target. Optionally binds to a multitexturing unit when \a textureUnit is non-zero. Optionally binds to a multitexturing unit when \a textureUnit is non-zero. \a attachment specifies which color buffer in the case of multiple attachments.
 	void 			bindTexture( int textureUnit = 0, GLenum attachment = GL_COLOR_ATTACHMENT0 );
@@ -202,23 +208,28 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
 		Format&	colorBuffer( GLenum internalFormat = getDefaultColorInternalFormat( true ) ) { mColorBuffer = true; mColorTexture = false; mColorBufferInternalFormat = internalFormat; return *this; }
 		//! Enables a color texture at \c GL_COLOR_ATTACHMENT0 with a Texture::Format of \a textureFormat, which defaults to 8-bit RGBA with no mipmapping. Disables a color renderbuffer.
-		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorTextureFormat = textureFormat; return *this; }
+		Format&	colorTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mColorTexture = true; mColorBuffer = false; mColorTextureFormat = textureFormat; return *this; }
 		//! Disables both a color Texture and a color Buffer
-		Format&	disableColor() { mColorTexture = false; return *this; }
+		Format&	disableColor() { mColorTexture = false; mColorBuffer = false; return *this; }
 		
 		//! Enables a depth renderbuffer with an internal format of \a internalFormat, which defaults to \c GL_DEPTH_COMPONENT24. Disables a depth texture.
 		Format&	depthBuffer( GLenum internalFormat = getDefaultDepthInternalFormat() ) { mDepthTexture = false; mDepthBuffer = true; mDepthBufferInternalFormat = internalFormat; return *this; }
 		//! Enables a depth texture with a format of \a textureFormat, which defaults to \c GL_DEPTH_COMPONENT24. Disables a depth renderbuffer.
 		Format&	depthTexture( const Texture::Format &textureFormat = getDefaultDepthTextureFormat()) { mDepthTexture = true; mDepthBuffer = false; mDepthTextureFormat = textureFormat; return *this; }
-		//! Disables both a depth Texture and a depth Buffer
-		Format&	disableDepth() { mDepthBuffer = false; return *this; }
-		
+		//! Disables both depth texture and depth buffer
+		Format&	disableDepth() { mDepthTexture = false; mDepthBuffer = false; return *this; }
+
+		//! Enables a stencil buffer. Defaults to false.
+		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; mStencilTexture = false;  return *this; }
+		//! Enables a stencil texture. Defaults to false. OpenGL 4.4+ only.
+		Format&	stencilTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mStencilTexture = true; mStencilBuffer = false; mStencilTextureFormat = textureFormat; return *this; }
+		//! Disables both depth texture and depth buffer
+		Format&	disableStencil() { mStencilTexture = false; mStencilBuffer = false; return *this; }
+
 		//! Sets the number of MSAA samples. Defaults to none.
 		Format& samples( int samples ) { mSamples = samples; mColorBuffer = ! mColorTexture; mDepthBuffer = ! mDepthTexture; mOverrideTextureSamples = true; return *this; }
 		//! Sets the number of CSAA samples. Defaults to none.
 		Format& coverageSamples( int coverageSamples ) { mCoverageSamples = coverageSamples; return *this; }
-		//! Enables a stencil buffer. Defaults to false.
-		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; return *this; }
 
 /*
 		//! Adds a Renderbuffer attachment \a buffer at \a attachmentPoint (such as \c GL_COLOR_ATTACHMENT0). Replaces any existing attachment at the same attachment point.
@@ -267,6 +278,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		static Texture::Format	getDefaultColorTextureFormat( bool alpha = true );
 		//! Returns the default depth Texture::Format for this platform
 		static Texture::Format	getDefaultDepthTextureFormat();
+		//! Returns the default stencil Texture::Format for this platform, OpenGL 4.4+ only.
+		static Texture::Format	getDefaultStencilTextureFormat();
 		//! Returns the default internalFormat for a color Renderbuffer for this platform
 		static GLenum			getDefaultColorInternalFormat( bool alpha = true );
 		//! Returns the default internalFormat for a depth Renderbuffer for this platform
@@ -294,6 +307,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool			mStencilBuffer;
 		Texture::Format	mColorTextureFormat;
 		Texture::Format mDepthTextureFormat;
+		Texture::Format mStencilTextureFormat;
 		bool			mAutoResolve;
 		bool			mAutoMipmap;
 		bool			mOverrideTextureSamples;
@@ -350,10 +364,12 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 #endif
 	private:
 		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve )
-			: mTexture( texture ), mBuffer( buffer ), mResolve( resolve ) {}
+			: mTexture( texture ), mBuffer( buffer ), mResolve( resolve ), mNeedsResolve( false ), mNeedsMipmapUpdate( false ) {}
 		TextureBaseRef			mTexture;
 		RenderbufferRef			mBuffer;
 		TextureBaseRef			mResolve;
+		bool					mNeedsResolve;
+		bool					mNeedsMipmapUpdate;
 		friend class Fbo;
 	};
 	
@@ -374,7 +390,9 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 
 	std::string			mLabel; // debugging label
 
+	/*
 	mutable bool		mNeedsResolve, mNeedsMipmapUpdate;
+	*/
 	
 	static std::map<GLenum, GLint>	sNumSampleCounts;
 	static GLint		sMaxSamples;

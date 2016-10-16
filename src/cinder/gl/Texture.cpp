@@ -402,13 +402,18 @@ void TextureBase::getInternalFormatInfo( GLint internalFormat, GLenum *outDataFo
 #endif // ! CINDER_GL_ES
 
 		// SIZED DEPTH FORMATS
-		case GL_DEPTH_COMPONENT16:	dataFormat = GL_DEPTH_COMPONENT; dataType = GL_UNSIGNED_SHORT;				break;
+		case GL_DEPTH_COMPONENT16:		dataFormat = GL_DEPTH_COMPONENT;	dataType = GL_UNSIGNED_SHORT;					break;
 #if ! defined( CINDER_GL_ES_2 )
-		case GL_DEPTH_COMPONENT24:	dataFormat = GL_DEPTH_COMPONENT; dataType = GL_UNSIGNED_INT;					break;
-		case GL_DEPTH_COMPONENT32F:	dataFormat = GL_DEPTH_COMPONENT; dataType = GL_FLOAT;							break;
-		case GL_DEPTH24_STENCIL8:	dataFormat = GL_DEPTH_STENCIL;	dataType = GL_UNSIGNED_INT_24_8;				break;
-		case GL_DEPTH32F_STENCIL8:	dataFormat = GL_DEPTH_STENCIL;	dataType = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;	break;
+		case GL_DEPTH_COMPONENT24:		dataFormat = GL_DEPTH_COMPONENT;	dataType = GL_UNSIGNED_INT;						break;
+		case GL_DEPTH_COMPONENT32F:		dataFormat = GL_DEPTH_COMPONENT;	dataType = GL_FLOAT;							break;
+		case GL_DEPTH24_STENCIL8:		dataFormat = GL_DEPTH_STENCIL;		dataType = GL_UNSIGNED_INT_24_8;				break;
+		case GL_DEPTH32F_STENCIL8:		dataFormat = GL_DEPTH_STENCIL;		dataType = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;	break;
 #endif
+
+#if ! defined( CINDER_GL_ES )
+		case GL_STENCIL_INDEX:			dataFormat = GL_STENCIL_INDEX;		dataType = GL_UNSIGNED_BYTE;			break;
+#endif
+
 		// COMPRESSED FORMATS
 #if ! defined( CINDER_GL_ES ) || defined( CINDER_GL_ANGLE )
 		case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:				dataFormat = GL_RGB;	dataType = 0;					break;

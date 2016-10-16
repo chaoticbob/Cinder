@@ -64,16 +64,16 @@ GLenum determineAspectFromFormat( GLenum internalFormat )
 	GLenum result = GL_COLOR;
 	switch( internalFormat ) {
 #if defined( CINDER_GL_ES_2 )
-		case GL_DEPTH_COMPONENT:
-		case GL_DEPTH_COMPONENT24_OES:
+		case GL_DEPTH_COMPONENT16:
+		case GL_DEPTH_COMPONENT24:
 			result = GL_DEPTH;	
 		break;
 
-		case GL_DEPTH24_STENCIL8_OES:
-		case GL_DEPTH_STENCIL_OES:
+		case GL_DEPTH24_STENCIL8:
 			result = GL_DEPTH_STENCIL;	
 		break;
 #else
+		case GL_DEPTH_COMPONENT16:
 		case GL_DEPTH_COMPONENT24:
 		case GL_DEPTH_COMPONENT32F:
 			result = GL_DEPTH;
@@ -84,6 +84,7 @@ GLenum determineAspectFromFormat( GLenum internalFormat )
 			result = GL_DEPTH_STENCIL;
 		break;
 #endif
+		case GL_STENCIL_INDEX:
 		case GL_STENCIL_INDEX8:
 			result = GL_STENCIL;
 		break;
@@ -223,11 +224,13 @@ Fbo::Format::Format()
 	mDepthBufferInternalFormat = getDefaultDepthInternalFormat();
 	mDepthBuffer = true;
 	mDepthTexture = false;
-	
+
+
+	mStencilTexture = false;	
+	mStencilBuffer = false;
+
 	mSamples = 0;
 	mCoverageSamples = 0;
-	mStencilTexture = false;
-	mStencilBuffer = false;
 	
 	mAutoResolve = true;
 	mAutoMipmap = true;
@@ -268,6 +271,15 @@ Texture::Format	Fbo::Format::getDefaultDepthTextureFormat()
 	return Texture::Format().internalFormat( GL_DEPTH_COMPONENT24_OES ).immutableStorage();
 #else
 	return Texture::Format().internalFormat( GL_DEPTH_COMPONENT24 ).immutableStorage().swizzleMask( GL_RED, GL_RED, GL_RED, GL_ONE );
+#endif
+}
+
+Texture::Format	Fbo::Format::getDefaultStencilTextureFormat()
+{
+#if defined( CINDER_GL_ES_2 )
+	return Texture::Format().internalFormat( GL_INVALID_ENUM ).
+#else
+	return Texture::Format().internalFormat( GL_STENCIL_INDEX ).immutableStorage().swizzleMask( GL_RED, GL_RED, GL_RED, GL_ONE );
 #endif
 }
 
@@ -394,6 +406,23 @@ void Fbo::init()
 {
 	mDepthStencilAttachmentPoint = GL_INVALID_ENUM;
 
+	// NOTE: Force requested depth and stencil to texture if multisample 
+	//       if multisample textures are requested so we don't end up 
+	//       with a bunch of needless mixed format exceptions.
+	//
+	if( mFormat.mColorTexture && ( ( mFormat.mSamples > 1 ) || ( mFormat.mColorTextureFormat.getSamples() > 1 ) ) ) {
+		// Depth
+		if( mFormat.mDepthBuffer ) {
+			mFormat.mDepthBuffer = false;
+			mFormat.mDepthTexture = true;
+		}
+		// Stencil
+		if( mFormat.mStencilBuffer ) {
+			mFormat.mStencilBuffer = false;
+			mFormat.mStencilTexture = true;
+		}
+	}
+
 	mAttachments = mFormat.mAttachments;
 	int32_t validationSampleCount = -1;
 	bool hasMultisampleTexture = false;
@@ -402,9 +431,18 @@ void Fbo::init()
 	if( -1 != validationSampleCount ) {
 		mFormat.setSamples( validationSampleCount );
 	}
+
+	if( mFormat.mOverrideTextureSamples ) {
+		mFormat.mColorTextureFormat.setSamples( mFormat.getSamples() );
+		mFormat.mDepthTextureFormat.setSamples( mFormat.getSamples() );
+		mFormat.mStencilTextureFormat.setSamples( mFormat.getSamples() );
+	}
 	
-	// Force all requested buffers to textures if there is a multisample texture present
-	if( mHasMultisampleTexture ) {
+	// NOTE: Force all requested buffers to textures if there is a multisample
+	//       texture or an array attachment (single sample or multisample) 
+	//       present.
+	//
+	if( mHasMultisampleTexture || mHasArrayAttachment ) {
 		// Color
 		if( mFormat.mColorBuffer ) {
 			mFormat.mColorBuffer = false;
@@ -457,8 +495,10 @@ void Fbo::init()
 		throw exc;
 	}
 	
+/*
 	mNeedsResolve = false;
 	mNeedsMipmapUpdate = false;
+*/
 	
 	mLabel = mFormat.mLabel;
 	if( ! mLabel.empty() ) {
@@ -492,7 +532,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		const auto &attachment = it.second;
 		// Sample count
 		val.mSampleCounts[attachmentPoint] = static_cast<uint32_t>( attachment->getSamples() );
-		// Process propeties
+		// Process properties
 		GLenum aspect = determineAspectFromFormat( attachment->getInternalFormat() );
 		switch( aspect ) {
 			// Color
@@ -564,31 +604,36 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		}
 	}
 
-	bool has1D = ( val.mNumColorTexture1D > 0 );
-	bool has2D = ( ( val.mNumColorTexture2D > 0 ) || ( val.mNumColorBuffer2D > 0 ) );
-	bool has3D = ( val.mNumColorTexture3D > 0 );
-	bool hasArray = ( val.mNumTextureArray > 0 );
-	
+	bool formatHas1D = false;
+	bool formatHas2D = mFormat.mColorBuffer;
+	bool formatHas3D = false;
+	bool formatHasArray = false;
 	if( mFormat.mColorTexture ) {
 		switch( mFormat.mColorTextureFormat.getTarget() ) {
-			case GL_TEXTURE_1D: has1D |= true; break;
-			case GL_TEXTURE_2D: has2D |= true; break;
-			case GL_TEXTURE_3D: has3D |= true; break;
-			case GL_TEXTURE_2D_ARRAY: hasArray |= true; break;
+			case GL_TEXTURE_1D: formatHas1D |= true; break;
+			case GL_TEXTURE_2D: formatHas2D |= true; break;
+			case GL_TEXTURE_3D: formatHas3D |= true; break;
+			case GL_TEXTURE_2D_ARRAY: formatHasArray |= true; break;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-			case GL_TEXTURE_2D_MULTISAMPLE: has2D |= true; break;
-			case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: hasArray |= true; break;
+			case GL_TEXTURE_2D_MULTISAMPLE: formatHas2D |= true; break;
+			case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: formatHasArray |= true; break;
 #endif
 		}
 	}
 
-	if( mFormat.mColorBuffer ) {
-		has2D |= true;
-	}
-	
+	bool has1D = ( val.mNumColorTexture1D > 0 );
+	bool has2D = ( ( val.mNumColorTexture2D > 0 ) || ( val.mNumColorBuffer2D > 0 ) );
+	bool has3D = ( val.mNumColorTexture3D > 0 );
+	bool hasArray = ( val.mNumTextureArray > 0 );
+
 	// Cannot mix target types
-	if( ( has1D && has2D ) || ( has1D && has3D ) || ( has1D && hasArray ) || ( has2D && has3D ) || ( has2D && hasArray ) || ( has3D && hasArray ) ) {
-		throw FboException( "Cannot mix target types" );
+	{
+		bool isInvalid = false;
+		isInvalid |= ( formatHas1D && formatHas2D ) || ( formatHas1D && formatHas3D ) || ( formatHas1D && formatHasArray ) || ( formatHas2D && formatHas3D ) || ( formatHas2D && formatHasArray ) || ( formatHas3D && formatHasArray );
+		isInvalid |= ( has1D && has2D ) || ( has1D && has3D ) || ( has1D && hasArray ) || ( has2D && has3D ) || ( has2D && hasArray ) || ( has3D && hasArray );
+		if( isInvalid ) {
+			throw FboException( "Cannot mix target types" );
+		}
 	}
 
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
@@ -608,19 +653,41 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 	}
 
 	// Cannot mix multisample textures and renderbuffers
-	bool hasColorTexture = ( val.mNumColorTexture2D > 0 );
+	bool formatHasAnyTexture = mFormat.mColorTexture || mFormat.mDepthTexture || mFormat.mStencilTexture;
+	bool formatHasAnyBuffer = mFormat.mColorBuffer || mFormat.mDepthBuffer || mFormat.mStencilBuffer;
+	bool hasAnyTexture = ( val.mNumColorTexture2D > 0 ) || ( val.mNumDepthTexture > 0 ) || ( val.mNumStencilTexture > 0 );
 	bool hasAnyBuffer = ( val.mNumColorBuffer2D > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	if( ( ! val.mSampleCounts.empty() ) && ( val.mSampleCounts[0] > 1 ) && hasColorTexture  && hasAnyBuffer ) {
-		throw FboException( "Cannot mix multisample textures and renderbuffers" );
+	{
+		bool isMultiSample = false; 
+		isMultiSample |= ( mFormat.getSamples() > 1 );
+		isMultiSample |= ( mFormat.mColorTexture && mFormat.mColorTextureFormat.isMultisample() );
+		isMultiSample |= ( mFormat.mDepthTexture && mFormat.mDepthTextureFormat.isMultisample() );
+		isMultiSample |= ( mFormat.mStencilTexture && mFormat.mStencilTextureFormat.isMultisample() );
+		isMultiSample |= ( ( ! val.mSampleCounts.empty() ) && ( val.mSampleCounts[0] > 1 ) );
+
+		bool isInvalid = false;
+		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer;
+		isInvalid |= isMultiSample && hasAnyTexture  && hasAnyBuffer;
+		if( isInvalid ) {
+			throw FboException( "Cannot mix multisample textures and renderbuffers" );
+		}
 	}
 #endif
 
 	// Depth and stencil must use combined format if both are used
+	bool formatHasDepthStencil = ( ( mFormat.mDepthTexture || mFormat.mDepthBuffer ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer ) );
+	bool formatHasDepth = mFormat.mDepthTexture || mFormat.mDepthBuffer;
+	bool formatHasStencil = mFormat.mStencilTexture || mFormat.mStencilBuffer;
 	bool hasDepthStencil = ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
 	bool hasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 );
 	bool hasStencil = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 );
-	if( hasDepth && hasStencil && ( ! hasDepthStencil ) ) {
-		throw FboException( "Depth and stencil must use combined format if both are used" );
+	{
+		bool isInvalid = false;
+		isInvalid |= ( formatHasDepth || formatHasStencil ) && ( hasDepth || hasStencil );
+		isInvalid |= ( hasDepth && hasStencil && ( ! hasDepthStencil ) );
+		if( isInvalid ) {
+			throw FboException( "Depth and stencil must use combined format if both are present" );
+		}
 	}
 
 	// GL_TEXTURE_3D targets do not support any depth or stencil attachments
@@ -631,10 +698,10 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 	}
 
 	// Write output
-	*outHasColor = has1D || has2D || has3D || hasArray;
-	*outHasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	*outHasDepth = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	*outHasArray = hasArray;
+	*outHasColor    = has1D || has2D || has3D || hasArray;
+	*outHasDepth    = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
+	*outHasStencil  = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
+	*outHasArray    = hasArray;
 	*outSampleCount = ( ! val.mSampleCounts.empty() ) ? val.mSampleCounts.begin()->second : -1;
 	*outHasMultisampleTexture = ( has2D || hasArray ) && ( *outSampleCount > 1 );
 }
@@ -825,10 +892,31 @@ void Fbo::prepareAttachments( bool multisample )
 	// Create depth/stencil attachment
 	bool needsDepth = ( ! mHasDepthAttachment ) && ( mFormat.mDepthTexture || mFormat.mDepthBuffer );
 	bool needsStencil = ( ! mHasStencilAttachment ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer );
-	if( mHasArrayAttachment && ( needsDepth || needsStencil ) ) {
+	// Depth/stencil
+	if( needsDepth && needsStencil ) {
+		if( mFormat.mDepthTexture || mFormat.mStencilTexture ) {
+			auto depthStencilFormat = mFormat.mDepthTextureFormat;
+			depthStencilFormat.setSamples( mFormat.mSamples );
+			TextureBaseRef texture = Texture2d::create( mWidth, mHeight, depthStencilFormat );
+			TextureBaseRef resolve;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			if( depthStencilFormat.isMultisample() ) {
+				auto resolveFormat = depthStencilFormat;
+				resolveFormat.setSamples( 1 );
+				resolve = Texture2d::create( mWidth, mHeight, resolveFormat );
+			}
+#endif
+			addAttachment( GL_DEPTH_ATTACHMENT, texture, nullptr, resolve );
+			mHasDepthAttachment = true;
+		}
+		else if( mFormat.mDepthBuffer && mFormat.mStencilBuffer ) {
+			GLint internalFormat = GL_DEPTH24_STENCIL8;
+			RenderbufferRef buffer = Renderbuffer::create( mWidth, mHeight, internalFormat, mFormat.mSamples, mFormat.mCoverageSamples );
+			TextureBaseRef resolve = Texture2d::create( mWidth, mHeight, Texture2d::Format().internalFormat( internalFormat ).samples( 1 ) );
+			addAttachment( GL_STENCIL_ATTACHMENT, nullptr, buffer, resolve );
+		}
 	}
-	else if( needsDepth && needsStencil ) {
-	}
+	// Depth
 	else if( needsDepth ) {
 		if( mFormat.mDepthTexture ) {
 			auto depthFormat = mFormat.mDepthTextureFormat;
@@ -852,6 +940,7 @@ void Fbo::prepareAttachments( bool multisample )
 			mHasDepthAttachment = true;
 		}
 	}
+	// Stencil
 	else if( needsStencil ) {
 		if( mFormat.mStencilTexture ) {
 			auto stencilFormat = Texture2d::Format().internalFormat( GL_STENCIL_INDEX8 );
@@ -1093,7 +1182,7 @@ void Fbo::updateDrawBuffers()
 	mDrawBuffers.clear();
 	for( auto &it : mAttachments ) {
 		GLenum attachmentPoint = it.first;
-		if( ( attachmentPoint > GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
+		if( ( attachmentPoint >= GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
 			mDrawBuffers.push_back( attachmentPoint );
 		}
 	}
@@ -1114,9 +1203,12 @@ void Fbo::detach( GLenum attachmentPoint )
 	mAttachments.erase( attachmentPoint );
 }
 
-Texture2dRef Fbo::getColorTexture()
+Texture2dRef Fbo::getColorTexture( GLenum attachmentPoint )
 {
-	Texture2dRef result = dynamic_pointer_cast<Texture2d>( getTextureBase( GL_COLOR_ATTACHMENT0 ) );
+	Texture2dRef result;
+	if( (  attachmentPoint >= GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
+		result = dynamic_pointer_cast<Texture2d>( getTextureBase( attachmentPoint ) );
+	}
 	return result;
 
 /*
@@ -1132,18 +1224,41 @@ Texture2dRef Fbo::getColorTexture()
 }
 
 #if defined( CINDER_GL_ES_2 )
-Texture2dRef Fbo::getDepthTexture()
+Texture2dRef Fbo::getDepthTexture( GLenum attachmentPoint )
 {
 	Texture2dRef result;
 	return result;
 }
 #else
-Texture2dRef Fbo::getDepthTexture()
+Texture2dRef Fbo::getDepthTexture( GLenum attachmentPoint )
 {
 	Texture2dRef result;
+	if( ( GL_DEPTH_ATTACHMENT == attachmentPoint ) || ( GL_DEPTH_STENCIL_ATTACHMENT == attachmentPoint ) ) {
+		result = dynamic_pointer_cast<Texture2d>( getTextureBase( attachmentPoint ) );
+	}
 	return result;
 }
 #endif
+
+#if ! defined( CINDER_GL_ES )
+Texture2dRef Fbo::getStencilTexture( GLenum attachmentPoint )
+{
+	Texture2dRef result;
+	if( ( GL_STENCIL_ATTACHMENT == attachmentPoint ) || ( GL_DEPTH_STENCIL_ATTACHMENT == attachmentPoint ) ) {
+		result = dynamic_pointer_cast<Texture2d>( getTextureBase( attachmentPoint ) );
+	}
+	return result;
+}
+#endif
+
+Texture2dRef Fbo::getDepthStencilTexture( GLenum attachmentPoint )
+{
+	Texture2dRef result;
+	if( ( GL_DEPTH_STENCIL_ATTACHMENT == attachmentPoint ) || ( GL_DEPTH_ATTACHMENT == attachmentPoint ) || ( GL_STENCIL_ATTACHMENT == attachmentPoint ) ) {
+		result = dynamic_pointer_cast<Texture2d>( getTextureBase( attachmentPoint ) );
+	}
+	return result;
+}
 
 /*
 Texture2dRef Fbo::getDepthTexture()
@@ -1171,14 +1286,21 @@ Texture2dRef Fbo::getDepthTexture()
 }
 */
 
-Texture2dRef Fbo::getTexture2d( GLenum attachment )
+Texture2dRef Fbo::getTexture2d( GLenum attachmentPoint )
 {
-	return dynamic_pointer_cast<Texture2d>( getTextureBase( attachment ) );
+	return dynamic_pointer_cast<Texture2d>( getTextureBase( attachmentPoint ) );
 }
 
-TextureBaseRef Fbo::getTextureBase( GLenum attachment )
+TextureBaseRef Fbo::getTextureBase( GLenum attachmentPoint )
 {
-	Texture2dRef result;
+	TextureBaseRef result;
+	auto it = mAttachments.find( attachmentPoint );
+	if( it != mAttachments.end() ) {
+		resolveTextures();
+		updateMipmaps( attachmentPoint );
+		auto& attachment = it->second;
+		result = attachment->mResolve ? attachment->mResolve : attachment->mTexture;
+	}
 	return result;
 
 /*
@@ -1213,12 +1335,70 @@ void Fbo::bindTexture( int textureUnit, GLenum attachment )
 void Fbo::unbindTexture( int textureUnit, GLenum attachment )
 {
 	auto tex = getTextureBase( attachment );
-	if( tex )
+	if( tex ) {
 		tex->unbind( textureUnit );
+	}
 }
 
 void Fbo::resolveTextures( GLenum attachmentPoint ) const
 {
+#if defined( CINDER_GL_ANGLE ) && ( ! defined( CINDER_GL_ES_3 ) )
+	if( mMultisampleFramebufferId ) {
+		ScopedFramebuffer drawFbScp( GL_DRAW_FRAMEBUFFER, mId );
+		ScopedFramebuffer readFbScp( GL_READ_FRAMEBUFFER, mMultisampleFramebufferId );
+		glBlitFramebufferANGLE( 0, 0, mWidth, mHeight, 0, 0, mWidth, mHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST );
+	}
+#elif defined( CINDER_GL_HAS_FBO_MULTISAMPLING ) && defined( CINDER_GL_ES_2 )
+	// iOS-specific multisample resolution code
+	if( mMultisampleFramebufferId ) {
+		ScopedFramebuffer drawFbScp( GL_DRAW_FRAMEBUFFER_APPLE, mId );
+		ScopedFramebuffer readFbScp( GL_READ_FRAMEBUFFER_APPLE, mMultisampleFramebufferId );
+		glResolveMultisampleFramebuffer();
+	}
+#elif defined( CINDER_GL_HAS_FBO_MULTISAMPLING )
+	if( 0 != mMultisampleFramebufferId ) {
+		auto ctx = context();
+		ctx->pushFramebuffer( GL_DRAW_FRAMEBUFFER, mId );
+		ctx->pushFramebuffer( GL_READ_FRAMEBUFFER, mMultisampleFramebufferId );
+
+		std::map<GLenum, Fbo::AttachmentRef> attachments;
+		if( Fbo::ALL_ATTACHMENTS == attachmentPoint ) {
+			for( auto &attachmentPoint : mDrawBuffers ) {
+				auto it = mAttachments.find( attachmentPoint );
+				attachments[attachmentPoint] = it->second;
+			}
+		}
+		else {
+			auto it = mAttachments.find( attachmentPoint );
+			if( it != mAttachments.end() ) {
+				attachments[it->first] = it->second;
+			}
+		}
+
+		// Process attachments
+		for( auto& it : attachments ) {
+			GLenum attachmentPoint = it.first;
+			auto& attachment = it.second;
+
+			glDrawBuffers( 1, &attachmentPoint );
+			glReadBuffer( attachmentPoint );
+#if ! defined( CINDER_GL_ANGLE )
+			// ANGLE appears to error when requested to resolve a depth buffer
+			glBlitFramebuffer( 0, 0, mWidth, mHeight, 0, 0, mWidth, mHeight, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST );
+#else
+			glBlitFramebuffer( 0, 0, mWidth, mHeight, 0, 0, mWidth, mHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST );
+#endif
+		}
+
+		// restore the draw buffers to the default for the antialiased (non-resolve) framebuffer
+		ctx->bindFramebuffer( GL_FRAMEBUFFER, mMultisampleFramebufferId );
+		glDrawBuffers( static_cast<GLsizei>( mDrawBuffers.size() ), mDrawBuffers.data() );
+
+		ctx->popFramebuffer( GL_DRAW_FRAMEBUFFER );
+		ctx->popFramebuffer( GL_READ_FRAMEBUFFER );	
+	}
+#endif
+
 /*
 	if( ! mNeedsResolve )
 		return;
@@ -1277,6 +1457,19 @@ void Fbo::resolveTextures( GLenum attachmentPoint ) const
 
 void Fbo::updateMipmaps( GLenum attachmentPoint ) const
 {
+	auto it = mAttachments.find( attachmentPoint );
+	if( it == mAttachments.end() ) {
+		return;
+	}
+
+	auto &attachment = it->second;
+	if( attachment->mNeedsMipmapUpdate ) {
+		auto &texture = attachment->mResolve ? attachment->mResolve : attachment->mTexture;
+		ScopedTextureBind textureBind( texture );
+		glGenerateMipmap( texture->getTarget() );
+		attachment->mNeedsMipmapUpdate = false;
+	}
+
 /*
 	if( ! mNeedsMipmapUpdate )
 		return;
@@ -1294,6 +1487,17 @@ void Fbo::updateMipmaps( GLenum attachmentPoint ) const
 
 void Fbo::markAsDirty()
 {
+	for( const auto &attachmentPoint : mDrawBuffers ) {
+		const auto& attachment = mAttachments[attachmentPoint];
+		// Update per attachment resolve state
+		attachment->mNeedsResolve = ( mFormat.mAutoResolve && attachment->mResolve ) ? true : false;
+		// Update per attachment mipmap update state
+		bool textureHasMipMap = ( attachment->mTexture && attachment->mTexture->hasMipmapping() );
+		bool resolveHasMipMap = ( attachment->mResolve && attachment->mResolve->hasMipmapping() );
+		// NOTE: Multisample attachments that do not resolve will also no update their mipmap
+		attachment->mNeedsMipmapUpdate = ( mFormat.mAutoMipmap && ( textureHasMipMap || ( attachment->mNeedsResolve && resolveHasMipMap ) ) ) ? true : false;
+	}
+
 /*
 	if( mMultisampleFramebufferId )
 		mNeedsResolve = true;
@@ -1486,6 +1690,37 @@ void Fbo::blitFromScreen( const Area &srcArea, const Area &dstArea, GLenum filte
 
 std::ostream& operator<<( std::ostream &os, const Fbo &rhs )
 {
+	os << "\n" << "ID: " << rhs.mId;
+	if( rhs.mMultisampleFramebufferId ) {
+		os << " Multisample ID: " << rhs.mMultisampleFramebufferId;
+	}
+	os << std::endl;
+	if( ! rhs.mLabel.empty() )
+	os << "Label: " << rhs.mLabel << "\n";
+	os << "Dims: " << rhs.mWidth << " x " << rhs.mHeight << "\n";
+	for( const auto &it : rhs.mAttachments ) {
+		const GLenum &attachmentPoint = it.first;
+		const auto& attachment = it.second;
+		if( attachment->isTexture() ) {
+			os << "-Texture Attachment: " << gl::constantToString( attachmentPoint ) << "\n";
+			os << *(attachment->getTexture()) << std::endl;
+		}
+		else if( attachment->isBuffer() ) {
+			os << "-Renderbuffer Attachment: " << gl::constantToString( attachmentPoint ) << "\n";
+			os << *(attachment->getBuffer()) << std::endl;
+		}
+	}
+	/*
+	for( const auto &tex : rhs.mAttachmentsTexture ) {
+		os << "-Texture Attachment: " << gl::constantToString( tex.first ) << std::endl;
+		os << *tex.second << std::endl;
+	}
+	for( const auto &ren : rhs.mAttachmentsBuffer ) {
+		os << "-Renderbuffer Attachment: " << gl::constantToString( ren.first ) << std::endl;
+		os << *ren.second << std::endl;
+	}
+	*/
+
 /*
 	os << "ID: " << rhs.mId;
 	if( rhs.mMultisampleFramebufferId )
