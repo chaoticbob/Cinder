@@ -547,7 +547,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		std::map<GLenum, int32_t>	mSampleCounts;
 		uint32_t					mMinArraySize;
 		uint32_t					mMaxArraySize;
-
+		uint32_t					mNumFixedSampleLocations;
 		GLenum						mDepthTextureInternalFormat;
 		GLenum						mDepthBufferInternalFormat;
 		GLenum						mStencilTextureInternalFormat;
@@ -721,7 +721,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 #endif
 
 	// Depth and stencil must use combined format if both are used
-	bool formatHasDepthStencil = ( ( mFormat.mDepthTexture || mFormat.mDepthBuffer ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer ) );
+	bool formatHasDepthStencil = ( mFormat.mDepthTexture && mFormat.mStencilTexture ) || ( mFormat.mDepthBuffer && mFormat.mStencilBuffer ); //( ( mFormat.mDepthTexture || mFormat.mDepthBuffer ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer ) );
 	bool formatHasDepth = mFormat.mDepthTexture || mFormat.mDepthBuffer;
 	bool formatHasStencil = mFormat.mStencilTexture || mFormat.mStencilBuffer;
 	bool hasDepthStencil = ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
@@ -729,8 +729,8 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 	bool hasStencil = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 );
 	{
 		bool isInvalid = false;
-		isInvalid |= ( formatHasDepth || formatHasStencil ) && ( hasDepth || hasStencil );
 		isInvalid |= ( hasDepth && hasStencil && ( ! hasDepthStencil ) );
+		isInvalid |= ( formatHasDepth && formatHasStencil && ( ! formatHasDepthStencil ) );
 		if( isInvalid ) {
 			throw FboException( "Depth and stencil must use combined format if both are present" );
 		}
