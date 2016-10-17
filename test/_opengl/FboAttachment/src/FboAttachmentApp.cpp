@@ -15,9 +15,11 @@ public:
 	void draw() override;
 
 private:
-	bool		mUseMultisample = true;
-	gl::FboRef	mSingleSampleFbo;
-	gl::FboRef	mMultisampleFbo;
+	bool			mUseMultisample = true;
+	bool			mDrawDepth = false;
+	gl::BatchRef	mBatch;
+	gl::FboRef		mSingleSampleFbo;
+	gl::FboRef		mMultisampleFbo;
 };
 
 // Mix multisample texture and renderbuffer
@@ -122,7 +124,7 @@ void FboAttachmentApp::setup()
     //test001();
     //test002();
 
-/*
+
 	try {
 		auto fboFmt = gl::Fbo::Format();
 		mSingleSampleFbo = gl::Fbo::create( getWindowWidth(), getWindowHeight(), fboFmt );
@@ -131,7 +133,7 @@ void FboAttachmentApp::setup()
 	catch( const std::exception &e ) {
 		CI_LOG_E( "Single Sample FBO Error: " << e.what() );
 	}
-*/
+
 
 	try {
 		auto fboFmt = gl::Fbo::Format().samples( 4 );
@@ -141,6 +143,8 @@ void FboAttachmentApp::setup()
 	catch( const std::exception &e ) {
 		CI_LOG_E( "Multisample FBO Error: " << e.what() );
 	}
+
+	mBatch = gl::Batch::create( geom::Cube().colors().size( vec3( 50 ) ), gl::context()->getStockShader( gl::ShaderDef().color() ) );
 }
 
 void FboAttachmentApp::keyDown( KeyEvent event )
@@ -149,6 +153,12 @@ void FboAttachmentApp::keyDown( KeyEvent event )
 		case 'S':
 		case 's': {
 			mUseMultisample = ! mUseMultisample;
+		}
+		break;
+
+		case 'D':
+		case 'd': {
+			mDrawDepth = ! mDrawDepth;
 		}
 		break;
 	}
@@ -166,19 +176,56 @@ void FboAttachmentApp::draw()
 {
 	{
 		gl::ScopedFramebuffer scopedFbo( mUseMultisample ? mMultisampleFbo : mSingleSampleFbo );
-		gl::clear( Color( 1, 0, 0 ) );
 
+		gl::setMatricesWindowPersp( getWindowSize() );
+		gl::clear( Color( 0, 0, 0 ) );
+
+		gl::enableDepth();
+
+		int nx = 10;
+		int ny = 10;
+		int nz = 10;
+		for( int iz = 0; iz < nz; ++iz ) {
+			for( int iy = 0; iy < ny; ++iy ) {
+				for( int ix = 0; ix < nx; ++ix ) {
+					float x = 150.0f * ( ix - ( nx / 2 ) ) + getWindowWidth() / 2.0f;
+					float y = 150.0f * ( iy - ( ny / 2 ) ) + getWindowHeight() / 2.0f;
+					float z = -( 150.0f * iz );
+					//gl::drawColorCube( vec3( x, y, z ), vec3( 50 ) );
+
+					gl::ScopedModelMatrix scopedModel;
+					gl::translate( vec3( x, y, z ) );
+
+					float t = getElapsedSeconds();
+					float offset = iz + iy + ix;
+					gl::rotate( 0.25f * t + offset, 1, 0, 0 );
+					gl::rotate( 0.15f * t + offset, 0, 1, 0 );
+					gl::rotate( 0.35f * t + offset, 0, 1, 1 );
+
+					mBatch->draw();
+				}
+			}
+		}
+		
+		/*
 		gl::color( Color::white() );
 		gl::drawString( "hello", vec2( 10, 100 ), Color::white(), Font( "Arial", 32.0f ) );
 
 		gl::lineWidth( 1 );
 		gl::drawStrokedCircle( vec2( getWindowCenter() ), 100.0f, 8 );
+		*/
 	}
 
+	gl::setMatricesWindow( getWindowSize() );
 	gl::clear( Color( 0, 0, 0 ) ); 
 
 	gl::color( Color::white() );
-	gl::draw( mUseMultisample ? mMultisampleFbo->getColorTexture() : mSingleSampleFbo->getColorTexture() );
+	if( mDrawDepth ) {
+		gl::draw( mUseMultisample ? mMultisampleFbo->getDepthTexture() : mSingleSampleFbo->getDepthTexture() );
+	}
+	else {
+		gl::draw( mUseMultisample ? mMultisampleFbo->getColorTexture() : mSingleSampleFbo->getColorTexture() );
+	}
 }
 
 CINDER_APP( FboAttachmentApp, RendererGl( RendererGl::Options().version( 4, 4 ) ) )
