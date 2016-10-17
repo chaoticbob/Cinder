@@ -1291,6 +1291,7 @@ void Fbo::resolveTextures( GLenum attachmentPoint ) const
 	}
 #elif defined( CINDER_GL_HAS_FBO_MULTISAMPLING )
 	if( 0 != mMultisampleFramebufferId ) {
+		// Build a map of attachments to resolve
 		std::map<GLenum, Fbo::AttachmentRef> attachmentsToResolve;
 		if( Fbo::ALL_ATTACHMENTS == attachmentPoint ) {
 			for( auto &attachmentPoint : mDrawBuffers ) {
