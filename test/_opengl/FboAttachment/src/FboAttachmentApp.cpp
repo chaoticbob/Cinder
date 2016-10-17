@@ -177,10 +177,12 @@ void FboAttachmentApp::draw()
 	{
 		gl::ScopedFramebuffer scopedFbo( mUseMultisample ? mMultisampleFbo : mSingleSampleFbo );
 
-		gl::setMatricesWindowPersp( getWindowSize() );
+		gl::enableDepthRead();
+		gl::enableDepthWrite();
+
+		gl::setMatricesWindowPersp( getWindowSize(), 60.0f, 0.1f, 10000.0f );
 		gl::clear( Color( 0, 0, 0 ) );
 
-		gl::enableDepth();
 
 		int nx = 10;
 		int ny = 10;
@@ -206,14 +208,6 @@ void FboAttachmentApp::draw()
 				}
 			}
 		}
-		
-		/*
-		gl::color( Color::white() );
-		gl::drawString( "hello", vec2( 10, 100 ), Color::white(), Font( "Arial", 32.0f ) );
-
-		gl::lineWidth( 1 );
-		gl::drawStrokedCircle( vec2( getWindowCenter() ), 100.0f, 8 );
-		*/
 	}
 
 	gl::setMatricesWindow( getWindowSize() );
