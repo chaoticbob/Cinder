@@ -220,9 +220,11 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		Format&	disableDepth() { mDepthTexture = false; mDepthBuffer = false; return *this; }
 
 		//! Enables a stencil buffer. Defaults to false.
-		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; mStencilTexture = false;  return *this; }
+		Format& stencilBuffer( bool stencilBuffer = true ) { mStencilBuffer = stencilBuffer; mStencilTexture = false; return *this; }
+#if ! defined( CINDER_GL_ES )
 		//! Enables a stencil texture. Defaults to false. OpenGL 4.4+ only.
-		Format&	stencilTexture( const Texture::Format &textureFormat = getDefaultColorTextureFormat( true ) ) { mStencilTexture = true; mStencilBuffer = false; mStencilTextureFormat = textureFormat; return *this; }
+		Format&	stencilTexture( bool stencilTexture = true ) { mStencilTexture = stencilTexture; mStencilBuffer = false; return *this; }
+#endif
 		//! Disables both depth texture and depth buffer
 		Format&	disableStencil() { mStencilTexture = false; mStencilBuffer = false; return *this; }
 
@@ -273,13 +275,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool	hasDepthBuffer() const { return mDepthBuffer; }
 		//! Returns whether the FBO has a Renderbuffer as a stencil attachment.
 		bool	hasStencilBuffer() const { return mStencilBuffer; }
-		
-		//! Returns the default color Texture::Format for this platform
-		static Texture::Format	getDefaultColorTextureFormat( bool alpha = true );
-		//! Returns the default depth Texture::Format for this platform
-		static Texture::Format	getDefaultDepthTextureFormat();
-		//! Returns the default stencil Texture::Format for this platform, OpenGL 4.4+ only.
-		static Texture::Format	getDefaultStencilTextureFormat();
+
 		//! Returns the default internalFormat for a color Renderbuffer for this platform
 		static GLenum			getDefaultColorInternalFormat( bool alpha = true );
 		//! Returns the default internalFormat for a depth Renderbuffer for this platform
@@ -287,6 +283,11 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		// Returns the +stencil complement of a given internalFormat; ie GL_DEPTH_COMPONENT24 -> GL_DEPTH24_STENCIL8, as well as appropriate pixelDataType for glTexImage2D
 		static void				getDepthStencilFormats( GLint depthInternalFormat, GLint *resultInternalFormat, GLenum *resultPixelDataType );
 
+		//! Returns the default color Texture::Format for this platform
+		static Texture::Format	getDefaultColorTextureFormat( bool alpha = true );
+		//! Returns the default depth Texture::Format for this platform
+		static Texture::Format	getDefaultDepthTextureFormat();
+		
 		//! Returns the debugging label associated with the Fbo.
 		const std::string&	getLabel() const { return mLabel; }
 		//! Sets the debugging label associated with the Fbo. Calls glObjectLabel() when available.
@@ -307,7 +308,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool			mStencilBuffer;
 		Texture::Format	mColorTextureFormat;
 		Texture::Format mDepthTextureFormat;
-		Texture::Format mStencilTextureFormat;
 		bool			mAutoResolve;
 		bool			mAutoMipmap;
 		bool			mOverrideTextureSamples;
@@ -380,7 +380,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasMultisampleTexture;
 	std::map<GLenum, AttachmentRef>		mAttachments;
 	std::vector<GLenum>					mDrawBuffers;
-	GLenum								mDepthStencilAttachmentPoint;
 
 	/*
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
