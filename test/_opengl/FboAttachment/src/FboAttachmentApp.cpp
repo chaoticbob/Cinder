@@ -145,6 +145,10 @@ void FboAttachmentApp::setup()
 	}
 
 	mBatch = gl::Batch::create( geom::Cube().colors().size( vec3( 50 ) ), gl::context()->getStockShader( gl::ShaderDef().color() ) );
+
+
+	gl::enableDepthRead();
+	gl::enableDepthWrite();
 }
 
 void FboAttachmentApp::keyDown( KeyEvent event )
@@ -177,10 +181,7 @@ void FboAttachmentApp::draw()
 	{
 		gl::ScopedFramebuffer scopedFbo( mUseMultisample ? mMultisampleFbo : mSingleSampleFbo );
 
-		gl::enableDepthRead();
-		gl::enableDepthWrite();
-
-		gl::setMatricesWindowPersp( getWindowSize(), 60.0f, 0.1f, 10000.0f );
+		gl::setMatricesWindowPersp( getWindowSize(), 60.0f, 300.0f, 10000.0f );
 		gl::clear( Color( 0, 0, 0 ) );
 
 
@@ -193,7 +194,6 @@ void FboAttachmentApp::draw()
 					float x = 150.0f * ( ix - ( nx / 2 ) ) + getWindowWidth() / 2.0f;
 					float y = 150.0f * ( iy - ( ny / 2 ) ) + getWindowHeight() / 2.0f;
 					float z = -( 150.0f * iz );
-					//gl::drawColorCube( vec3( x, y, z ), vec3( 50 ) );
 
 					gl::ScopedModelMatrix scopedModel;
 					gl::translate( vec3( x, y, z ) );
