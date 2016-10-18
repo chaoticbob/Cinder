@@ -519,7 +519,7 @@ class Texture2d : public TextureBase {
 
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		Format&	samples( GLint samples ) { setSamples( samples ); return *this; }
-		bool	isMultisample() const { return ( GL_TEXTURE_2D_MULTISAMPLE == mTarget ) || ( mSamples > 1 ); }
+		bool	isMultisample() const { return ( mSamples > 1 ); }
 #endif
 	
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
@@ -562,6 +562,8 @@ class Texture2d : public TextureBase {
 	//! Constructs a Texture from a DDS file. Supports DXT1, DTX3, and DTX5. Supports BC7 in the presence of \c GL_ARB_texture_compression_bptc. Enables mipmapping if DDS contains mipmaps and Format has not specified \c false for mipmapping. ANGLE version requires textures to be a multiple of 4 due to DX limitation.
 	static Texture2dRef	createFromDds( const DataSourceRef &dataSource, const Format &format = Format() );
 #endif
+
+	const Format&	getForamt() const { return mFormat; }
 
 	//! Allows specification of some Area other than the Texture's full area for cases where not all pixels in the Texture are usable / "clean"; common in video decoding pipelines in particular. Specified in pixels, and relative to upper-left origin coordinate system regardless of whether Textre is top-down or not.
 	void			setCleanBounds( const Area &cleanBounds );

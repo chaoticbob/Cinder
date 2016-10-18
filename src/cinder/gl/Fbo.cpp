@@ -499,7 +499,8 @@ void Fbo::init()
 	}
 	
 	prepareAttachments( useMsaa || useCsaa );
-	updateDrawBuffers();
+	setInitialDrawBuffers();
+	updateActiveAttachments();
 	attachAttachments();
 
 /*
@@ -647,6 +648,15 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 			}
 			break;
 		}
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		if( attachment->mTexture &&  ( typeid(*(attachment->mTexture)) == typeid(Texture2d) ) ) {
+			auto tex = std::dynamic_pointer_cast<Texture2d>( attachment->mTexture );
+			if( tex->getForamt().isFixedSampleLocations() ) {
+				++val.mNumFixedSampleLocations;
+			}
+		}
+#endif 
 	}
 
 	bool formatHas1D = false;
@@ -697,9 +707,7 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		}
 	}
 
-	// @TODO: This needs to be revised so to account for fix sample locations
-	//
-	// Cannot mix multisample textures and renderbuffers
+	// Fixed sample locations for all texture attachments when used with renderbuffers
 	bool formatHasAnyTexture = mFormat.mColorTexture || mFormat.mDepthTexture || mFormat.mStencilTexture;
 	bool formatHasAnyBuffer = mFormat.mColorBuffer || mFormat.mDepthBuffer || mFormat.mStencilBuffer;
 	bool hasAnyTexture = ( val.mNumColorTexture2D > 0 ) || ( val.mNumDepthTexture > 0 ) || ( val.mNumStencilTexture > 0 );
@@ -711,11 +719,24 @@ void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, b
 		isMultiSample |= ( mFormat.mDepthTexture && mFormat.mDepthTextureFormat.isMultisample() );
 		isMultiSample |= ( ( ! val.mSampleCounts.empty() ) && ( val.mSampleCounts[0] > 1 ) );
 
+		uint32_t formatTexCount = 0;
+		formatTexCount += mFormat.mColorTexture   ? 1 : 0;
+		formatTexCount += mFormat.mDepthTexture   ? 1 : 0;
+
+		uint32_t texCount = 0;
+		texCount += val.mNumColorTexture2D;
+		texCount += val.mNumDepthTexture;
+		texCount += val.mNumStencilTexture;
+
+		uint32_t formatFixSampCount = 0;
+		formatFixSampCount += ( mFormat.mColorTexture && mFormat.mColorTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
+		formatFixSampCount += ( mFormat.mDepthTexture && mFormat.mDepthTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
+
 		bool isInvalid = false;
-		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer;
-		isInvalid |= isMultiSample && hasAnyTexture  && hasAnyBuffer;
+		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer && ( formatTexCount != formatFixSampCount );
+		isInvalid |= isMultiSample && hasAnyTexture  && hasAnyBuffer && ( texCount != val.mNumFixedSampleLocations );
 		if( isInvalid ) {
-			throw FboException( "Cannot mix multisample textures and renderbuffers" );
+			throw FboException( "Fixed sample locations required for all texture attachments when used with renderbuffers" );
 		}
 	}
 #endif
@@ -1142,7 +1163,7 @@ void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, 
 	}
 }
 
-void Fbo::updateDrawBuffers()
+void Fbo::setInitialDrawBuffers()
 {
 	mDrawBuffers.clear();
 	for( auto &it : mAttachments ) {
@@ -1150,6 +1171,24 @@ void Fbo::updateDrawBuffers()
 		if( ( attachmentPoint >= GL_COLOR_ATTACHMENT0 ) && ( attachmentPoint < ( GL_COLOR_ATTACHMENT0 + Fbo::getMaxAttachments() ) ) ) {
 			mDrawBuffers.push_back( attachmentPoint );
 		}
+	}
+}
+
+void Fbo::updateActiveAttachments()
+{
+	mActiveAttachments.clear();
+	std::copy( std::begin( mDrawBuffers ), std::end( mDrawBuffers ), std::back_inserter( mActiveAttachments ) );
+
+	if( mAttachments.end() != mAttachments.find( GL_DEPTH_ATTACHMENT ) ) {
+		mActiveAttachments.push_back( GL_DEPTH_ATTACHMENT );
+	}
+
+	if( mAttachments.end() != mAttachments.find( GL_STENCIL_ATTACHMENT ) ) {
+		mActiveAttachments.push_back( GL_STENCIL_ATTACHMENT );
+	}
+
+	if( mAttachments.end() != mAttachments.find( GL_DEPTH_STENCIL_ATTACHMENT ) ) {
+		mActiveAttachments.push_back( GL_DEPTH_STENCIL_ATTACHMENT );
 	}
 }
 
@@ -1294,7 +1333,7 @@ void Fbo::resolveTextures( GLenum attachmentPoint ) const
 		// Build a map of attachments to resolve
 		std::map<GLenum, Fbo::AttachmentRef> attachmentsToResolve;
 		if( Fbo::ALL_ATTACHMENTS == attachmentPoint ) {
-			for( auto &attachmentPoint : mDrawBuffers ) {
+			for( auto &attachmentPoint : mActiveAttachments ) {
 				auto it = mAttachments.find( attachmentPoint );
 				if( it->second->mNeedsResolve ) {
 					attachmentsToResolve[attachmentPoint] = it->second;
@@ -1345,7 +1384,7 @@ void Fbo::updateMipmaps( GLenum attachmentPoint ) const
 {
 	std::map<GLenum, Fbo::AttachmentRef> attachmentsToUpdate;
 	if( Fbo::ALL_ATTACHMENTS == attachmentPoint ) {
-		for( auto &attachmentPoint : mDrawBuffers ) {
+		for( auto &attachmentPoint : mActiveAttachments ) {
 			auto it = mAttachments.find( attachmentPoint );
 			if( it->second->mNeedsMipmapUpdate ) {
 				attachmentsToUpdate[attachmentPoint] = it->second;
@@ -1375,8 +1414,12 @@ void Fbo::updateMipmaps( GLenum attachmentPoint ) const
 
 void Fbo::markAsDirty()
 {
-	for( const auto &attachmentPoint : mDrawBuffers ) {
-		const auto& attachment = mAttachments[attachmentPoint];
+	for( const auto &attachmentPoint : mActiveAttachments ) {
+		auto it = mAttachments.find( attachmentPoint );
+		if( mAttachments.end() == it ) {
+			continue;
+		}
+		const auto& attachment = it->second;
 		// Update per attachment resolve state
 		attachment->mNeedsResolve = ( mFormat.mAutoResolve && attachment->mResolve ) ? true : false;
 		// Update per attachment mipmap update state

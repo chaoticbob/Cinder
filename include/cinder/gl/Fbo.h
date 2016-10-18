@@ -335,7 +335,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
 	void		addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
-	void		updateDrawBuffers();
+	void		setInitialDrawBuffers();
+	void		updateActiveAttachments();
 	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
 	//void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
 
@@ -380,6 +381,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	bool								mHasMultisampleTexture;
 	std::map<GLenum, AttachmentRef>		mAttachments;
 	std::vector<GLenum>					mDrawBuffers;
+	std::vector<GLenum>					mActiveAttachments;
 
 	/*
 	std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer; // map from attachment ID to Renderbuffer
