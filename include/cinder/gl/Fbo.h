@@ -97,9 +97,38 @@ std::ostream& operator<<( std::ostream &os, const Renderbuffer &rhs );
 
 //! Represents an OpenGL Framebuffer Object.
 class Fbo : public std::enable_shared_from_this<Fbo> {
-  protected:
+  public:
 	class Attachment;
 	using AttachmentRef = std::shared_ptr<Attachment>;
+
+	class Attachment {
+	public:
+		virtual ~Attachment() {}
+		static AttachmentRef	create( const TextureBaseRef &texture, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( texture, nullptr, resolve ) ); }
+		static AttachmentRef	create( const RenderbufferRef &buffer, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( nullptr, buffer, resolve ) ); }
+		const TextureBaseRef&	getTexture() const {  return mTexture; }
+		const RenderbufferRef&	getBuffer() const {  return mBuffer; };
+		const TextureBaseRef&	getResolve() const {  return mResolve; };
+		bool					isTexture() const { return mTexture ? true : false; }
+		bool					isBuffer() const { return mBuffer ? true : false; }
+		bool					isResolvable() const { return mResolve ? true : false; }
+		GLenum					getTarget() const { return ( mTexture ? mTexture->getTarget() : ( mBuffer ? GL_RENDERBUFFER : GL_INVALID_ENUM ) ); }
+		GLenum					getInternalFormat() const { return ( mTexture ? mTexture->getInternalFormat() : ( mBuffer ? mBuffer->getInternalFormat() : GL_INVALID_ENUM ) ); }
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		GLint					getSamples() const { return ( mTexture ? mTexture->getSamples() : ( mBuffer ? mBuffer->getSamples() : -1 ) ); }
+#else
+		GLint					getSamples() const { return ( mBuffer ? mBuffer->getSamples() : -1 ); }
+#endif
+	private:
+		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve )
+			: mTexture( texture ), mBuffer( buffer ), mResolve( resolve ), mNeedsResolve( false ), mNeedsMipmapUpdate( false ) {}
+		TextureBaseRef			mTexture;
+		RenderbufferRef			mBuffer;
+		TextureBaseRef			mResolve;
+		bool					mNeedsResolve;
+		bool					mNeedsMipmapUpdate;
+		friend class Fbo;
+	};
 
   public:
 	struct Format;
@@ -271,8 +300,14 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		int		getCoverageSamples() const { return mCoverageSamples; }
 		//! Returns whether the FBO contains a Texture at GL_COLOR_ATTACHMENT0
 		bool	hasColorTexture() const { return mColorTexture; }
+		//! Returns whether the FBO contains a Texture at GL_COLOR_ATTACHMENT0
+		bool	hasColorBuffer() const { return mColorBuffer; }
+		//! Returns whether the FBO has a Renderbuffer as a depth attachment.
+		bool	hasDepthTexture() const { return mDepthTexture; }
 		//! Returns whether the FBO has a Renderbuffer as a depth attachment.
 		bool	hasDepthBuffer() const { return mDepthBuffer; }
+		//! Returns whether the FBO has a Renderbuffer as a stencil attachment.
+		bool	hasStencilTexture() const { return mStencilTexture; }
 		//! Returns whether the FBO has a Renderbuffer as a stencil attachment.
 		bool	hasStencilBuffer() const { return mStencilBuffer; }
 
@@ -313,14 +348,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool			mOverrideTextureSamples;
 		std::string		mLabel; // debug label
 
-
-		std::map<GLenum, AttachmentRef>		mAttachments;
-		
-		/*
-		std::map<GLenum,RenderbufferRef>	mAttachmentsBuffer;
-		std::map<GLenum,RenderbufferRef>	mAttachmentsMultisampleBuffer;
-		std::map<GLenum,TextureBaseRef>		mAttachmentsTexture;
-		*/
+		std::map<GLenum, AttachmentRef>	mAttachments;
 
 		friend class Fbo;
 	};
@@ -329,9 +357,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	Fbo( int width, int height, const Format &format );
  
 	void		init();
-	void		validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture  );
 	void		initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format );
-	//void		initMultisample( const Format &format );
 	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
 	void		addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
@@ -345,35 +371,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	GLuint				mId;
 	GLuint				mMultisampleFramebufferId;
 
-	class Attachment {
-	public:
-		virtual ~Attachment() {}
-		static AttachmentRef	create( const TextureBaseRef &texture, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( texture, nullptr, resolve ) ); }
-		static AttachmentRef	create( const RenderbufferRef &buffer, const TextureBaseRef &resolve ) { return AttachmentRef( new Attachment( nullptr, buffer, resolve ) ); }
-		const TextureBaseRef&	getTexture() const {  return mTexture; }
-		const RenderbufferRef&	getBuffer() const {  return mBuffer; };
-		const TextureBaseRef&	getResolve() const {  return mResolve; };
-		bool					isTexture() const { return mTexture ? true : false; }
-		bool					isBuffer() const { return mBuffer ? true : false; }
-		bool					isResolvable() const { return mResolve ? true : false; }
-		GLenum					getTarget() const { return ( mTexture ? mTexture->getTarget() : ( mBuffer ? GL_RENDERBUFFER : GL_INVALID_ENUM ) ); }
-		GLenum					getInternalFormat() const { return ( mTexture ? mTexture->getInternalFormat() : ( mBuffer ? mBuffer->getInternalFormat() : GL_INVALID_ENUM ) ); }
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-		GLint					getSamples() const { return ( mTexture ? mTexture->getSamples() : ( mBuffer ? mBuffer->getSamples() : -1 ) ); }
-#else
-		GLint					getSamples() const { return ( mBuffer ? mBuffer->getSamples() : -1 ); }
-#endif
-	private:
-		Attachment( const TextureBaseRef &texture, const RenderbufferRef &buffer, const  TextureBaseRef &resolve )
-			: mTexture( texture ), mBuffer( buffer ), mResolve( resolve ), mNeedsResolve( false ), mNeedsMipmapUpdate( false ) {}
-		TextureBaseRef			mTexture;
-		RenderbufferRef			mBuffer;
-		TextureBaseRef			mResolve;
-		bool					mNeedsResolve;
-		bool					mNeedsMipmapUpdate;
-		friend class Fbo;
-	};
-	
 	bool								mHasColorAttachments;
 	bool								mHasDepthAttachment;
 	bool								mHasStencilAttachment;

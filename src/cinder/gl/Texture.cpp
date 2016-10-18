@@ -157,7 +157,7 @@ TextureBase::~TextureBase()
 void TextureBase::initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType )
 {
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	bool singleSample = ( 1== format.mSamples );
+	bool singleSample = ( 1 == format.mSamples );
 #else
 	bool singleSample = true;
 #endif
@@ -1041,7 +1041,7 @@ Texture2d::Texture2d( int width, int height, const Format &format )
 		mMaxMipmapLevel = 0;
 	}
 #else
-	initMaxMipmapLevel();
+	//initMaxMipmapLevel();
 #endif
 	
 	env()->allocateTexStorage2d( mTarget, mMaxMipmapLevel + 1, mInternalFormat, width, height, mFormat.isImmutableStorage(), mFormat.getDataType(), mFormat.getSamples(), mFormat.isFixedSampleLocations() );

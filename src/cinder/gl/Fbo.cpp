@@ -403,6 +403,328 @@ Fbo::~Fbo()
 		glDeleteFramebuffers( 1, &mMultisampleFramebufferId );
 }
 
+struct Counts {
+	uint8_t						mNumColorTexture1D;
+	uint8_t						mNumColorTexture2D;
+	uint8_t						mNumColorTexture3D;
+	uint8_t						mNumColorBuffer;
+	uint8_t						mNumDepthTexture;
+	uint8_t						mNumDepthBuffer;
+	uint8_t						mNumStencilTexture;
+	uint8_t						mNumStencilBuffer;
+	uint8_t						mNumDepthStencilTexture;
+	uint8_t						mNumDepthStencilBuffer;
+	uint8_t						mNumTextureArray;
+	std::map<GLenum, int32_t>	mSampleCounts;
+	uint32_t					mMinArraySize;
+	uint32_t					mMaxArraySize;
+	uint32_t					mNumFixedSampleLocations;
+	GLenum						mDepthTextureInternalFormat;
+	GLenum						mDepthBufferInternalFormat;
+	GLenum						mStencilTextureInternalFormat;
+	GLenum						mStencilBufferInternalFormat;
+	GLenum						mDepthStencilTextureInternalFormat;
+	GLenum						mDepthStencilBufferInternalFormat;
+};
+
+void countAttachments( const std::map<GLenum, Fbo::AttachmentRef>& attachments, Counts *outCounts ) 
+{
+	Counts counts = {};
+	counts.mDepthTextureInternalFormat			= GL_INVALID_ENUM;
+	counts.mDepthBufferInternalFormat			= GL_INVALID_ENUM;
+	counts.mStencilTextureInternalFormat		= GL_INVALID_ENUM;
+	counts.mStencilBufferInternalFormat			= GL_INVALID_ENUM;
+	counts.mDepthStencilTextureInternalFormat	= GL_INVALID_ENUM;
+	counts.mDepthStencilBufferInternalFormat	= GL_INVALID_ENUM;
+	
+	for( const auto &it : attachments ) {
+		GLenum attachmentPoint = it.first;
+		const auto &attachment = it.second;
+		// Sample count
+		counts.mSampleCounts[attachmentPoint] = static_cast<uint32_t>( attachment->getSamples() );
+		// Process properties
+		GLenum internalFormat = attachment->getInternalFormat();
+		GLenum aspect = determineAspectFromFormat( internalFormat );
+		switch( aspect ) {
+			// Color
+			case GL_COLOR: {
+				const auto& attachment = it.second;
+				GLenum target = attachment->getTexture() ? attachment->getTexture()->getTarget() : GL_INVALID_ENUM;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+				switch( target ) {
+					case GL_TEXTURE_1D: ++counts.mNumColorTexture1D; break;
+					case GL_TEXTURE_2D_MULTISAMPLE:
+					case GL_TEXTURE_2D: ++counts.mNumColorTexture2D; break;
+					case GL_TEXTURE_3D: ++counts.mNumColorTexture3D; break;
+					case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+					case GL_TEXTURE_2D_ARRAY: {
+						++(counts.mNumTextureArray);
+						uint32_t depth = attachment->getTexture()->getDepth();
+						counts.mMinArraySize = ( 0 == counts.mMinArraySize ) ? depth : std::min( counts.mMinArraySize, depth );
+						counts.mMaxArraySize = ( 0 == counts.mMaxArraySize ) ? depth : std::max( counts.mMaxArraySize, depth );
+					}
+					case GL_RENDERBUFFER: ++counts.mNumColorBuffer; break;
+				}
+#else
+				switch( target ) {
+					case GL_TEXTURE_1D: ++counts.mNumColorTexture1D; break;
+					case GL_TEXTURE_2D: ++counts.mNumColorTexture2D; break;
+					case GL_TEXTURE_3D: ++counts.mNumColorTexture3D; break;
+					case GL_TEXTURE_2D_ARRAY: {
+						++counts.mNumTextureArray;
+						uint32_t depth = attachment->getTexture()->getDepth();
+						counts.mMinArraySize = ( 0 == counts.mMinArraySize ) ? depth : std::min( counts.mMinArraySize, depth );
+						counts.mMaxArraySize = ( 0 == counts.mMaxArraySize ) ? depth : std::max( counts.mMaxArraySize, depth );
+					}
+					break;
+					case GL_RENDERBUFFER: ++counts.mNumColorBuffer; break;
+				}
+#endif
+			}
+			break;
+			// Depth
+			case GL_DEPTH: {
+				if( attachment->isTexture() ) {
+					++counts.mNumDepthTexture;
+					counts.mDepthTextureInternalFormat = internalFormat;
+				}
+				else if( attachment->isBuffer() ) {
+					++counts.mNumDepthBuffer;
+					counts.mDepthBufferInternalFormat = internalFormat;
+				}
+			}
+			break;
+			// Stencil
+			case GL_STENCIL: {
+				if( attachment->isTexture() ) {
+					++counts.mNumStencilTexture;
+					counts.mStencilTextureInternalFormat = internalFormat;
+				}
+				else if( attachment->isBuffer() ) {
+					++counts.mNumStencilBuffer;
+					counts.mStencilBufferInternalFormat = internalFormat;
+				}
+			}
+			break;
+			// Depth stencil
+			case GL_DEPTH_STENCIL: {
+				if( attachment->isTexture() ) {
+					++counts.mNumDepthStencilTexture;
+					counts.mDepthStencilTextureInternalFormat = internalFormat;
+				}
+				else if( attachment->isBuffer() ) {
+					++counts.mNumDepthStencilBuffer;
+					counts.mDepthStencilBufferInternalFormat = internalFormat;
+				}
+			}
+			break;
+		}
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+		if( attachment->getTexture() && ( typeid(*(attachment->getTexture())) == typeid(Texture2d) ) ) {
+			auto tex = std::dynamic_pointer_cast<Texture2d>( attachment->getTexture() );
+			if( tex->getForamt().isFixedSampleLocations() ) {
+				++counts.mNumFixedSampleLocations;
+			}
+		}
+#endif 
+	}
+
+	*outCounts = counts;
+}
+
+void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture )
+{
+	bool formatHas1D = false;
+	bool formatHas2D = mFormat.hasColorBuffer;
+	bool formatHas3D = false;
+	bool formatHasArray = false;
+	if( mFormat.hasColorTexture() ) {
+		switch( mFormat.mColorTextureFormat.getTarget() ) {
+			case GL_TEXTURE_1D: formatHas1D |= true; break;
+			case GL_TEXTURE_2D: formatHas2D |= true; break;
+			case GL_TEXTURE_3D: formatHas3D |= true; break;
+			case GL_TEXTURE_2D_ARRAY: formatHasArray |= true; break;
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+			case GL_TEXTURE_2D_MULTISAMPLE: formatHas2D |= true; break;
+			case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: formatHasArray |= true; break;
+#endif
+		}
+	}
+
+	bool has1D = ( counts.mNumColorTexture1D > 0 );
+	bool has2D = ( ( counts.mNumColorTexture2D > 0 ) || ( counts.mNuhasColorBuffer2D > 0 ) );
+	bool has3D = ( counts.mNumColorTexture3D > 0 );
+	bool hasArray = ( counts.mNumTextureArray > 0 );
+
+	// Cannot mix target types
+	{
+		bool isInvalid = false;
+		isInvalid |= ( formatHas1D && formatHas2D ) || ( formatHas1D && formatHas3D ) || ( formatHas1D && formatHasArray ) || ( formatHas2D && formatHas3D ) || ( formatHas2D && formatHasArray ) || ( formatHas3D && formatHasArray );
+		isInvalid |= ( has1D && has2D ) || ( has1D && has3D ) || ( has1D && hasArray ) || ( has2D && has3D ) || ( has2D && hasArray ) || ( has3D && hasArray );
+		if( isInvalid ) {
+			throw FboException( "Cannot mix target types" );
+		}
+	}
+
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
+	// Samples must be same for all attachments
+	if( counts.mSampleCounts.size() >= 2 ) {
+		auto iter0 = counts.mSampleCounts.begin();
+		auto iter1 = counts.mSampleCounts.begin();
+		++iter1;
+		bool notSame = false;
+		for( ; iter1 != counts.mSampleCounts.end(); ++iter0, ++iter1 ) {
+			if( iter0->second != iter1->second ) {
+				std::stringstream ss;
+				ss << "(" << gl::constantToString( iter0->first ) << " has " << iter0->second << ", but " << gl::constantToString( iter1->first ) << " has " << iter1->second << " samples" << ")";
+				throw FboException( "Samples must be same for all attachments" + ss.str() );
+			}
+		}
+	}
+
+	// Fixed sample locations for all texture attachments when used with renderbuffers
+	bool formatHasAnyTexture = mFormat.hasColorTexture() || mFormat.hasDepthTexture || mFormat.hasStencilTexture;
+	bool formatHasAnyBuffer = mFormat.hasColorBuffer || mFormat.hasDepthBuffer() || mFormat.hasStencilBuffer();
+	bool hasAnyTexture = ( counts.mNumColorTexture2D > 0 ) || ( counts.mNumDepthTexture > 0 ) || ( counts.mNumStencilTexture > 0 );
+	bool hasAnyBuffer = ( counts.mNumColorBuffer > 0 ) || ( counts.mNumDepthBuffer > 0 ) || ( counts.mNumStencilBuffer > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
+	{
+		bool isMultiSample = false; 
+		isMultiSample |= ( mFormat.getSamples() > 1 );
+		isMultiSample |= ( mFormat.hasColorTexture() && mFormat.getColorTextureFormat().isMultisample() );
+		isMultiSample |= ( mFormat.hasDepthTexture && mFormat.getDepthTextureFormat().isMultisample() );
+		isMultiSample |= ( ( ! counts.mSampleCounts.empty() ) && ( counts.mSampleCounts[0] > 1 ) );
+
+		uint32_t formatTexCount = 0;
+		formatTexCount += mFormat.hasColorTexture()  ? 1 : 0;
+		formatTexCount += mFormat.hasDepthTexture  ? 1 : 0;
+
+		uint32_t texCount = 0;
+		texCount += counts.mNumColorTexture2D;
+		texCount += counts.mNumDepthTexture;
+		texCount += counts.mNumStencilTexture;
+
+		uint32_t formatFixSampCount = 0;
+		formatFixSampCount += ( mFormat.hasColorTexture() && mFormat.mColorTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
+		formatFixSampCount += ( mFormat.hasDepthTexture && mFormat.getDepthTextureFormat().isFixedSampleLocations() ) ? 1 : 0;
+
+		bool isInvalid = false;
+		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer && ( formatTexCount != formatFixSampCount );
+		isInvalid |= isMultiSample && hasAnyTexture  && hasAnyBuffer && ( texCount != counts.mNumFixedSampleLocations );
+		if( isInvalid ) {
+			throw FboException( "Fixed sample locations required for all texture attachments when used with renderbuffers" );
+		}
+	}
+#endif
+
+	// Depth and stencil must use combined format if both are used
+	bool formatHasDepthStencil = ( mFormat.hasDepthTexture && mFormat.mStencilTexture ) || ( mFormat.hasDepthBuffer() && mFormat.hasStencilBuffer() ); //( ( mFormat.hasDepthTexture() || mFormat.hasDepthBuffer() ) && ( mFormat.mStencilTexture || mFormat.hasStencilBuffer() ) );
+	bool formatHasDepth = mFormat.hasDepthTexture || mFormat.hasDepthBuffer();
+	bool formatHasStencil = mFormat.hasStencilTexture || mFormat.hasStencilBuffer();
+	bool hasDepthStencil = ( counts.mNumDepthStencilTexture > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
+	bool hasDepth = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumDepthBuffer > 0 );
+	bool hasStencil = ( counts.mNumStencilTexture > 0 ) || ( counts.mNumStencilBuffer > 0 );
+	{
+		bool isInvalid = false;
+		isInvalid |= ( hasDepth && hasStencil && ( ! hasDepthStencil ) );
+		isInvalid |= ( formatHasDepth && formatHasStencil && ( ! formatHasDepthStencil ) );
+		if( isInvalid ) {
+			throw FboException( "Depth and stencil must use combined format if both are present" );
+		}
+	}
+
+	// GL_TEXTURE_3D targets do not support any depth or stencil attachments
+	bool hasAnyDepthStencilTexture = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumStencilTexture > 0 ) || ( counts.mNumDepthStencilTexture > 0 ) || mFormat.hasDepthTexture || mFormat.mStencilTexture;
+	bool hasAnyDepthStencilBuffer = ( counts.mNumDepthBuffer > 0 ) || ( counts.mNumStencilBuffer > 0 ) || ( counts.mNumDepthStencilBuffer > 0 ) || mFormat.hasDepthBuffer() || mFormat.hasStencilBuffer();
+	if( has3D && ( hasAnyDepthStencilTexture || hasAnyDepthStencilBuffer ) ) {
+		throw FboException( "GL_TEXTURE_3D targets do not support any depth or stencil attachments" );
+	}
+
+	// Check depth/stencil attachment internalFormats. 
+	//
+	// NOTE: This is aggressive because on certain platforms (NVIDIA) the 
+	//       internalFormat can affect the framebuffer's completeness status.
+	// 
+	{
+		// Depth
+		{
+			GLenum internalFormat = 0;
+			if( hasDepth ) {
+				internalFormat = ( GL_INVALID_ENUM != counts.mDepthTextureInternalFormat ) ? counts.mDepthTextureInternalFormat : internalFormat;
+				internalFormat = ( GL_INVALID_ENUM != counts.mDepthBufferInternalFormat ) ? counts.mDepthBufferInternalFormat : internalFormat;
+			}
+			else if( formatHasDepth ) {
+				internalFormat = ( mFormat.hasDepthTexture ) ? mFormat.getDepthTextureFormat().getInternalFormat() : internalFormat;
+				internalFormat = ( mFormat.hasDepthBuffer() ) ? mFormat.getDepthBufferInternalFormat() : internalFormat;
+			}
+
+			if( 0 != internalFormat ) {
+				bool isInvalid = false;
+				isInvalid |= ( GL_DEPTH != determineAspectFromFormat( internalFormat ) );
+				isInvalid &= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
+				if( isInvalid ) {
+					throw FboException( "Invalid internal format for depth " + gl::constantToString( internalFormat ) );
+				}
+			}
+		}
+
+		// Stencil
+		{
+			GLenum internalFormat = 0;
+			if( hasStencil ) {
+				internalFormat = ( GL_INVALID_ENUM != counts.mStencilTextureInternalFormat ) ? counts.mStencilTextureInternalFormat : internalFormat;
+				internalFormat = ( GL_INVALID_ENUM != counts.mStencilBufferInternalFormat ) ? counts.mStencilBufferInternalFormat : internalFormat;
+			}
+
+			if( 0 != internalFormat ) {
+				bool isInvalid = false;
+				isInvalid |= ( GL_STENCIL != determineAspectFromFormat( internalFormat ) );
+				isInvalid &= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
+				if( isInvalid ) {
+					throw FboException( "Invalid internal format for stencil " + gl::constantToString( internalFormat ) );
+				}
+			}
+		}
+
+		// Depth/stencil
+		{
+			GLenum internalFormat = 0;
+			if( hasDepthStencil ) {
+				internalFormat = ( GL_INVALID_ENUM != counts.mDepthStencilTextureInternalFormat ) ? counts.mDepthStencilTextureInternalFormat : internalFormat;
+				internalFormat = ( GL_INVALID_ENUM != counts.mDepthStencilBufferInternalFormat ) ? counts.mDepthStencilBufferInternalFormat : internalFormat;
+			}
+			else if( formatHasDepthStencil ) {
+				// The ambiguity of all the depth/stencil texture and buffer combinations should be resolved at this point
+				GLint resultInternalFormat = GL_INVALID_ENUM;
+				GLenum resultPixelDataType = GL_INVALID_ENUM;
+				if( mFormat.hasDepthTexture() && mFormat.mStencilTexture ) {
+					Fbo::Format::getDepthStencilFormats( mFormat.getDepthTextureFormat().getInternalFormat(), &resultInternalFormat, &resultPixelDataType );
+				}
+				else if( mFormat.hasDepthBuffer() && mFormat.hasStencilBuffer() ) {
+					Fbo::Format::getDepthStencilFormats( mFormat.getDepthBufferInternalFormat(), &resultInternalFormat, &resultPixelDataType );
+				}
+				internalFormat = ( GL_INVALID_ENUM != resultInternalFormat ) ? resultInternalFormat : internalFormat;
+			}
+
+			if( 0 != internalFormat) {
+				bool isInvalid = false;
+				isInvalid |= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
+				if( isInvalid ) {
+					throw FboException( "Invalid internal format for DepthStencil " + gl::constantToString( internalFormat ) );
+				}
+			}
+		}
+	}
+
+	// Write output
+	*outHasColor    = has1D || has2D || has3D || hasArray;
+	*outHasDepth    = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumDepthBuffer > 0 ) || ( counts.mNumDepthStencilTexture > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
+	*outHasStencil  = ( counts.mNumStencilTexture > 0 ) || ( counts.mNumStencilBuffer > 0 ) || ( counts.mNumDepthStencilTexture > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
+	*outHasArray    = hasArray;
+	*outSampleCount = ( ! counts.mSampleCounts.empty() ) ? counts.mSampleCounts.begin()->second : -1;
+	*outHasMultisampleTexture = ( has2D || hasArray ) && ( *outSampleCount > 1 );
+}
+
 void Fbo::init()
 {
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
@@ -410,7 +732,7 @@ void Fbo::init()
 	//       textures are requested so we don't end up with a bunch of 
 	//       needless mixed format exceptions.
 	//
-	if( mFormat.mColorTexture && ( ( mFormat.mSamples > 1 ) || ( mFormat.mColorTextureFormat.getSamples() > 1 ) ) ) {
+	if( mFormat.mColorTexture && ( ( mFormat.mSamples > 1 ) || ( mFormat.mColorTextureFormat.isMultisample() ) ) ) {
 		// Depth
 		if( mFormat.mDepthBuffer ) {
 			mFormat.mDepthBuffer = false;
@@ -451,7 +773,9 @@ void Fbo::init()
 	mAttachments = mFormat.mAttachments;
 	int32_t validationSampleCount = -1;
 	bool hasMultisampleTexture = false;
-	validate( &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment, &validationSampleCount, &mHasMultisampleTexture );
+	Counts counts = {};
+	countAttachments( mAttachments, &counts );
+	validate( counts, &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment, &validationSampleCount, &mHasMultisampleTexture );
 
 	if( -1 != validationSampleCount ) {
 		mFormat.setSamples( validationSampleCount );
@@ -529,324 +853,6 @@ void Fbo::init()
 	if( ! mLabel.empty() ) {
 		env()->objectLabel( GL_FRAMEBUFFER, mId, (GLsizei)mLabel.size(), mLabel.c_str() );
 	}
-}
-
-void Fbo::validate( bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture )
-{
-	struct Validation {
-		uint8_t						mNumColorTexture1D;
-		uint8_t						mNumColorTexture2D;
-		uint8_t						mNumColorTexture3D;
-		uint8_t						mNumColorBuffer2D;
-		uint8_t						mNumDepthTexture;
-		uint8_t						mNumDepthBuffer;
-		uint8_t						mNumStencilTexture;
-		uint8_t						mNumStencilBuffer;
-		uint8_t						mNumDepthStencilTexture;
-		uint8_t						mNumDepthStencilBuffer;
-		uint8_t						mNumTextureArray;
-		std::map<GLenum, int32_t>	mSampleCounts;
-		uint32_t					mMinArraySize;
-		uint32_t					mMaxArraySize;
-		uint32_t					mNumFixedSampleLocations;
-		GLenum						mDepthTextureInternalFormat;
-		GLenum						mDepthBufferInternalFormat;
-		GLenum						mStencilTextureInternalFormat;
-		GLenum						mStencilBufferInternalFormat;
-		GLenum						mDepthStencilTextureInternalFormat;
-		GLenum						mDepthStencilBufferInternalFormat;
-
-	};
-	
-	Validation val = {};
-	val.mDepthTextureInternalFormat			= GL_INVALID_ENUM;
-	val.mDepthBufferInternalFormat			= GL_INVALID_ENUM;
-	val.mStencilTextureInternalFormat		= GL_INVALID_ENUM;
-	val.mStencilBufferInternalFormat		= GL_INVALID_ENUM;
-	val.mDepthStencilTextureInternalFormat	= GL_INVALID_ENUM;
-	val.mDepthStencilBufferInternalFormat	= GL_INVALID_ENUM;
-	
-	for( const auto &it : mAttachments ) {
-		GLenum attachmentPoint = it.first;
-		const auto &attachment = it.second;
-		// Sample count
-		val.mSampleCounts[attachmentPoint] = static_cast<uint32_t>( attachment->getSamples() );
-		// Process properties
-		GLenum internalFormat = attachment->getInternalFormat();
-		GLenum aspect = determineAspectFromFormat( internalFormat );
-		switch( aspect ) {
-			// Color
-			case GL_COLOR: {
-				const auto& attachment = it.second;
-				GLenum target = attachment->mTexture ? attachment->mTexture->getTarget() : GL_INVALID_ENUM;
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-				switch( target ) {
-					case GL_TEXTURE_1D: ++val.mNumColorTexture1D; break;
-					case GL_TEXTURE_2D_MULTISAMPLE:
-					case GL_TEXTURE_2D: ++val.mNumColorTexture2D; break;
-					case GL_TEXTURE_3D: ++val.mNumColorTexture3D; break;
-					case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-					case GL_TEXTURE_2D_ARRAY: {
-						++(val.mNumTextureArray);
-						uint32_t depth = attachment->mTexture->getDepth();
-						val.mMinArraySize = ( 0 == val.mMinArraySize ) ? depth : std::min( val.mMinArraySize, depth );
-						val.mMaxArraySize = ( 0 == val.mMaxArraySize ) ? depth : std::max( val.mMaxArraySize, depth );
-					}
-					case GL_RENDERBUFFER: ++val.mNumColorBuffer2D; break;
-				}
-#else
-				switch( target ) {
-					case GL_TEXTURE_1D: ++val.mNumColorTexture1D; break;
-					case GL_TEXTURE_2D: ++val.mNumColorTexture2D; break;
-					case GL_TEXTURE_3D: ++val.mNumColorTexture3D; break;
-					case GL_TEXTURE_2D_ARRAY: {
-						++val.mNumTextureArray;
-						uint32_t depth = attachment->mTexture->getDepth();
-						val.mMinArraySize = ( 0 == val.mMinArraySize ) ? depth : std::min( val.mMinArraySize, depth );
-						val.mMaxArraySize = ( 0 == val.mMaxArraySize ) ? depth : std::max( val.mMaxArraySize, depth );
-					}
-					break;
-					case GL_RENDERBUFFER: ++val.mNumColorBuffer2D; break;
-				}
-#endif
-			}
-			break;
-			// Depth
-			case GL_DEPTH: {
-				if( attachment->isTexture() ) {
-					++val.mNumDepthTexture;
-					val.mDepthTextureInternalFormat = internalFormat;
-				}
-				else if( attachment->isBuffer() ) {
-					++val.mNumDepthBuffer;
-					val.mDepthBufferInternalFormat = internalFormat;
-				}
-			}
-			break;
-			// Stencil
-			case GL_STENCIL: {
-				if( attachment->isTexture() ) {
-					++val.mNumStencilTexture;
-					val.mStencilTextureInternalFormat = internalFormat;
-				}
-				else if( attachment->isBuffer() ) {
-					++val.mNumStencilBuffer;
-					val.mStencilBufferInternalFormat = internalFormat;
-				}
-			}
-			break;
-			// Depth stencil
-			case GL_DEPTH_STENCIL: {
-				if( attachment->isTexture() ) {
-					++val.mNumDepthStencilTexture;
-					val.mDepthStencilTextureInternalFormat = internalFormat;
-				}
-				else if( attachment->isBuffer() ) {
-					++val.mNumDepthStencilBuffer;
-					val.mDepthStencilBufferInternalFormat = internalFormat;
-				}
-			}
-			break;
-		}
-
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-		if( attachment->mTexture &&  ( typeid(*(attachment->mTexture)) == typeid(Texture2d) ) ) {
-			auto tex = std::dynamic_pointer_cast<Texture2d>( attachment->mTexture );
-			if( tex->getForamt().isFixedSampleLocations() ) {
-				++val.mNumFixedSampleLocations;
-			}
-		}
-#endif 
-	}
-
-	bool formatHas1D = false;
-	bool formatHas2D = mFormat.mColorBuffer;
-	bool formatHas3D = false;
-	bool formatHasArray = false;
-	if( mFormat.mColorTexture ) {
-		switch( mFormat.mColorTextureFormat.getTarget() ) {
-			case GL_TEXTURE_1D: formatHas1D |= true; break;
-			case GL_TEXTURE_2D: formatHas2D |= true; break;
-			case GL_TEXTURE_3D: formatHas3D |= true; break;
-			case GL_TEXTURE_2D_ARRAY: formatHasArray |= true; break;
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-			case GL_TEXTURE_2D_MULTISAMPLE: formatHas2D |= true; break;
-			case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: formatHasArray |= true; break;
-#endif
-		}
-	}
-
-	bool has1D = ( val.mNumColorTexture1D > 0 );
-	bool has2D = ( ( val.mNumColorTexture2D > 0 ) || ( val.mNumColorBuffer2D > 0 ) );
-	bool has3D = ( val.mNumColorTexture3D > 0 );
-	bool hasArray = ( val.mNumTextureArray > 0 );
-
-	// Cannot mix target types
-	{
-		bool isInvalid = false;
-		isInvalid |= ( formatHas1D && formatHas2D ) || ( formatHas1D && formatHas3D ) || ( formatHas1D && formatHasArray ) || ( formatHas2D && formatHas3D ) || ( formatHas2D && formatHasArray ) || ( formatHas3D && formatHasArray );
-		isInvalid |= ( has1D && has2D ) || ( has1D && has3D ) || ( has1D && hasArray ) || ( has2D && has3D ) || ( has2D && hasArray ) || ( has3D && hasArray );
-		if( isInvalid ) {
-			throw FboException( "Cannot mix target types" );
-		}
-	}
-
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	// Samples must be same for all attachments
-	if( val.mSampleCounts.size() >= 2 ) {
-		auto iter0 = val.mSampleCounts.begin();
-		auto iter1 = val.mSampleCounts.begin();
-		++iter1;
-		bool notSame = false;
-		for( ; iter1 != val.mSampleCounts.end(); ++iter0, ++iter1 ) {
-			if( iter0->second != iter1->second ) {
-				std::stringstream ss;
-				ss << "(" << gl::constantToString( iter0->first ) << " has " << iter0->second << ", but " << gl::constantToString( iter1->first ) << " has " << iter1->second << " samples" << ")";
-				throw FboException( "Samples must be same for all attachments" + ss.str() );
-			}
-		}
-	}
-
-	// Fixed sample locations for all texture attachments when used with renderbuffers
-	bool formatHasAnyTexture = mFormat.mColorTexture || mFormat.mDepthTexture || mFormat.mStencilTexture;
-	bool formatHasAnyBuffer = mFormat.mColorBuffer || mFormat.mDepthBuffer || mFormat.mStencilBuffer;
-	bool hasAnyTexture = ( val.mNumColorTexture2D > 0 ) || ( val.mNumDepthTexture > 0 ) || ( val.mNumStencilTexture > 0 );
-	bool hasAnyBuffer = ( val.mNumColorBuffer2D > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	{
-		bool isMultiSample = false; 
-		isMultiSample |= ( mFormat.getSamples() > 1 );
-		isMultiSample |= ( mFormat.mColorTexture && mFormat.mColorTextureFormat.isMultisample() );
-		isMultiSample |= ( mFormat.mDepthTexture && mFormat.mDepthTextureFormat.isMultisample() );
-		isMultiSample |= ( ( ! val.mSampleCounts.empty() ) && ( val.mSampleCounts[0] > 1 ) );
-
-		uint32_t formatTexCount = 0;
-		formatTexCount += mFormat.mColorTexture   ? 1 : 0;
-		formatTexCount += mFormat.mDepthTexture   ? 1 : 0;
-
-		uint32_t texCount = 0;
-		texCount += val.mNumColorTexture2D;
-		texCount += val.mNumDepthTexture;
-		texCount += val.mNumStencilTexture;
-
-		uint32_t formatFixSampCount = 0;
-		formatFixSampCount += ( mFormat.mColorTexture && mFormat.mColorTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
-		formatFixSampCount += ( mFormat.mDepthTexture && mFormat.mDepthTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
-
-		bool isInvalid = false;
-		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer && ( formatTexCount != formatFixSampCount );
-		isInvalid |= isMultiSample && hasAnyTexture  && hasAnyBuffer && ( texCount != val.mNumFixedSampleLocations );
-		if( isInvalid ) {
-			throw FboException( "Fixed sample locations required for all texture attachments when used with renderbuffers" );
-		}
-	}
-#endif
-
-	// Depth and stencil must use combined format if both are used
-	bool formatHasDepthStencil = ( mFormat.mDepthTexture && mFormat.mStencilTexture ) || ( mFormat.mDepthBuffer && mFormat.mStencilBuffer ); //( ( mFormat.mDepthTexture || mFormat.mDepthBuffer ) && ( mFormat.mStencilTexture || mFormat.mStencilBuffer ) );
-	bool formatHasDepth = mFormat.mDepthTexture || mFormat.mDepthBuffer;
-	bool formatHasStencil = mFormat.mStencilTexture || mFormat.mStencilBuffer;
-	bool hasDepthStencil = ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	bool hasDepth = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 );
-	bool hasStencil = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 );
-	{
-		bool isInvalid = false;
-		isInvalid |= ( hasDepth && hasStencil && ( ! hasDepthStencil ) );
-		isInvalid |= ( formatHasDepth && formatHasStencil && ( ! formatHasDepthStencil ) );
-		if( isInvalid ) {
-			throw FboException( "Depth and stencil must use combined format if both are present" );
-		}
-	}
-
-	// GL_TEXTURE_3D targets do not support any depth or stencil attachments
-	bool hasAnyDepthStencilTexture = ( val.mNumDepthTexture > 0 ) || ( val.mNumStencilTexture > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || mFormat.mDepthTexture || mFormat.mStencilTexture;
-	bool hasAnyDepthStencilBuffer = ( val.mNumDepthBuffer > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilBuffer > 0 ) || mFormat.mDepthBuffer || mFormat.mStencilBuffer;
-	if( has3D && ( hasAnyDepthStencilTexture || hasAnyDepthStencilBuffer ) ) {
-		throw FboException( "GL_TEXTURE_3D targets do not support any depth or stencil attachments" );
-	}
-
-	// Check depth/stencil attachment internalFormats. 
-	//
-	// NOTE: This is aggressive because on certain platforms (NVIDIA) the 
-	//       internalFormat can affect the framebuffer's completeness status.
-	// 
-	{
-		// Depth
-		{
-			GLenum internalFormat = 0;
-			if( hasDepth ) {
-				internalFormat = ( GL_INVALID_ENUM != val.mDepthTextureInternalFormat ) ? val.mDepthTextureInternalFormat : internalFormat;
-				internalFormat = ( GL_INVALID_ENUM != val.mDepthBufferInternalFormat ) ? val.mDepthBufferInternalFormat : internalFormat;
-			}
-			else if( formatHasDepth ) {
-				internalFormat = ( mFormat.mDepthTexture ) ? mFormat.mDepthTextureFormat.getInternalFormat() : internalFormat;
-				internalFormat = ( mFormat.mDepthBuffer ) ? mFormat.mDepthBufferInternalFormat : internalFormat;
-			}
-
-			if( 0 != internalFormat ) {
-				bool isInvalid = false;
-				isInvalid |= ( GL_DEPTH != determineAspectFromFormat( internalFormat ) );
-				isInvalid &= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
-				if( isInvalid ) {
-					throw FboException( "Invalid internal format for depth " + gl::constantToString( internalFormat ) );
-				}
-			}
-		}
-
-		// Stencil
-		{
-			GLenum internalFormat = 0;
-			if( hasStencil ) {
-				internalFormat = ( GL_INVALID_ENUM != val.mStencilTextureInternalFormat ) ? val.mStencilTextureInternalFormat : internalFormat;
-				internalFormat = ( GL_INVALID_ENUM != val.mStencilBufferInternalFormat ) ? val.mStencilBufferInternalFormat : internalFormat;
-			}
-
-			if( 0 != internalFormat ) {
-				bool isInvalid = false;
-				isInvalid |= ( GL_STENCIL != determineAspectFromFormat( internalFormat ) );
-				isInvalid &= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
-				if( isInvalid ) {
-					throw FboException( "Invalid internal format for stencil " + gl::constantToString( internalFormat ) );
-				}
-			}
-		}
-
-		// Depth/stencil
-		{
-			GLenum internalFormat = 0;
-			if( hasDepthStencil ) {
-				internalFormat = ( GL_INVALID_ENUM != val.mDepthStencilTextureInternalFormat ) ? val.mDepthStencilTextureInternalFormat : internalFormat;
-				internalFormat = ( GL_INVALID_ENUM != val.mDepthStencilBufferInternalFormat ) ? val.mDepthStencilBufferInternalFormat : internalFormat;
-			}
-			else if( formatHasDepthStencil ) {
-				// The ambiguity of all the depth/stencil texture and buffer combinations should be resolved at this point
-				GLint resultInternalFormat = GL_INVALID_ENUM;
-				GLenum resultPixelDataType = GL_INVALID_ENUM;
-				if( mFormat.mDepthTexture && mFormat.mStencilTexture ) {
-					Fbo::Format::getDepthStencilFormats( mFormat.mDepthTextureFormat.getInternalFormat(), &resultInternalFormat, &resultPixelDataType );
-				}
-				else if( mFormat.mDepthBuffer && mFormat.mStencilBuffer ) {
-					Fbo::Format::getDepthStencilFormats( mFormat.mDepthBufferInternalFormat, &resultInternalFormat, &resultPixelDataType );
-				}
-				internalFormat = ( GL_INVALID_ENUM != resultInternalFormat ) ? resultInternalFormat : internalFormat;
-			}
-
-			if( 0 != internalFormat) {
-				bool isInvalid = false;
-				isInvalid |= ( GL_DEPTH_STENCIL != determineAspectFromFormat( internalFormat ) );
-				if( isInvalid ) {
-					throw FboException( "Invalid internal format for DepthStencil " + gl::constantToString( internalFormat ) );
-				}
-			}
-		}
-	}
-
-	// Write output
-	*outHasColor    = has1D || has2D || has3D || hasArray;
-	*outHasDepth    = ( val.mNumDepthTexture > 0 ) || ( val.mNumDepthBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	*outHasStencil  = ( val.mNumStencilTexture > 0 ) || ( val.mNumStencilBuffer > 0 ) || ( val.mNumDepthStencilTexture > 0 ) || ( val.mNumDepthStencilBuffer > 0 );
-	*outHasArray    = hasArray;
-	*outSampleCount = ( ! val.mSampleCounts.empty() ) ? val.mSampleCounts.begin()->second : -1;
-	*outHasMultisampleTexture = ( has2D || hasArray ) && ( *outSampleCount > 1 );
 }
 
 void Fbo::initMultisamplingSettings( bool *useMsaa, bool *useCsaa, Format *format )
