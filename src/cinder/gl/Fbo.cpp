@@ -536,11 +536,11 @@ void countAttachments( const std::map<GLenum, Fbo::AttachmentRef>& attachments, 
 void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasColor, bool *outHasDepth, bool *outHasStencil, bool *outHasArray, int32_t *outSampleCount, bool *outHasMultisampleTexture )
 {
 	bool formatHas1D = false;
-	bool formatHas2D = mFormat.hasColorBuffer;
+	bool formatHas2D = mFormat.hasColorBuffer();
 	bool formatHas3D = false;
 	bool formatHasArray = false;
 	if( mFormat.hasColorTexture() ) {
-		switch( mFormat.mColorTextureFormat.getTarget() ) {
+		switch( mFormat.getColorTextureFormat().getTarget() ) {
 			case GL_TEXTURE_1D: formatHas1D |= true; break;
 			case GL_TEXTURE_2D: formatHas2D |= true; break;
 			case GL_TEXTURE_3D: formatHas3D |= true; break;
@@ -553,7 +553,7 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 	}
 
 	bool has1D = ( counts.mNumColorTexture1D > 0 );
-	bool has2D = ( ( counts.mNumColorTexture2D > 0 ) || ( counts.mNuhasColorBuffer2D > 0 ) );
+	bool has2D = ( ( counts.mNumColorTexture2D > 0 ) || ( counts.mNumColorBuffer > 0 ) );
 	bool has3D = ( counts.mNumColorTexture3D > 0 );
 	bool hasArray = ( counts.mNumTextureArray > 0 );
 
@@ -584,20 +584,20 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 	}
 
 	// Fixed sample locations for all texture attachments when used with renderbuffers
-	bool formatHasAnyTexture = mFormat.hasColorTexture() || mFormat.hasDepthTexture || mFormat.hasStencilTexture;
-	bool formatHasAnyBuffer = mFormat.hasColorBuffer || mFormat.hasDepthBuffer() || mFormat.hasStencilBuffer();
+	bool formatHasAnyTexture = mFormat.hasColorTexture() || mFormat.hasDepthTexture() || mFormat.hasStencilTexture();
+	bool formatHasAnyBuffer = mFormat.hasColorBuffer() || mFormat.hasDepthBuffer() || mFormat.hasStencilBuffer();
 	bool hasAnyTexture = ( counts.mNumColorTexture2D > 0 ) || ( counts.mNumDepthTexture > 0 ) || ( counts.mNumStencilTexture > 0 );
 	bool hasAnyBuffer = ( counts.mNumColorBuffer > 0 ) || ( counts.mNumDepthBuffer > 0 ) || ( counts.mNumStencilBuffer > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
 	{
 		bool isMultiSample = false; 
 		isMultiSample |= ( mFormat.getSamples() > 1 );
 		isMultiSample |= ( mFormat.hasColorTexture() && mFormat.getColorTextureFormat().isMultisample() );
-		isMultiSample |= ( mFormat.hasDepthTexture && mFormat.getDepthTextureFormat().isMultisample() );
-		isMultiSample |= ( ( ! counts.mSampleCounts.empty() ) && ( counts.mSampleCounts[0] > 1 ) );
+		isMultiSample |= ( mFormat.hasDepthTexture() && mFormat.getDepthTextureFormat().isMultisample() );
+		isMultiSample |= ( ( ! counts.mSampleCounts.empty() ) && ( counts.mSampleCounts.begin()->second > 1 ) );
 
 		uint32_t formatTexCount = 0;
 		formatTexCount += mFormat.hasColorTexture()  ? 1 : 0;
-		formatTexCount += mFormat.hasDepthTexture  ? 1 : 0;
+		formatTexCount += mFormat.hasDepthTexture()  ? 1 : 0;
 
 		uint32_t texCount = 0;
 		texCount += counts.mNumColorTexture2D;
@@ -605,8 +605,8 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 		texCount += counts.mNumStencilTexture;
 
 		uint32_t formatFixSampCount = 0;
-		formatFixSampCount += ( mFormat.hasColorTexture() && mFormat.mColorTextureFormat.isFixedSampleLocations() ) ? 1 : 0;
-		formatFixSampCount += ( mFormat.hasDepthTexture && mFormat.getDepthTextureFormat().isFixedSampleLocations() ) ? 1 : 0;
+		formatFixSampCount += ( mFormat.hasColorTexture() && mFormat.getColorTextureFormat().isFixedSampleLocations() ) ? 1 : 0;
+		formatFixSampCount += ( mFormat.hasDepthTexture() && mFormat.getDepthTextureFormat().isFixedSampleLocations() ) ? 1 : 0;
 
 		bool isInvalid = false;
 		isInvalid |= isMultiSample && formatHasAnyTexture  && formatHasAnyBuffer && ( formatTexCount != formatFixSampCount );
@@ -618,9 +618,9 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 #endif
 
 	// Depth and stencil must use combined format if both are used
-	bool formatHasDepthStencil = ( mFormat.hasDepthTexture && mFormat.mStencilTexture ) || ( mFormat.hasDepthBuffer() && mFormat.hasStencilBuffer() ); //( ( mFormat.hasDepthTexture() || mFormat.hasDepthBuffer() ) && ( mFormat.mStencilTexture || mFormat.hasStencilBuffer() ) );
-	bool formatHasDepth = mFormat.hasDepthTexture || mFormat.hasDepthBuffer();
-	bool formatHasStencil = mFormat.hasStencilTexture || mFormat.hasStencilBuffer();
+	bool formatHasDepthStencil = ( mFormat.hasDepthTexture() && mFormat.hasStencilTexture() ) || ( mFormat.hasDepthBuffer() && mFormat.hasStencilBuffer() ); //( ( mFormat.hasDepthTexture() || mFormat.hasDepthBuffer() ) && ( mFormat.mStencilTexture || mFormat.hasStencilBuffer() ) );
+	bool formatHasDepth = mFormat.hasDepthTexture() || mFormat.hasDepthBuffer();
+	bool formatHasStencil = mFormat.hasStencilTexture() || mFormat.hasStencilBuffer();
 	bool hasDepthStencil = ( counts.mNumDepthStencilTexture > 0 ) || ( counts.mNumDepthStencilBuffer > 0 );
 	bool hasDepth = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumDepthBuffer > 0 );
 	bool hasStencil = ( counts.mNumStencilTexture > 0 ) || ( counts.mNumStencilBuffer > 0 );
@@ -634,7 +634,7 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 	}
 
 	// GL_TEXTURE_3D targets do not support any depth or stencil attachments
-	bool hasAnyDepthStencilTexture = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumStencilTexture > 0 ) || ( counts.mNumDepthStencilTexture > 0 ) || mFormat.hasDepthTexture || mFormat.mStencilTexture;
+	bool hasAnyDepthStencilTexture = ( counts.mNumDepthTexture > 0 ) || ( counts.mNumStencilTexture > 0 ) || ( counts.mNumDepthStencilTexture > 0 ) || mFormat.hasDepthTexture() || mFormat.hasStencilTexture();
 	bool hasAnyDepthStencilBuffer = ( counts.mNumDepthBuffer > 0 ) || ( counts.mNumStencilBuffer > 0 ) || ( counts.mNumDepthStencilBuffer > 0 ) || mFormat.hasDepthBuffer() || mFormat.hasStencilBuffer();
 	if( has3D && ( hasAnyDepthStencilTexture || hasAnyDepthStencilBuffer ) ) {
 		throw FboException( "GL_TEXTURE_3D targets do not support any depth or stencil attachments" );
@@ -654,7 +654,7 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 				internalFormat = ( GL_INVALID_ENUM != counts.mDepthBufferInternalFormat ) ? counts.mDepthBufferInternalFormat : internalFormat;
 			}
 			else if( formatHasDepth ) {
-				internalFormat = ( mFormat.hasDepthTexture ) ? mFormat.getDepthTextureFormat().getInternalFormat() : internalFormat;
+				internalFormat = ( mFormat.hasDepthTexture() ) ? mFormat.getDepthTextureFormat().getInternalFormat() : internalFormat;
 				internalFormat = ( mFormat.hasDepthBuffer() ) ? mFormat.getDepthBufferInternalFormat() : internalFormat;
 			}
 
@@ -697,7 +697,7 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 				// The ambiguity of all the depth/stencil texture and buffer combinations should be resolved at this point
 				GLint resultInternalFormat = GL_INVALID_ENUM;
 				GLenum resultPixelDataType = GL_INVALID_ENUM;
-				if( mFormat.hasDepthTexture() && mFormat.mStencilTexture ) {
+				if( mFormat.hasDepthTexture() && mFormat.hasStencilTexture() ) {
 					Fbo::Format::getDepthStencilFormats( mFormat.getDepthTextureFormat().getInternalFormat(), &resultInternalFormat, &resultPixelDataType );
 				}
 				else if( mFormat.hasDepthBuffer() && mFormat.hasStencilBuffer() ) {
@@ -727,6 +727,12 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 
 void Fbo::init()
 {
+    // Use renderbuffers when multiple sample is requested on platforms that do not support multisample textures
+    if( mFormat.mColorTexture && mFormat.mAttachments.empty() && ( mFormat.mSamples > 1 ) && ( ! gl::env()->supportsTextureMultisample() ) ) {
+        mFormat.mColorTexture = false;
+        mFormat.mColorBuffer = true;
+    }
+
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 	// NOTE: Force requested depth and stencil to texture if multisample 
 	//       textures are requested so we don't end up with a bunch of 
@@ -772,10 +778,9 @@ void Fbo::init()
 
 	mAttachments = mFormat.mAttachments;
 	int32_t validationSampleCount = -1;
-	bool hasMultisampleTexture = false;
 	Counts counts = {};
 	countAttachments( mAttachments, &counts );
-	validate( counts, &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment, &validationSampleCount, &mHasMultisampleTexture );
+	validate( mFormat, counts, &mHasColorAttachments, &mHasDepthAttachment, &mHasStencilAttachment, &mHasArrayAttachment, &validationSampleCount, &mHasMultisampleTexture );
 
 	if( -1 != validationSampleCount ) {
 		mFormat.setSamples( validationSampleCount );

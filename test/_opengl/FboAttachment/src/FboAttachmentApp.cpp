@@ -136,7 +136,7 @@ void FboAttachmentApp::setup()
 
 
 	try {
-		auto fboFmt = gl::Fbo::Format().samples( 4 );
+		auto fboFmt = gl::Fbo::Format().samples( 8 );
 		mMultisampleFbo = gl::Fbo::create( getWindowWidth(), getWindowHeight(), fboFmt );
 		CI_LOG_I( *mMultisampleFbo );
 	}
