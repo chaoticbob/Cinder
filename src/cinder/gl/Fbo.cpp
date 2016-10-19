@@ -828,9 +828,12 @@ void Fbo::init()
 	}
 	
 	prepareAttachments( useMsaa || useCsaa );
-	setInitialDrawBuffers();
+	initDrawBuffers();
 	updateActiveAttachments();
 	attachAttachments();
+
+	// mDrawBuffers is built in initDrawBuffers. 
+	setDrawBuffers( mDrawBuffers );
 
 /*
 	if( useCsaa || useMsaa ) {
@@ -1174,7 +1177,7 @@ void Fbo::addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, 
 	}
 }
 
-void Fbo::setInitialDrawBuffers()
+void Fbo::initDrawBuffers()
 {
 	mDrawBuffers.clear();
 	for( auto &it : mAttachments ) {
@@ -1307,6 +1310,38 @@ TextureBaseRef Fbo::getTextureBase( GLenum attachmentPoint )
 	}
 	return result;
 
+}
+
+void Fbo::setDrawBuffers( GLenum attachmentPoint )
+{
+	mDrawBuffers.clear();
+	mDrawBuffers.push_back( attachmentPoint );
+
+	glDrawBuffers( static_cast<GLsizei>( mDrawBuffers.size() ), mDrawBuffers.data() );
+
+	updateActiveAttachments();
+}
+
+void Fbo::setDrawBuffers( const std::vector<GLenum> &attachmentPoints, bool sortAttachmentPoints )
+{
+#if ! defined( CINDER_GL_ES_2 )
+	ScopedFramebuffer fbScp( GL_FRAMEBUFFER, mMultisampleFramebufferId ? mMultisampleFramebufferId : mId );
+	
+	mDrawBuffers = attachmentPoints;
+	if( ! mDrawBuffers.empty() ) {
+		if( sortAttachmentPoints ) {
+			std::sort( std::begin( mDrawBuffers ), std::end( mDrawBuffers ) );
+		}
+		glDrawBuffers( static_cast<GLsizei>( mDrawBuffers.size() ), mDrawBuffers.data() );
+	}
+	else {
+		mDrawBuffers.clear();
+		GLenum none = GL_NONE;
+		glDrawBuffers( 1, &none );
+	}
+
+	updateActiveAttachments();
+#endif
 }
 
 void Fbo::bindTexture( int textureUnit, GLenum attachment )

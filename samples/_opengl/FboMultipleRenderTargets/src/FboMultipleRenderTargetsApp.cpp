@@ -31,7 +31,9 @@ void FboMultipleRenderTargetsApp::setup()
 	auto format = gl::Fbo::Format()
 //			.samples( 4 ) // uncomment this to enable 4x antialiasing
 			.attachment( GL_COLOR_ATTACHMENT0, gl::Texture2d::create( FBO_WIDTH, FBO_HEIGHT ) )
-			.attachment( GL_COLOR_ATTACHMENT1, gl::Texture2d::create( FBO_WIDTH, FBO_HEIGHT ) );
+			.attachment( GL_COLOR_ATTACHMENT1, gl::Texture2d::create( FBO_WIDTH, FBO_HEIGHT ) )
+			.attachment( GL_COLOR_ATTACHMENT2, gl::Texture2d::create( FBO_WIDTH, FBO_HEIGHT ) )
+			.attachment( GL_COLOR_ATTACHMENT3, gl::Texture2d::create( FBO_WIDTH, FBO_HEIGHT ) );
 	mFbo = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT, format );
 
 #if defined( CINDER_GL_ES_3 )
@@ -94,8 +96,12 @@ void FboMultipleRenderTargetsApp::draw()
 	// draw the two textures we've created side-by-side
 	auto tex0 = mFbo->getTexture2d( GL_COLOR_ATTACHMENT0 );
 	auto tex1 = mFbo->getTexture2d( GL_COLOR_ATTACHMENT1 );
+	auto tex2 = mFbo->getTexture2d( GL_COLOR_ATTACHMENT2 );
+	auto tex3 = mFbo->getTexture2d( GL_COLOR_ATTACHMENT3 );
 	gl::draw( tex0, tex0->getBounds() );
 	gl::draw( tex1, tex1->getBounds() + vec2( tex1->getWidth(), 0 ) );
+	gl::draw( tex2, tex1->getBounds() + vec2( 0, tex1->getHeight() ) );
+	gl::draw( tex3, tex1->getBounds() + vec2( tex1->getWidth(), tex1->getHeight() ) );
 }
 
 CINDER_APP( FboMultipleRenderTargetsApp, RendererGl )

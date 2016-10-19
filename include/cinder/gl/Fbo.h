@@ -178,6 +178,11 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	//! Returns a TextureBaseRef attached at \a attachment (such as \c GL_COLOR_ATTACHMENT0). Resolves multisampling and renders mipmaps if necessary. Returns NULL if a Texture is not bound at \a attachment.
 	TextureBaseRef	getTextureBase( GLenum attachmentPoint );
 	
+	//! Sets \a attachmentPoint to be the one and only active color target to be drawn into.
+	void			setDrawBuffers( GLenum attachmentPoint );
+	//! Sets \a attachmentPoints to be the active color targets to be drawn into. Use \a sortAttachmentPoints to sort \a attachmentPoints in the order of GL_COLOR_ATTACHMENT0 to GL_COLOR_ATTACHMENT[n].
+	void			setDrawBuffers( const std::vector<GLenum> &attachmentPoints, bool sortAttachmentPoints = false );
+
 	//! Binds the color texture associated with an Fbo to its target. Optionally binds to a multitexturing unit when \a textureUnit is non-zero. Optionally binds to a multitexturing unit when \a textureUnit is non-zero. \a attachment specifies which color buffer in the case of multiple attachments.
 	void 			bindTexture( int textureUnit = 0, GLenum attachment = GL_COLOR_ATTACHMENT0 );
 	//! Unbinds the texture associated with an Fbo attachment
@@ -190,7 +195,6 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void			resolveTextures( GLenum attachmentPoint = static_cast<GLenum>( Fbo::ALL_ATTACHMENTS ) ) const;
 	void			updateMipmaps( GLenum attachmentPoint = static_cast<GLenum>( Fbo::ALL_ATTACHMENTS ) ) const;
 	
-
 	//! Returns the ID of the framebuffer. For antialiased FBOs this is the ID of the output multisampled FBO
 	GLuint		getId() const { if( mMultisampleFramebufferId ) return mMultisampleFramebufferId; else return mId; }
 
@@ -361,7 +365,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void		prepareAttachments( bool multisampling );
 	void		attachAttachments();
 	void		addAttachment( GLenum attachmentPoint, const TextureBaseRef &texture, const RenderbufferRef &buffer, const TextureBaseRef &resolve );
-	void		setInitialDrawBuffers();
+	void		initDrawBuffers();
 	void		updateActiveAttachments();
 	bool		checkStatus( class FboExceptionInvalidSpecification *resultExc );
 	//void		setDrawBuffers( GLuint fbId, const std::map<GLenum,RenderbufferRef> &attachmentsBuffer, const std::map<GLenum,TextureBaseRef> &attachmentsTexture );
