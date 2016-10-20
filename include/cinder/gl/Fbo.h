@@ -114,6 +114,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 		bool					isResolvable() const { return mResolve ? true : false; }
 		GLenum					getTarget() const { return ( mTexture ? mTexture->getTarget() : ( mBuffer ? GL_RENDERBUFFER : GL_INVALID_ENUM ) ); }
 		GLenum					getInternalFormat() const { return ( mTexture ? mTexture->getInternalFormat() : ( mBuffer ? mBuffer->getInternalFormat() : GL_INVALID_ENUM ) ); }
+		Area					getBounds() const { return mTexture ? mTexture->getBounds() : ( mBuffer ? mBuffer->getBounds() : Area( 0, 0, 0, 0 ) ); }
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		GLint					getSamples() const { return ( mTexture ? mTexture->getSamples() : ( mBuffer ? mBuffer->getSamples() : -1 ) ); }
 #else
@@ -228,7 +229,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	void				setLabel( const std::string &label );
 	
 	//! Returns a copy of the pixels in \a attachment within \a area (cropped to the bounding rectangle of the attachment) as an 8-bit per channel Surface. \a attachment ignored on ES 2.
-	Surface8u		readPixels8u( const Area &area, GLenum attachment = GL_COLOR_ATTACHMENT0 ) const;
+	Surface8u		readPixels8u( const Area &area, GLenum attachmentPoint = GL_COLOR_ATTACHMENT0 ) const;
 
 	//! \brief Defines the Format of the Fbo, which is passed in via create().
 	//!
