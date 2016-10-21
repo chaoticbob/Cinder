@@ -253,7 +253,10 @@ std::string	constantToString( GLenum constant )
 		sSymbols[GL_DEPTH_COMPONENT16] = "GL_DEPTH_COMPONENT16";
 		sSymbols[GL_DEPTH_COMPONENT24] = "GL_DEPTH_COMPONENT24";
 
+#if ! defined( CINDER_GL_ANGLE )
 		sSymbols[GL_STENCIL_INDEX] = "GL_STENCIL_INDEX";
+#endif
+		sSymbols[GL_STENCIL_INDEX8] = "GL_STENCIL_INDEX8";
 
 		sSymbols[GL_FRAMEBUFFER] = "GL_FRAMEBUFFER";
 		sSymbols[GL_DRAW_FRAMEBUFFER] = "GL_DRAW_FRAMEBUFFER";

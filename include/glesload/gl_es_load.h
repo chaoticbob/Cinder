@@ -103,6 +103,17 @@
 	#endif
 
 // -----------------------------------------------------------------------------
+// Windows (ANGLE)
+// -----------------------------------------------------------------------------
+#elif ( defined( CINDER_MSW ) || defined( CINDER_GL_ANGLE ) )
+	#if ( CINDER_GL_ES_VERSION >= CINDER_GL_ES_VERSION_3 )
+		typedef void (GL_APIENTRYP PFNGLFRAMEBUFFERTEXTUREOESPROC) (GLenum target, GLenum attachment, GLuint texture, GLint level);
+		extern PFNGLFRAMEBUFFERTEXTUREOESPROC 	fnptr_ci_glFramebufferTextureOES;
+		#define glFramebufferTexture 			fnptr_ci_glFramebufferTextureOES
+
+		#define GL_STENCIL_INDEX				0x1901
+	#endif
+// -----------------------------------------------------------------------------
 // Android and Linux
 // -----------------------------------------------------------------------------
 #elif ( defined( CINDER_ANDROID ) || defined( CINDER_LINUX ) )

@@ -86,7 +86,9 @@ GLenum determineAspectFromFormat( GLenum internalFormat )
 			result = GL_DEPTH_STENCIL;
 		break;
 #endif
+#if ! defined( CINDER_GL_ANGLE )
 		case GL_STENCIL_INDEX:
+#endif
 		case GL_STENCIL_INDEX8:
 			result = GL_STENCIL;
 		break;
@@ -467,7 +469,9 @@ void countAttachments( const std::map<GLenum, Fbo::AttachmentRef>& attachments, 
 				}
 #else
 				switch( target ) {
+	#if ! defined( CINDER_GL_ANGLE )
 					case GL_TEXTURE_1D: ++counts.mNumColorTexture1D; break;
+	#endif
 					case GL_TEXTURE_2D: ++counts.mNumColorTexture2D; break;
 					case GL_TEXTURE_3D: ++counts.mNumColorTexture3D; break;
 					case GL_TEXTURE_2D_ARRAY: {
@@ -541,7 +545,9 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 	bool formatHasArray = false;
 	if( mFormat.hasColorTexture() ) {
 		switch( mFormat.getColorTextureFormat().getTarget() ) {
+#if ! defined( CINDER_GL_ANGLE )
 			case GL_TEXTURE_1D: formatHas1D |= true; break;
+#endif
 			case GL_TEXTURE_2D: formatHas2D |= true; break;
 			case GL_TEXTURE_3D: formatHas3D |= true; break;
 			case GL_TEXTURE_2D_ARRAY: formatHasArray |= true; break;
@@ -786,10 +792,12 @@ void Fbo::init()
 		mFormat.setSamples( validationSampleCount );
 	}
 
+#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE)
 	if( mFormat.mOverrideTextureSamples ) {
 		mFormat.mColorTextureFormat.setSamples( mFormat.getSamples() );
 		mFormat.mDepthTextureFormat.setSamples( mFormat.getSamples() );
 	}
+#endif
 	
 	// NOTE: Force all requested buffers to textures if there is a multisample
 	//       texture or an array attachment (single sample or multisample) 
@@ -968,11 +976,9 @@ void Fbo::prepareAttachments( bool multisample )
 			TextureBaseRef texture;
 			TextureBaseRef resolve;
 			auto colorFormat = mFormat.mColorTextureFormat;
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 			if( multisample && ( mFormat.mSamples > 1 ) && ( 1 == colorFormat.getSamples() ) ) {
 				colorFormat.setSamples( mFormat.mSamples );
 			}
-#endif
 			texture = Texture::create( mWidth, mHeight, colorFormat );
 			if( texture->getSamples() > 1 ) {
 				auto resolveFormat = mFormat.mColorTextureFormat;
@@ -1078,6 +1084,60 @@ void Fbo::prepareAttachments( bool multisample )
 #endif
 
 #if defined( CINDER_GL_ES )
+void Fbo::attachAttachments()
+{
+	// Attach images
+	{
+		ScopedFramebuffer fbScp( GL_FRAMEBUFFER, ( 0 != mMultisampleFramebufferId ) ? mMultisampleFramebufferId : mId );
+
+		for( auto &it : mAttachments ) {
+			GLenum attachmentPoint = it.first;
+			auto& attachment = it.second;
+			if( attachment->mTexture ) {				
+				GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+				GLuint id = attachment->mTexture->getId();
+				if( glFramebufferTexture ) {
+					if( GL_TEXTURE_CUBE_MAP == target ) {
+						glFramebufferTexture2D( GL_FRAMEBUFFER, attachmentPoint, target, id, 0 );
+					}
+					else {
+						glFramebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+					}
+				}
+				else {
+					GLenum target = attachment->mTexture->getTarget();
+					glFramebufferTexture2D( GL_FRAMEBUFFER, attachmentPoint, target, id, 0 );
+				}
+			}
+			else if( attachment->mBuffer ) {
+				GLuint id = attachment->mBuffer->getId();
+				glFramebufferRenderbuffer( GL_FRAMEBUFFER, attachmentPoint, GL_RENDERBUFFER, id );
+			}
+		}
+	}
+
+	// Attach resolves
+	{
+		ScopedFramebuffer fbScp( GL_FRAMEBUFFER, mId );
+
+		for( auto &it : mAttachments ) {
+			GLenum attachmentPoint = it.first;
+			auto& attachment = it.second;
+			if( ! attachment->mResolve ) {
+				continue;
+			}
+
+			GLenum target = attachment->mTexture->getTarget();
+			GLuint id = attachment->mResolve->getId();
+			if( glFramebufferTexture ) {
+				glFramebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
+			}
+			else {
+				glFramebufferTexture2D( GL_FRAMEBUFFER, attachmentPoint, target, id, 0 );
+			}
+		}
+	}
+}
 #else
 void Fbo::attachAttachments()
 {

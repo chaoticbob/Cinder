@@ -601,6 +601,7 @@
     <ClCompile Include="..\..\src\AntTweakBar\TwMgr.cpp" />
     <ClCompile Include="..\..\src\AntTweakBar\TwOpenGL.cpp" />
     <ClCompile Include="..\..\src\AntTweakBar\TwPrecomp.cpp" />
+    <ClCompile Include="..\..\src\glesload\gl_es_load.cpp" />
     <ClCompile Include="..\..\src\glload\gl_load.c" />
     <ClCompile Include="..\..\src\glload\gl_load_cpp.cpp" />
     <ClCompile Include="..\..\src\glload\wgl_load.c" />
@@ -798,6 +799,14 @@
     <ClInclude Include="..\..\include\cinder\Tween.h" />
     <ClInclude Include="..\..\include\cinder\Unicode.h" />
     <ClInclude Include="..\..\include\cinder\UrlImplWinInet.h" />
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2.h" />
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2ext.h" />
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2platform.h" />
+    <ClInclude Include="..\..\include\glesload\GLES3\gl3.h" />
+    <ClInclude Include="..\..\include\glesload\GLES3\gl31.h" />
+    <ClInclude Include="..\..\include\glesload\GLES3\gl32.h" />
+    <ClInclude Include="..\..\include\glesload\GLES3\gl3platform.h" />
+    <ClInclude Include="..\..\include\glesload\gl_es_load.h" />
     <ClInclude Include="..\..\include\jsoncpp\json\json-forwards.h" />
     <ClInclude Include="..\..\include\jsoncpp\json\json.h" />
     <ClInclude Include="..\..\include\rapidxml\rapidxml.hpp" />

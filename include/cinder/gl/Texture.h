@@ -121,9 +121,7 @@ class TextureBase {
 	// Specifies the comparison operator used when \c GL_TEXTURE_COMPARE_MODE is set to \c GL_COMPARE_R_TO_TEXTURE
 	void			setCompareFunc( GLenum compareFunc );
 
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 	virtual GLint	getSamples() const { return 1; }
-#endif
 
 	//! Returns the appropriate parameter to glGetIntegerv() for a specific target; ie GL_TEXTURE_2D -> GL_TEXTURE_BINDING_2D. Returns 0 on failure.
 	static GLenum	getBindingConstantForTarget( GLenum target );
@@ -268,12 +266,14 @@ class TextureBase {
 		//! Returns the swizzle mask corresponding to \c GL_TEXTURE_SWIZZLE_RGBA.
 		const std::array<GLint,4>&	getSwizzleMask() const { return mSwizzleMask; }
 
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-		void	setSamples( GLint samples ) { mSamples = std::max( 1, samples ); }
+		//! Sets the number of samples for multisample textures. Will always be 1 on platforms that do not support multisample textures.
+		void	setSamples( GLint samples );
+		//! Returns the number of samples for multisample textures. Will always be 1 on platforms that do not support multisample textures.
 		GLint	getSamples() const { return mSamples; }
-		void	setFixedSampleLocations( bool fixedSampleLocations = true ) { mFixedSampleLocations = fixedSampleLocations; }
+		//! Enables/disables fixed sample locations. Will always be disabled on platforms that do not support multisample textures.
+		void	setFixedSampleLocations( bool fixedSampleLocations = true );
+		//! Returns enabled/disabled state fixed sample locations. Will always be false (disabled) on platforms that do not support multisample textures.
 		bool	isFixedSampleLocations() const { return mFixedSampleLocations; }
-#endif
 		
 		//! Returns the debugging label associated with the Texture.
 		const std::string&	getLabel() const { return mLabel; }
@@ -300,10 +300,8 @@ class TextureBase {
 		std::array<GLint,4>		mSwizzleMask;
 		bool					mBorderSpecified;
 		std::array<GLfloat,4>	mBorderColor;
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		GLint					mSamples;
 		bool					mFixedSampleLocations;
-#endif
 		std::string				mLabel; // debug label
 
 #if ! defined( CINDER_GL_ES )		
@@ -517,10 +515,8 @@ class Texture2d : public TextureBase {
 		Format& intermediatePbo( const PboRef &intermediatePbo ) { setIntermediatePbo( intermediatePbo ); return *this; }
 #endif	
 
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		Format&	samples( GLint samples ) { setSamples( samples ); return *this; }
 		bool	isMultisample() const { return ( mSamples > 1 ); }
-#endif
 	
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
@@ -623,9 +619,7 @@ class Texture2d : public TextureBase {
 	//!	Marks whether the scanlines of the image are stored top-down in memory relative to the base address. Default is \c false.
 	void			setTopDown( bool topDown = true ) { mTopDown = topDown; }
 	
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	virtual GLint	getSamples() const { return mFormat.getSamples(); }
-#endif
+	virtual GLint	getSamples() const override { return mFormat.getSamples(); }
 	
 	//! Returns an ImageSource pointing to this Texture
 	ImageSourceRef	createSource();
@@ -691,10 +685,8 @@ class Texture3d : public TextureBase {
 		//! Sets whether the storage for the cannot be changed in the future (making glTexImage3D() calls illegal). More efficient when possible. Default is \c false.
 		Format& immutableStorage( bool immutable = true ) { setImmutableStorage( immutable ); return *this; }
 
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 		Format&	samples( GLint samples ) { setSamples( samples ); return *this; }
-		bool	isMultisample() const { return ( GL_TEXTURE_2D_MULTISAMPLE_ARRAY == mTarget ) || ( mSamples > 1 ); }
-#endif
+		bool	isMultisample() const { return ( mSamples > 1 ); }
 
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }		
@@ -723,9 +715,7 @@ class Texture3d : public TextureBase {
 	//! Returns the depth of the texture, which is the number of images in a texture array, or the depth of a 3D texture measured in pixels
 	GLint			getDepth() const override { return mDepth; }
 
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
-	virtual GLint	getSamples() const { return mFormat.getSamples(); }
-#endif
+	virtual GLint	getSamples() const override { return mFormat.getSamples(); }
 
   protected:
   	Texture3d( GLint width, GLint height, GLint depth, const Format &format );

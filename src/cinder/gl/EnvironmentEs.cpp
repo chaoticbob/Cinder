@@ -90,14 +90,16 @@ class EnvironmentEs : public Environment {
 	bool	supportsTextureLod() const override;
 	bool	supportsGeometryShader() const override;
 	bool	supportsTessellationShader() const override;	
+	bool	supportsTextureMultisample() const override;
+	bool	supportsTextureStorageMultisample() const override;
 
 	GLenum	getPreferredIndexType() const override;
 		
 	void	objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) override;
 	
 	void	allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType ) override;
-	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable ) override;
+	void	allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLint sample = 1, bool fixedSampleLocations = false ) override;
+	void	allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLint sample = 1, bool fixedSampleLocations = false ) override;
 	void	allocateTexStorageCubeMap( GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable ) override;
 
 	std::string		generateVertexShader( const ShaderDef &shader ) override;
@@ -228,6 +230,18 @@ bool EnvironmentEs::supportsTessellationShader() const
 	return result;
 }
 
+bool EnvironmentEs::supportsTextureMultisample() const
+{
+	static bool result = isExtensionAvailable( "GL_ARB_texture_multisample" );
+	return result;
+}
+
+bool EnvironmentEs::supportsTextureStorageMultisample() const
+{
+	static bool result = isExtensionAvailable( "GL_ARB_texture_storage_multisample" );
+	return result;
+}
+
 GLenum EnvironmentEs::getPreferredIndexType() const
 {
 #if defined( CINDER_GL_ES_2 )
@@ -249,7 +263,7 @@ void EnvironmentEs::allocateTexStorage1d( GLenum target, GLsizei levels, GLenum 
 	throw gl::Exception( "allocateTexStorage1d unimplemented on OpenGL ES" );
 }
 
-void EnvironmentEs::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType )
+void EnvironmentEs::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType, GLint sample, bool fixedSampleLocations )
 {
 #if defined( CINDER_GL_ES_2 )
 	// Test at runtime for presence of 'glTexStorage2D' and just force mutable storage if it's not available
@@ -279,7 +293,7 @@ void EnvironmentEs::allocateTexStorage2d( GLenum target, GLsizei levels, GLenum 
 	}
 }
 
-void EnvironmentEs::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable )
+void EnvironmentEs::allocateTexStorage3d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, bool immutable, GLint sample, bool fixedSampleLocations )
 {
 #if defined( CINDER_GL_ES_2 )
 	CI_LOG_E( "allocateTexStorage3d called on unsupported platform" );

@@ -21,7 +21,7 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 #include "cinder/gl/platform.h"
-#include "cinder/linux/gl_es_load.h"
+#include "glesload/gl_es_load.h"
 
 #include <algorithm>
 #include <cctype>
@@ -39,6 +39,14 @@
 #if defined( CINDER_COCOA_TOUCH )
 
 // Nothing for now
+
+// -----------------------------------------------------------------------------
+// Windows (ANGLE)
+// -----------------------------------------------------------------------------
+#elif ( defined( CINDER_MSW ) || defined( CINDER_GL_ANGLE ) )
+  #if ( CINDER_GL_ES_VERSION >= CINDER_GL_ES_VERSION_3 )
+	PFNGLFRAMEBUFFERTEXTUREOESPROC fnptr_ci_glFramebufferTextureOES = nullptr; 
+  #endif
 
 // -----------------------------------------------------------------------------
 // Android and Linux

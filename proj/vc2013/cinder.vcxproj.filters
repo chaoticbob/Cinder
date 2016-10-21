@@ -154,6 +154,18 @@
     <Filter Include="Header Files\tinyexr">
       <UniqueIdentifier>{7db91fc3-293a-46f9-a07c-f55c2de26b5b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\glesload">
+      <UniqueIdentifier>{2874369c-a9b7-47d7-bbe7-940e96be0706}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\glesload\GLES2">
+      <UniqueIdentifier>{190c0720-2e42-4651-8ebc-505a1e4fc5c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\glesload\GLES3">
+      <UniqueIdentifier>{f3a845ef-5548-48b6-b2a9-eb27f220fe45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\glesload">
+      <UniqueIdentifier>{4394248a-0a50-47b9-a626-3aa3200ee4a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\cinder\Area.cpp">
@@ -794,6 +806,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\cinder\ImageSourceFileStbImage.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\glesload\gl_es_load.cpp">
+      <Filter>Source Files\glesload</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1663,6 +1678,30 @@
     </ClInclude>
     <ClInclude Include="..\..\include\cinder\ImageSourceFileStbImage.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\gl_es_load.h">
+      <Filter>Header Files\glesload</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2.h">
+      <Filter>Header Files\glesload\GLES2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2ext.h">
+      <Filter>Header Files\glesload\GLES2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES2\gl2platform.h">
+      <Filter>Header Files\glesload\GLES2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES3\gl3.h">
+      <Filter>Header Files\glesload\GLES3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES3\gl3platform.h">
+      <Filter>Header Files\glesload\GLES3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES3\gl31.h">
+      <Filter>Header Files\glesload\GLES3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\glesload\GLES3\gl32.h">
+      <Filter>Header Files\glesload\GLES3</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

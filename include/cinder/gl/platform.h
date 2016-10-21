@@ -139,7 +139,7 @@
 	#if defined( CINDER_ANDROID ) || defined( CINDER_LINUX ) 	
 		#define GL_ES_EXT_VERSION_2_0
 	#endif 
-	#include "cinder/linux/gl_es_load.h"
+	#include "glesload/gl_es_load.h"
 
 	// Android and Linux
 	#if defined( CINDER_ANDROID ) || defined( CINDER_LINUX )

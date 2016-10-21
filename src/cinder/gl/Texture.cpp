@@ -771,11 +771,8 @@ TextureBase::Format::Format()
 	mSwizzleMask[0] = GL_RED; mSwizzleMask[1] = GL_GREEN; mSwizzleMask[2] = GL_BLUE; mSwizzleMask[3] = GL_ALPHA;
 	mCompareMode = -1;
 	mCompareFunc = -1;	
-
-#if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 	mSamples = 1;
 	mFixedSampleLocations = false;
-#endif
 }
 
 void TextureBase::Format::setSwizzleMask( GLint r, GLint g, GLint b, GLint a )
@@ -794,6 +791,20 @@ void TextureBase::Format::setBorderColor( const ColorA &color )
 	border[2] = color.b;
 	border[3] = color.a;
 	setBorderColor( border );
+}
+
+void TextureBase::Format::setSamples( GLint samples ) 
+{ 
+	if( gl::env()->supportsTextureMultisample() || gl::env()->supportsTextureStorageMultisample() ) {
+		mSamples = std::max( 1, samples ); 
+	}
+}
+
+void TextureBase::Format::setFixedSampleLocations( bool fixedSampleLocations ) 
+{ 
+	if( gl::env()->supportsTextureMultisample() || gl::env()->supportsTextureStorageMultisample() ) {
+		mFixedSampleLocations = fixedSampleLocations; 
+	}
 }
 
 #if ! defined( CINDER_GL_ES )
