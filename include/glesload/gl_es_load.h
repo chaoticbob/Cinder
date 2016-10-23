@@ -99,7 +99,7 @@
 		#define glRenderbufferStorageMultisample			glRenderbufferStorageMultisampleAPPLE
 		#define glResolveMultisampleFramebuffer				glResolveMultisampleFramebufferAPPLE
 
-			#define glVertexAttribDivisor 						glVertexAttribDivisorEXT
+		#define glVertexAttribDivisor 						glVertexAttribDivisorEXT
 	#endif
 
 // -----------------------------------------------------------------------------
