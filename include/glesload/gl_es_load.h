@@ -945,7 +945,7 @@
 		#define glDrawRangeElementsBaseVertexOES fnptr_ci_glDrawRangeElementsBaseVertexOES 
 		#define glDrawElementsInstancedBaseVertexOES fnptr_ci_glDrawElementsInstancedBaseVertexOES 
 		#define glMultiDrawElementsBaseVertexOES fnptr_ci_glMultiDrawElementsBaseVertexOES 
-		#define glFramebufferTextureOES fnptr_ci_glFramebufferTextureOES 
+		#define glFramebufferTexture fnptr_ci_glFramebufferTextureOES 
 		#define glGetProgramBinaryOES fnptr_ci_glGetProgramBinaryOES 
 		#define glProgramBinaryOES fnptr_ci_glProgramBinaryOES 
 		#define glGetBufferPointervOES fnptr_ci_glGetBufferPointervOES 
@@ -1397,6 +1397,9 @@
 		#define GL_RG16 										GL_RG16_EXT
 		#define GL_RGB16 										GL_RGB16_EXT	
 		#define GL_RGBA16 										GL_RGBA16_EXT
+
+		// GL_OES_texture_stencil8
+		#define GL_STENCIL_INDEX								GL_STENCIL_INDEX_OES
 
 		// GL_EXT_buffer_storage
 		typedef void (GL_APIENTRYP PFNGLBUFFERSTORAGEPROC) (GLenum target, GLsizeiptr size, const void *data, GLbitfield flags);

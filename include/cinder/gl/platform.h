@@ -57,23 +57,23 @@
  	#include "EGL/egl.h" 
  	#if defined( CINDER_GL_ES_2 )
  		#define GL_GLEXT_PROTOTYPES
-		#include "cinder/linux/GLES2/gl2.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES2/gl2.h"
+		#include "glesload/GLES2/gl2ext.h"
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_2
 	#elif defined( CINDER_GL_ES_3_1 )
 		#define GL_GLEXT_PROTOTYPES
-		#include "cinder/linux/GLES3/gl31.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES3/gl31.h"
+		#include "glesload/GLES2/gl2ext.h"
 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_1
 	#elif defined( CINDER_GL_ES_3_2 )
 		#define GL_GLEXT_PROTOTYPES
-		#include "cinder/linux/GLES3/gl32.h"
-		#include "cinder/linux/GLES2/gl2ext.h"  
+		#include "glesload/GLES3/gl32.h"
+		#include "glesload/GLES2/gl2ext.h"  
 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_2
  	#else
  		#define GL_GLEXT_PROTOTYPES
-		#include "cinder/linux/GLES3/gl3.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES3/gl3.h"
+		#include "glesload/GLES2/gl2ext.h"
 		#define CINDER_GL_ES_3
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3
  	#endif
@@ -82,29 +82,29 @@
  	#if defined( CINDER_GL_ES_2 )
  		#define GL_GLEXT_PROTOTYPES
  		#include "EGL/egl.h" 
-		#include "cinder/linux/GLES2/gl2.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES2/gl2.h"
+		#include "glesload/GLES2/gl2ext.h"
  		#define CINDER_GL_ES
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_2
  	#elif defined( CINDER_GL_ES_3 )
  		#define GL_GLEXT_PROTOTYPES
  		#include "EGL/egl.h"
-		#include "cinder/linux/GLES3/gl3.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES3/gl3.h"
+		#include "glesload/GLES2/gl2ext.h"
  		#define CINDER_GL_ES
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3
 	#elif defined( CINDER_GL_ES_3_1 )
 		#define GL_GLEXT_PROTOTYPES
  		#include "EGL/egl.h" 
-		#include "cinder/linux/GLES3/gl31.h"
-		#include "cinder/linux/GLES2/gl2ext.h"
+		#include "glesload/GLES3/gl31.h"
+		#include "glesload/GLES2/gl2ext.h"
  		#define CINDER_GL_ES
 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_1
 	#elif defined( CINDER_GL_ES_3_2 )
 		#define GL_GLEXT_PROTOTYPES
  		#include "EGL/egl.h" 
-		#include "cinder/linux/GLES3/gl32.h"
-		#include "cinder/linux/GLES2/gl2ext.h" 
+		#include "glesload/GLES3/gl32.h"
+		#include "glesload/GLES2/gl2ext.h" 
  		#define CINDER_GL_ES
 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_2
  	#else

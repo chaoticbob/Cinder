@@ -51,7 +51,7 @@ if( NOT CINDER_GL_ES_2_RPI )
 			${CINDER_SRC_DIR}/glfw/src/egl_context.c
 		)
 		list( APPEND SRC_SET_CINDER_LINUX
-			${CINDER_SRC_DIR}/cinder/linux/gl_es_load.cpp
+			${CINDER_SRC_DIR}/glesload/gl_es_load.cpp
 		)
 	else()
 		list( APPEND SRC_SET_GLFW 
