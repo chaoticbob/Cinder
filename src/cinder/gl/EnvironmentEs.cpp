@@ -179,7 +179,8 @@ bool EnvironmentEs::isExtensionAvailable( const std::string &extName ) const
 
 bool EnvironmentEs::supportsFboMultiSample() const
 {
-	return false;
+	static bool result = isExtensionAvailable( "GL_EXT_multisampled_render_to_texture" );
+	return result;
 }
 
 bool EnvironmentEs::supportsCoverageSample() const
