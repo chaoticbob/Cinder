@@ -123,7 +123,7 @@ void FboAttachmentApp::setup()
 {
     //test001();
     //test002();
-/*	
+
 	try {
 		auto fboFmt = gl::Fbo::Format();
 		mSingleSampleFbo = gl::Fbo::create( getWindowWidth(), getWindowHeight(), fboFmt );
@@ -132,7 +132,7 @@ void FboAttachmentApp::setup()
 	catch( const std::exception &e ) {
 		CI_LOG_E( "Single Sample FBO Error: " << e.what() );
 	}
-*/
+
 
 	try {
 		auto fboFmt = gl::Fbo::Format().samples( 8 );
