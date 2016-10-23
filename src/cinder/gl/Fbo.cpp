@@ -1127,7 +1127,7 @@ void Fbo::attachAttachments()
 				continue;
 			}
 
-			GLenum target = attachment->mTexture->getTarget();
+			GLenum target = attachment->mResolve->getTarget();
 			GLuint id = attachment->mResolve->getId();
 			if( glFramebufferTexture ) {
 				glFramebufferTexture( GL_FRAMEBUFFER, attachmentPoint, id, 0 );
