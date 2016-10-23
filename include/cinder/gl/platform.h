@@ -77,6 +77,30 @@
 		#define CINDER_GL_ES_3
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3
  	#endif
+#elif defined( CINDER_COCOA )
+	#if defined( CINDER_COCOA_TOUCH ) // iOS
+		#define CINDER_GL_ES
+		// the default for iOS is GL ES 3, but can be overridden with CINDER_GL_ES_2
+		#if ! defined( CINDER_GL_ES_2 )
+			#include <OpenGLES/ES3/gl.h>
+			#include <OpenGLES/ES3/glext.h>
+			#define CINDER_GL_ES_3
+ 			#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3
+		#else
+			#include <OpenGLES/ES2/gl.h>
+			#include <OpenGLES/ES2/glext.h>
+ 			#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_2		
+		#endif
+	#elif defined( CINDER_MAC ) // macOS
+		#if defined( __clang__ )
+			#pragma clang diagnostic push
+			#pragma clang diagnostic ignored "-Wtypedef-redefinition"
+		#endif
+		#include "glload/gl_core.h"
+		#if defined( __clang__ )
+			#pragma clang diagnostic pop
+		#endif
+	#endif
 #elif defined( CINDER_LINUX )
 	// Default is Desktop
  	#if defined( CINDER_GL_ES_2 )
@@ -110,28 +134,38 @@
  	#else
  		#include "glload/gl_core.h"
  	#endif
-#elif ! defined( CINDER_COCOA_TOUCH ) // OS X
-	#if defined( __clang__ )
-		#pragma clang diagnostic push
-		#pragma clang diagnostic ignored "-Wtypedef-redefinition"
-	#endif
-	#include "glload/gl_core.h"
-	#if defined( __clang__ )
-		#pragma clang diagnostic pop
-	#endif
-#else // iOS
-	#define CINDER_GL_ES
-	// the default for iOS is GL ES 3, but can be overridden with CINDER_GL_ES_2
-	#if ! defined( CINDER_GL_ES_2 )
-		#include <OpenGLES/ES3/gl.h>
-		#include <OpenGLES/ES3/glext.h>
-		#define CINDER_GL_ES_3
+#elif defined( CINDER_MSW )
+	// Default is Desktop
+ 	#if defined( CINDER_GL_ES_2 )
+ 		#define GL_GLEXT_PROTOTYPES
+ 		#include "EGL/egl.h" 
+		#include "glesload/GLES2/gl2.h"
+		#include "glesload/GLES2/gl2ext.h"
+ 		#define CINDER_GL_ES
+ 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_2
+ 	#elif defined( CINDER_GL_ES_3 )
+ 		#define GL_GLEXT_PROTOTYPES
+		#include "glesload/GLES3/gl3.h"
+		#include "glesload/GLES2/gl2ext.h"
+ 		#define CINDER_GL_ES
  		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3
-	#else
-		#include <OpenGLES/ES2/gl.h>
-		#include <OpenGLES/ES2/glext.h>
- 		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_2		
-	#endif
+	#elif defined( CINDER_GL_ES_3_1 )
+		#define GL_GLEXT_PROTOTYPES
+ 		#include "EGL/egl.h" 
+		#include "glesload/GLES3/gl31.h"
+		#include "glesload/GLES2/gl2ext.h"
+ 		#define CINDER_GL_ES
+		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_1
+	#elif defined( CINDER_GL_ES_3_2 )
+		#define GL_GLEXT_PROTOTYPES
+ 		#include "EGL/egl.h" 
+		#include "glesload/GLES3/gl32.h"
+		#include "glesload/GLES2/gl2ext.h" 
+ 		#define CINDER_GL_ES
+		#define CINDER_GL_ES_VERSION CINDER_GL_ES_VERSION_3_2
+ 	#else
+ 		#include "glload/gl_core.h"
+ 	#endif
 #endif
 
 // OpenGL ES
@@ -210,7 +244,7 @@
  	#endif
 #endif
 
-#if defined( CINDER_MSW_DESKTOP )
+#if defined( CINDER_MSW_DESKTOP ) && ! defined( CINDER_GL_ES )
 	#if ! defined( CINDER_GL_ANGLE ) // MSW Desktop Only
 		#define CINDER_GL_HAS_COMPUTE_SHADER
 		#define CINDER_GL_HAS_DEBUG_OUTPUT
