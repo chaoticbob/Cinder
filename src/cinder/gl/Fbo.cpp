@@ -56,6 +56,7 @@ namespace gl {
 std::map<GLenum, GLint> Fbo::sNumSampleCounts;
 GLint Fbo::sMaxSamples = -1;
 GLint Fbo::sMaxAttachments = -1;
+GLint Fbo::sMaxDrawBuffers = -1;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Support functions
@@ -1386,6 +1387,10 @@ void Fbo::setDrawBuffers( GLenum attachmentPoint )
 
 void Fbo::setDrawBuffers( const std::vector<GLenum> &attachmentPoints, bool sortAttachmentPoints )
 {
+	if( static_cast<GLint>( attachmentPoints.size() ) > Fbo::getMaxDrawBuffers() ) {
+		CI_LOG_W( "Number of requested draw buffers (" << attachmentPoints.size() << " exceeds max draw buffers (" << Fbo::getMaxDrawBuffers() << ")" );
+	}
+
 #if ! defined( CINDER_GL_ES_2 )
 	ScopedFramebuffer fbScp( GL_FRAMEBUFFER, mMultisampleFramebufferId ? mMultisampleFramebufferId : mId );
 	
@@ -1633,6 +1638,19 @@ GLint Fbo::getMaxAttachments()
 	}
 	
 	return sMaxAttachments;
+#else
+	return 1;
+#endif
+}
+
+GLint Fbo::getMaxDrawBuffers()
+{
+#if ! defined( CINDER_GL_ES_2 )
+	if( sMaxDrawBuffers < 0 ) {
+		glGetIntegerv( GL_MAX_DRAW_BUFFERS, &sMaxDrawBuffers );
+	}
+	
+	return sMaxDrawBuffers;
 #else
 	return 1;
 #endif

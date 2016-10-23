@@ -222,6 +222,8 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	static GLint	getNumSampleCounts( GLenum internalFormat );
 	//! Returns the maximum number of color attachments the graphics card is capable of using for an Fbo
 	static GLint	getMaxAttachments();
+	//! Returns the maximum number of draw buffers the graphics card is capable of using for an Fbo
+	static GLint	getMaxDrawBuffers();
 	
 	//! Returns the debugging label associated with the Fbo.
 	const std::string&	getLabel() const { return mLabel; }
@@ -400,6 +402,7 @@ class Fbo : public std::enable_shared_from_this<Fbo> {
 	static std::map<GLenum, GLint>	sNumSampleCounts;
 	static GLint		sMaxSamples;
 	static GLint		sMaxAttachments;
+	static GLint		sMaxDrawBuffers;
 	
 	friend std::ostream& operator<<( std::ostream &os, const Fbo &rhs );
 };
