@@ -454,7 +454,9 @@ void countAttachments( const std::map<GLenum, Fbo::AttachmentRef>& attachments, 
 				GLenum target = attachment->getTexture() ? attachment->getTexture()->getTarget() : GL_INVALID_ENUM;
 #if defined( CINDER_GL_HAS_TEXTURE_MULTISAMPLE )
 				switch( target ) {
+	#if defined( CINDER_GL_HAS_TEXTURE_1D )
 					case GL_TEXTURE_1D: ++counts.mNumColorTexture1D; break;
+	#endif
 					case GL_TEXTURE_2D_MULTISAMPLE:
 					case GL_TEXTURE_2D: ++counts.mNumColorTexture2D; break;
 					case GL_TEXTURE_3D: ++counts.mNumColorTexture3D; break;
@@ -469,7 +471,7 @@ void countAttachments( const std::map<GLenum, Fbo::AttachmentRef>& attachments, 
 				}
 #else
 				switch( target ) {
-	#if ! defined( CINDER_GL_ANGLE )
+	#if defined( CINDER_GL_HAS_TEXTURE_1D )
 					case GL_TEXTURE_1D: ++counts.mNumColorTexture1D; break;
 	#endif
 					case GL_TEXTURE_2D: ++counts.mNumColorTexture2D; break;
@@ -545,7 +547,7 @@ void validate( const Fbo::Format &mFormat, const Counts& counts, bool *outHasCol
 	bool formatHasArray = false;
 	if( mFormat.hasColorTexture() ) {
 		switch( mFormat.getColorTextureFormat().getTarget() ) {
-#if ! defined( CINDER_GL_ANGLE )
+#if defined( CINDER_GL_HAS_TEXTURE_1D )
 			case GL_TEXTURE_1D: formatHas1D |= true; break;
 #endif
 			case GL_TEXTURE_2D: formatHas2D |= true; break;
