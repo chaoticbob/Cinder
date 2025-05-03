@@ -236,14 +236,16 @@ function( ci_make_app )
 				endif()
 
 				# make a windows symlink using mklink
-				execute_process(
-					COMMAND ${link_cmd}
-					RESULT_VARIABLE resultCode
-					ERROR_VARIABLE errorMessage
-				)
+				if( NOT EXISTS  "${ASSETS_DEST_PATH}" )
+					execute_process(
+						COMMAND ${link_cmd}
+						RESULT_VARIABLE resultCode
+						ERROR_VARIABLE errorMessage
+					)
 
-				if( NOT resultCode EQUAL 0 )
-				    message( WARNING "\nFailed to symlink '${ARG_ASSETS_PATH}' to '${ASSETS_DEST_PATH}', result: ${resultCode} error: ${errorMessage}" )
+					if( NOT resultCode EQUAL 0 )
+						message( WARNING "\nFailed to symlink '${ARG_ASSETS_PATH}' to '${ASSETS_DEST_PATH}', result: ${resultCode} error: ${errorMessage}" )
+					endif()
 				endif()
 			else()
 				# make a symlink
