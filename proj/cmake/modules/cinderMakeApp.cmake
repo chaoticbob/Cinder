@@ -138,6 +138,14 @@ function( ci_make_app )
 	if( MSVC )
 		# Ignore Specific Default Libraries for Debug build
 		set_target_properties( ${ARG_APP_NAME} PROPERTIES LINK_FLAGS_DEBUG "/NODEFAULTLIB:LIBCMT /NODEFAULTLIB:LIBCPMT" )
+		
+		if( APP_PATH MATCHES "${CINDER_PATH}/samples")
+			string( REGEX MATCH "/samples/([^/]+)/" matched "${APP_PATH}" )
+			if( matched )
+				set(subDir "${CMAKE_MATCH_1}")
+			endif()
+			set_target_properties(${ARG_APP_NAME} PROPERTIES FOLDER "samples/${subDir}")
+		endif()
 	endif()
 
 	# Blocks are first searched relative to the sample's CMakeLists.txt file, then within cinder's blocks folder
