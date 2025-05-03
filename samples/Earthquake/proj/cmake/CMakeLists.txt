@@ -27,6 +27,12 @@ set( RESOURCE_FILES
 	${APP_PATH}/resources/stars.png
 )
 
+if( MSVC )
+	list( APPEND RESOURCE_FILES
+		${APP_PATH}/vc2019/Resources.rc
+	)
+endif()
+
 ci_make_app(
 	SOURCES     ${SRC_FILES}
 	CINDER_PATH ${CINDER_PATH}
