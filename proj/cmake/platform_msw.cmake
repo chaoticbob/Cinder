@@ -18,6 +18,17 @@ if( NOT CINDER_DISABLE_ANTTWEAKBAR )
 	list( APPEND SRC_SET_MSW ${CINDER_SRC_DIR}/AntTweakBar/TwDirect3D11.cpp )
 endif()
 
+list( APPEND HDR_SET_APP_MSW
+	${CINDER_INC_DIR}/cinder/app/AppScreenSaver.h
+	${CINDER_INC_DIR}/cinder/app/msw/AppImplMsw.h
+	${CINDER_INC_DIR}/cinder/app/msw/AppImplMswBasic.h
+	${CINDER_INC_DIR}/cinder/app/msw/AppImplMswScreenSaver.h
+	${CINDER_INC_DIR}/cinder/app/msw/AppMsw.h
+	${CINDER_INC_DIR}/cinder/app/msw/PlatformMsw.h
+	${CINDER_INC_DIR}/cinder/app/msw/RendererImpl2dGdi.h
+	${CINDER_INC_DIR}/cinder/app/msw/RendererImplGlMsw.h
+)
+
 list( APPEND SRC_SET_APP_MSW
 	# TODO: should these two files be added to "cinder\\app" group?
 	${CINDER_SRC_DIR}/cinder/app/AppScreenSaver.cpp
@@ -89,6 +100,7 @@ if( NOT CINDER_DISABLE_VIDEO )
 endif()
 
 list( APPEND CINDER_SRC_FILES
+	${HDR_SET_APP_MSW}
 	${SRC_SET_MSW}
 	${SRC_SET_APP_MSW}
 	${SRC_SET_AUDIO_MSW}
@@ -96,7 +108,7 @@ list( APPEND CINDER_SRC_FILES
 )
 
 source_group( "cinder\\msw"			FILES ${SRC_SET_MSW} )
-source_group( "cinder\\app\\msw"	FILES ${SRC_SET_APP_MSW} )
+source_group( "cinder\\app\\msw"	FILES ${HDR_SET_APP_MSW} ${SRC_SET_APP_MSW} )
 source_group( "cinder\\audio\\msw"	FILES ${SRC_SET_AUDIO_MSW} )
 source_group( "cinder\\audio\\dsp"	FILES ${SRC_SET_CINDER_AUDIO_DSP} )
 source_group( "cinder\\video\\msw"	FILES ${SRC_SET_VIDEO_MSW} )
