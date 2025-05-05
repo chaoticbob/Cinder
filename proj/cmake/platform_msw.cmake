@@ -27,6 +27,7 @@ list( APPEND HDR_SET_APP_MSW
 	${CINDER_INC_DIR}/cinder/app/msw/PlatformMsw.h
 	${CINDER_INC_DIR}/cinder/app/msw/RendererImpl2dGdi.h
 	${CINDER_INC_DIR}/cinder/app/msw/RendererImplGlMsw.h
+	${CINDER_INC_DIR}/cinder/app/msw/RendererImplGrfxDx12.h
 )
 
 list( APPEND SRC_SET_APP_MSW
@@ -43,6 +44,7 @@ list( APPEND SRC_SET_APP_MSW
 	#${CINDER_SRC_DIR}/cinder/app/msw/RendererImplDx.cpp
 	#${CINDER_SRC_DIR}/cinder/app/msw/RendererImplGlAngle.cpp
 	${CINDER_SRC_DIR}/cinder/app/msw/RendererImplGlMsw.cpp
+	${CINDER_SRC_DIR}/cinder/app/msw/RendererImplGrfxDx12.cpp
 )
 
 if( NOT CINDER_DISABLE_AUDIO )
@@ -97,6 +99,11 @@ if( NOT CINDER_DISABLE_VIDEO )
 			message( WARNING "Requested GStreamer video playback support for MSW but no suitable GStreamer installation found. Make sure that GStreamer is installed properly and GSTREAMER_1_0_ROOT_X86_64 is defined in your env variables. " )
 		endif()
 	endif()
+endif()
+
+if( CINDER_DX12 )
+	list( APPEND CINDER_DEFINES CINDER_DX12 )
+	list( APPEND CINDER_LIBS_DEPENDS d3d12 dxgi dxguid )
 endif()
 
 list( APPEND CINDER_SRC_FILES

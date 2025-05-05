@@ -15,6 +15,8 @@ project( cinder )
 # Enable folders for organization in Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+option( CINDER_DX12 "Enable DirectX 12 support" OFF )
+
 option( CINDER_BUILD_TESTS "Build unit tests." OFF )
 option( CINDER_BUILD_ALL_SAMPLES "Build all samples." OFF )
 set( CINDER_BUILD_SAMPLE "" CACHE STRING "Build a specific sample by specifying its path relative to the samples directory (ex. '_opengl/Cube')." )
