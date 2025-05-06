@@ -25,6 +25,8 @@
 #include "cinder/app/msw/AppImplMsw.h"
 #include "cinder/Log.h"
 
+#include "cinder/grfx/dx12/Util.h"
+
 #include <dxgidebug.h>
 
 namespace cinder::app {
@@ -127,23 +129,25 @@ void RendererImplGrfxDx12::createDevice()
 void RendererImplGrfxDx12::createQueues()
 {
 	if( this->getRenderer()->getOptions().getGraphicsQueue() ) {
-		mGraphicsQueue = cinder::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT );
+		mGraphicsQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT );
 		mComputeQueue  = mGraphicsQueue;
 		mCopyQueue	   = mGraphicsQueue;
 	}
 
 	if( this->getRenderer()->getOptions().getComputeQueue() ) {
-		mComputeQueue = cinder::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE );
+		mComputeQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE );
 		mCopyQueue	  = mComputeQueue;
 	}
 
 	if( this->getRenderer()->getOptions().getCopyQueue() ) {
-		mCopyQueue = cinder::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COPY );
+		mCopyQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COPY );
 	}
 }
 
 void RendererImplGrfxDx12::createSwapchain()
 {
+	mRenderTargets.clear();
+
 	::RECT clientRect;
 	::GetClientRect( this->getRenderer()->getHwnd(), &clientRect );
 	uint32_t width	= ( clientRect.right - clientRect.left );
@@ -152,7 +156,7 @@ void RendererImplGrfxDx12::createSwapchain()
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
 	swapchainDesc.Width					= static_cast<UINT>( width );
 	swapchainDesc.Height				= static_cast<UINT>( height );
-	swapchainDesc.Format				= DXGI_FORMAT_B8G8R8A8_UNORM;
+	swapchainDesc.Format				= ci::grfx::dx12::toDxgiFormat( ci::grfx::Format::B8G8R8A8_UNORM );
 	swapchainDesc.Stereo				= FALSE;
 	swapchainDesc.SampleDesc			= { 1, 0 };
 	swapchainDesc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_SHADER_INPUT;
@@ -178,6 +182,77 @@ void RendererImplGrfxDx12::createSwapchain()
 	hr = pSwapchain->QueryInterface( IID_PPV_ARGS( &mSwapchain ) );
 	if( FAILED( hr ) ) {
 		throw ci::Exception( "QueryInterface failed required DXGI swapchain version" );
+	}
+}
+
+void RendererImplGrfxDx12::createSwapchainBuffers()
+{
+	DXGI_SWAP_CHAIN_DESC1 desc = {};
+	mSwapchain->GetDesc1( &desc );
+
+	for( UINT i = 0; i < desc.BufferCount; ++i ) {
+		ComPtr<ID3D12Resource> resource = nullptr;
+
+		HRESULT hr = mSwapchain->GetBuffer( i, IID_PPV_ARGS( &resource ) );
+		if( FAILED( hr ) ) {
+			throw ci::Exception( "Failed to get swapchain buffer" );
+		}
+
+		auto texture = ci::grfx::dx12::Texture2D::create(
+			static_cast<uint32_t>( desc.Width ),  // width
+			static_cast<uint32_t>( desc.Height ), // height
+			ci::grfx::Format::B8G8R8A8_UNORM,	  // format
+			1,									  // sampleCount
+			1,									  // mipLevelCount
+			1,									  // arrayLayerCount
+			resource );
+
+		auto swapchainBuffer = ci::grfx::dx12::RenderTarget::create( texture );
+
+		mSwapchainBuffers.push_back( swapchainBuffer );
+	}
+}
+
+void RendererImplGrfxDx12::createRenderTargets()
+{
+	uint32_t sampleCount = this->getRenderer()->getOptions().getMsaa();
+	sampleCount			 = ( sampleCount >= 2 ? sampleCount : 1 );
+
+	DXGI_SWAP_CHAIN_DESC1 desc = {};
+	mSwapchain->GetDesc1( &desc );
+
+	for( UINT i = 0; i < desc.BufferCount; ++i ) {
+		// Render target
+		{
+			auto texture = ci::grfx::dx12::Texture2D::createRenderTarget(
+				mDevice.Get(),
+				static_cast<uint32_t>( desc.Width ),  // width
+				static_cast<uint32_t>( desc.Height ), // height
+				ci::grfx::Format::B8G8R8A8_UNORM,	  // format
+				1,									  // sampleCount
+				1,									  // mipLevelCount
+				1 );								  // arrayLayerCount
+
+			auto renderTarget = ci::grfx::dx12::RenderTarget::create( texture );
+
+			mRenderTargets.push_back( renderTarget );
+		}
+
+		// Depth stencil
+		{
+			auto texture = ci::grfx::dx12::Texture2D::createDepthStencil(
+				mDevice.Get(),
+				static_cast<uint32_t>( desc.Width ),  // width
+				static_cast<uint32_t>( desc.Height ), // height
+				ci::grfx::Format::D32_FLOAT,		  // format
+				1,									  // sampleCount
+				1,									  // mipLevelCount
+				1 );								  // arrayLayerCount
+
+			auto depthStencil = ci::grfx::dx12::DepthStencil::create( texture );
+
+			mDepthStencils.push_back( depthStencil );
+		}
 	}
 }
 
@@ -232,6 +307,10 @@ void RendererImplGrfxDx12::initialize()
 
 	// Create swapchain
 	createSwapchain();
+
+	// Create swapchain buffers and render targets
+	createSwapchainBuffers();
+	createRenderTargets();
 }
 
 void RendererImplGrfxDx12::kill()
@@ -282,6 +361,11 @@ void RendererImplGrfxDx12::defaultResize()
 {
 	this->waitForIdle();
 
+	// Release swapchain buffers and render targets
+	mSwapchainBuffers.clear();
+	mRenderTargets.clear();
+	mDepthStencils.clear();
+
 	::RECT clientRect;
 	::GetClientRect( this->getRenderer()->getHwnd(), &clientRect );
 	uint32_t width	= ( clientRect.right - clientRect.left );
@@ -296,6 +380,10 @@ void RendererImplGrfxDx12::defaultResize()
 	if( FAILED( hr ) ) {
 		throw ci::Exception( "Resize buffers failed for DXGI swapchain" );
 	}
+
+	// Recreate swapchain buffers and render targets
+	createSwapchainBuffers();
+	createRenderTargets();
 }
 
 } // namespace cinder::app

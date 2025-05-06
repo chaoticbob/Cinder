@@ -44,6 +44,8 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	void createDevice();
 	void createQueues();
 	void createSwapchain();
+	void createSwapchainBuffers();
+	void createRenderTargets();
 
 	virtual void initialize() override;
 	virtual void kill() override;
@@ -56,14 +58,15 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	virtual void defaultResize() override;
 
   private:
-	ComPtr<IDXGIFactory2>							 mFactory		= nullptr;
-	ComPtr<ID3D12Device9>							 mDevice		= nullptr;
-	cinder::grfx::dx12::QueueRef					 mGraphicsQueue = nullptr;
-	cinder::grfx::dx12::QueueRef					 mComputeQueue	= nullptr;
-	cinder::grfx::dx12::QueueRef					 mCopyQueue		= nullptr;
-	ComPtr<IDXGISwapChain4>							 mSwapchain		= nullptr;
-	std::vector<cinder::grfx::dx12::RenderTargetRef> mRenderTargets = {};
-	std::vector<cinder::grfx::dx12::DepthStencilRef> mDepthStencils = {};
+	ComPtr<IDXGIFactory2>							 mFactory		   = nullptr;
+	ComPtr<ID3D12Device9>							 mDevice		   = nullptr;
+	cinder::grfx::dx12::QueueRef					 mGraphicsQueue	   = nullptr;
+	cinder::grfx::dx12::QueueRef					 mComputeQueue	   = nullptr;
+	cinder::grfx::dx12::QueueRef					 mCopyQueue		   = nullptr;
+	ComPtr<IDXGISwapChain4>							 mSwapchain		   = nullptr;
+	std::vector<cinder::grfx::dx12::RenderTargetRef> mSwapchainBuffers = {};
+	std::vector<cinder::grfx::dx12::RenderTargetRef> mRenderTargets	   = {};
+	std::vector<cinder::grfx::dx12::DepthStencilRef> mDepthStencils	   = {};
 };
 
 } // namespace cinder::app

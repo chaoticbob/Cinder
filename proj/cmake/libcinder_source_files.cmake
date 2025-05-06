@@ -218,20 +218,24 @@ if( CINDER_MSW AND CINDER_DX12 )
 	list( APPEND HDR_SET_CINDER_DX12
 		${CINDER_INC_DIR}/cinder/grfx/dx12/platform.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Buffer.h
+		${CINDER_INC_DIR}/cinder/grfx/dx12/CommandBuffer.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Device.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Queue.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/RenderTarget.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Swapchain.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Texture.h
+		${CINDER_INC_DIR}/cinder/grfx/dx12/Util.h
 	)
 
 	list( APPEND SRC_SET_CINDER_DX12
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Buffer.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/dx12/CommandBuffer.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Device.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Queue.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/RenderTarget.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Swapchain.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Texture.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/dx12/Util.cpp
 	)
 
 	list( APPEND CINDER_SRC_FILES              ${HDR_SET_CINDER_DX12} )
@@ -317,6 +321,7 @@ source_group( "cinder\\gl" FILES    ${HDR_SET_CINDER_GL} ${SRC_SET_CINDER_GL} )
 list( APPEND HDR_SET_CINDER_GRFX
 	${CINDER_INC_DIR}/cinder/grfx/platform.h
 	${CINDER_INC_DIR}/cinder/grfx/Buffer.h
+	${CINDER_INC_DIR}/cinder/grfx/CommandBuffer.h
 	${CINDER_INC_DIR}/cinder/grfx/Device.h
 	${CINDER_INC_DIR}/cinder/grfx/Format.h
 	${CINDER_INC_DIR}/cinder/grfx/RenderTarget.h
@@ -326,6 +331,7 @@ list( APPEND HDR_SET_CINDER_GRFX
 
 list( APPEND SRC_SET_CINDER_GRFX
 	${CINDER_SRC_DIR}/cinder/grfx/Buffer.cpp
+	${CINDER_SRC_DIR}/cinder/grfx/CommandBuffer.cpp
 	${CINDER_SRC_DIR}/cinder/grfx/Device.cpp
 	${CINDER_SRC_DIR}/cinder/grfx/RenderTarget.cpp
 	${CINDER_SRC_DIR}/cinder/grfx/Swapchain.cpp

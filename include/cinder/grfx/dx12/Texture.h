@@ -28,6 +28,13 @@
 
 namespace cinder::grfx::dx12 {
 
+class Texture1D;
+class Texture2D;
+class Texture3D;
+using Texture1DRef = std::shared_ptr<grfx::Texture1D>;
+using Texture2DRef = std::shared_ptr<grfx::Texture2D>;
+using Texture3DRef = std::shared_ptr<grfx::Texture3D>;
+
 // ----------------------------------------------------------------------------------------------------
 // TextureBase
 // ----------------------------------------------------------------------------------------------------
@@ -35,6 +42,15 @@ template <typename BaseT>
 class TextureShim : public BaseT {
   public:
 	TextureShim() {}
+
+	TextureShim( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: BaseT( width, height, format, sampleCount ),
+		  dx12::TextureResource( width, height, format, sampleCount ) {}
+
+	TextureShim( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
+		: BaseT( width, height, format, sampleCount, mipLevelCount, arrayLayerCount ),
+		  mResource( resource ) {}
+
 	virtual ~TextureShim() {}
 
 	ID3D12Resource *GetResource() const { return mResource.Get(); }
@@ -58,6 +74,15 @@ class Texture1D : public TextureShim<grfx::Texture1D> {
 class Texture2D : public TextureShim<grfx::Texture2D> {
   public:
 	Texture2D() {}
+
+	Texture2D( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
+		: TextureShim<grfx::Texture2D>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource ) {}
+
+	static dx12::Texture2DRef create( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource );
+	static dx12::Texture2DRef create( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable );
+	static dx12::Texture2DRef createRenderTarget( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
+	static dx12::Texture2DRef createDepthStencil( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
+
 	virtual ~Texture2D() {}
 };
 

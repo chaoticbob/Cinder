@@ -31,29 +31,37 @@ namespace cinder::grfx {
 class RenderTarget {
   public:
 	RenderTarget() {}
+
+	RenderTarget( const grfx::Texture2DRef &texture );
+
 	virtual ~RenderTarget() {}
 
-	grfx::Format getFormat() const { return mFormat; }
-
-	const Texture2DRef &getTexture() const { return mTexture; }
+	uint32_t		   getWidth() const { return mTexture->getWidth(); }
+	uint32_t		   getHeight() const { return mTexture->getHeight(); }
+	grfx::Format	   getFormat() const { return mFormat; }
+	grfx::Texture2DRef getTexture() const { return mTexture; }
 
   protected:
-	grfx::Format mFormat = grfx::Format::UNKNOWN;
-	Texture2DRef mTexture;
+	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;
+	grfx::Texture2DRef mTexture = nullptr;
 };
 
 class DepthStencil {
   public:
 	DepthStencil() {}
+
+	DepthStencil( const grfx::Texture2DRef &texture );
+
 	virtual ~DepthStencil() {}
 
-	grfx::Format getFormat() const { return mFormat; }
-
-	const Texture2DRef &getTexture() const { return mTexture; }
+	uint32_t		   getWidth() const { return mTexture->getWidth(); }
+	uint32_t		   getHeight() const { return mTexture->getHeight(); }
+	grfx::Format	   getFormat() const { return mFormat; }
+	grfx::Texture2DRef getTexture() const { return mTexture; }
 
   protected:
-	grfx::Format mFormat = grfx::Format::UNKNOWN;
-	Texture2DRef mTexture;
+	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;
+	grfx::Texture2DRef mTexture = nullptr;
 };
 
 } // namespace cinder::grfx

@@ -21,17 +21,22 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#include "cinder/grfx/dx12/Util.h"
 
-namespace cinder::grfx {
+namespace cinder::grfx::dx12 {
 
-enum class Format
+DXGI_FORMAT toDxgiFormat( grfx::Format format )
 {
-	UNKNOWN = 0,
+	// clang-format off
+	switch (format) {
+		default: break;
 
-	B8G8R8A8_UNORM = 1,
+		case grfx::Format::B8G8R8A8_UNORM : return DXGI_FORMAT_B8G8R8A8_UNORM;
+		case grfx::Format::D32_FLOAT      : return DXGI_FORMAT_D32_FLOAT;
+	}
+	// clang-format on
 
-	D32_FLOAT = 2,
-};
+	return DXGI_FORMAT_UNKNOWN;
+}
 
-} // namespace cinder::grfx
+} // namespace cinder::grfx::dx12

@@ -25,13 +25,11 @@
 
 namespace cinder::grfx {
 
-enum class Format
-{
-	UNKNOWN = 0,
+class Queue;
 
-	B8G8R8A8_UNORM = 1,
-
-	D32_FLOAT = 2,
+class CommandBuffer {
+  public:
 };
 
 } // namespace cinder::grfx
+

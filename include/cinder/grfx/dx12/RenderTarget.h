@@ -24,19 +24,36 @@
 #pragma once
 
 #include "cinder/grfx/dx12/platform.h"
+#include "cinder/grfx/dx12/Texture.h"
 #include "cinder/grfx/RenderTarget.h"
 
 namespace cinder::grfx::dx12 {
 
-using RenderTargetRef = std::shared_ptr<class RenderTarget>;
-using DepthStencilRef = std::shared_ptr<class DepthStencil>;
+class RenderTarget;
+class DepthStencil;
+using RenderTargetRef = std::shared_ptr<dx12::RenderTarget>;
+using DepthStencilRef = std::shared_ptr<dx12::DepthStencil>;
 
 class RenderTarget : public grfx::RenderTarget {
   public:
+	RenderTarget();
+
+	RenderTarget( const dx12::Texture2DRef &texture );
+
+	virtual ~RenderTarget() {}
+
+	static dx12::RenderTargetRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::RenderTarget>( texture ); }
 };
 
 class DepthStencil : public grfx::DepthStencil {
   public:
+	DepthStencil() {}
+
+	DepthStencil( const dx12::Texture2DRef &texture );
+
+	virtual ~DepthStencil() {}
+
+	static dx12::DepthStencilRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::DepthStencil>( texture ); }
 };
 
 } // namespace cinder::grfx::dx12

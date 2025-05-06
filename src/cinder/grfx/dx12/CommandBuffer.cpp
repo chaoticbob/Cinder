@@ -21,17 +21,9 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#include "cinder/grfx/dx12/CommandBuffer.h"
 
-namespace cinder::grfx {
+namespace cinder::grfx::dx12 {
 
-enum class Format
-{
-	UNKNOWN = 0,
+} // namespace cinder::grfx::dx12
 
-	B8G8R8A8_UNORM = 1,
-
-	D32_FLOAT = 2,
-};
-
-} // namespace cinder::grfx

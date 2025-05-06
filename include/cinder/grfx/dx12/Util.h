@@ -23,15 +23,11 @@
 
 #pragma once
 
-namespace cinder::grfx {
+#include "cinder/grfx/dx12/platform.h"
+#include "cinder/grfx/Format.h"
 
-enum class Format
-{
-	UNKNOWN = 0,
+namespace cinder::grfx::dx12 {
 
-	B8G8R8A8_UNORM = 1,
+DXGI_FORMAT toDxgiFormat( grfx::Format format );
 
-	D32_FLOAT = 2,
-};
-
-} // namespace cinder::grfx
+} // namespace cinder::grfx::dx12

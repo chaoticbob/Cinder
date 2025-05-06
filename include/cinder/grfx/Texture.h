@@ -27,9 +27,12 @@
 
 namespace cinder::grfx {
 
-using Texture1DRef = std::shared_ptr<class Texture1D>;
-using Texture2DRef = std::shared_ptr<class Texture2D>;
-using Texture3DRef = std::shared_ptr<class Texture3D>;
+class Texture1D;
+class Texture2D;
+class Texture3D;
+using Texture1DRef = std::shared_ptr<grfx::Texture1D>;
+using Texture2DRef = std::shared_ptr<grfx::Texture2D>;
+using Texture3DRef = std::shared_ptr<grfx::Texture3D>;
 
 // ----------------------------------------------------------------------------------------------------
 // TextureBase
@@ -37,18 +40,26 @@ using Texture3DRef = std::shared_ptr<class Texture3D>;
 class TextureBase {
   public:
 	TextureBase() {}
+
+	TextureBase( uint32_t width, uint32_t height, uint32_t depth, grfx::Format format, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: mWidth( width ), mHeight( height ), mDepth( depth ), mFormat( format ), mMipLevelCount( mipLevelCount ), mArrayLayerCount( arrayLayerCount ) {}
+
 	virtual ~TextureBase() {}
 
-	virtual uint32_t getWidth() const  = 0;
-	virtual uint32_t getHeight() const = 0;
-	virtual uint32_t getDepth() const  = 0;
-
+	uint32_t	 getWidth() const { return mWidth; }
+	uint32_t	 getHeight() const { return mHeight; }
+	uint32_t	 getDepth() const { return mDepth; }
 	grfx::Format getFormat() const { return mFormat; }
-	uint32_t	 getSamples() const { return mSamples; }
+	uint32_t	 getMipLevelCount() const { return mMipLevelCount; }
+	uint32_t	 getArrayLayerCount() const { return mArrayLayerCount; }
 
   protected:
-	grfx::Format mFormat  = grfx::Format::UNKNOWN;
-	uint32_t	 mSamples = 1;
+	uint32_t	 mWidth			  = 0;
+	uint32_t	 mHeight		  = 0;
+	uint32_t	 mDepth			  = 0;
+	grfx::Format mFormat		  = grfx::Format::UNKNOWN;
+	uint32_t	 mMipLevelCount	  = 0;
+	uint32_t	 mArrayLayerCount = 0;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -57,14 +68,8 @@ class TextureBase {
 class Texture1D : public TextureBase {
   public:
 	Texture1D() {}
+
 	virtual ~Texture1D() {}
-
-	virtual uint32_t getWidth() const { return mWidth; }
-	virtual uint32_t getHeight() const { return 1; }
-	virtual uint32_t getDepth() const { return 1; }
-
-  protected:
-	uint32_t mWidth = 0;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -73,15 +78,17 @@ class Texture1D : public TextureBase {
 class Texture2D : public TextureBase {
   public:
 	Texture2D() {}
+
+	Texture2D( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: TextureBase( width, height, 1, format, mipLevelCount, arrayLayerCount ),
+		  mSampleCount( std::max<uint32_t>( sampleCount, 1 ) ) {}
+
 	virtual ~Texture2D() {}
 
-	virtual uint32_t getWidth() const { return mWidth; }
-	virtual uint32_t getHeight() const { return mHeight; }
-	virtual uint32_t getDepth() const { return 1; }
+	uint32_t getSampleCount() const { return mSampleCount; }
 
   protected:
-	uint32_t mWidth	 = 0;
-	uint32_t mHeight = 0;
+	uint32_t mSampleCount = 1;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -91,15 +98,6 @@ class Texture3D : public TextureBase {
   public:
 	Texture3D() {}
 	virtual ~Texture3D() {}
-
-	virtual uint32_t getWidth() const { return mWidth; }
-	virtual uint32_t getHeight() const { return mHeight; }
-	virtual uint32_t getDepth() const { return mDepth; }
-
-  protected:
-	uint32_t mWidth	 = 0;
-	uint32_t mHeight = 0;
-	uint32_t mDepth	 = 0;
 };
 
 } // namespace cinder::grfx
