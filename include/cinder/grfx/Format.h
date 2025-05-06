@@ -21,8 +21,13 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cinder/grfx/dx12/RenderTarget.h"
+#pragma once
 
-namespace cinder::grfx::dx12 {
+namespace cinder::grfx {
 
-} // namespace cinder::grfx::dx12
+enum class Format
+{
+	UNKNOWN = 0,
+};
+
+} // namespace cinder::grfx

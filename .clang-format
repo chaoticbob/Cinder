@@ -58,6 +58,8 @@ IndentCaseLabels: true
 IndentPPDirectives: AfterHash
 IndentWidth: 4
 IndentWrappedFunctionNames: false
+InsertNewlineAtEOF: true
+KeepEmptyLinesAtEOF: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 LambdaBodyIndentation: Signature
 NamespaceIndentation: None
@@ -69,6 +71,7 @@ PointerAlignment: Right
 ReflowComments: true
 SortIncludes: false
 SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: true
 SpaceAfterTemplateKeyword: true
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeCpp11BracedList: false

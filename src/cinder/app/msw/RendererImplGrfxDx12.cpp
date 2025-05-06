@@ -56,7 +56,7 @@ std::vector<ComPtr<IDXGIAdapter4>> RendererImplGrfxDx12::enumerateAdapters( IDXG
 
 			bool isHardware = ( desc.Flags == DXGI_ADAPTER_FLAG_NONE );
 			bool isSoftware = includeSoftwareAdapters && ( desc.Flags == DXGI_ADAPTER_FLAG_SOFTWARE );
-			if( !( isHardware || isSoftware ) ) {
+			if( ! ( isHardware || isSoftware ) ) {
 				CI_LOG_I( "unsupported flags for DXGI adapter " << adapterIndex << ", skipping" );
 				continue;
 			}
@@ -119,7 +119,7 @@ void RendererImplGrfxDx12::createDevice()
 		break;
 	}
 
-	if( !mDevice ) {
+	if( ! mDevice ) {
 		throw ci::Exception( "Unable to create D3D12 device from any of the adapters on this system" );
 	}
 }
@@ -156,13 +156,13 @@ void RendererImplGrfxDx12::createSwapchain()
 	swapchainDesc.Stereo				= FALSE;
 	swapchainDesc.SampleDesc			= { 1, 0 };
 	swapchainDesc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_SHADER_INPUT;
-	swapchainDesc.BufferCount			= 2;
+	swapchainDesc.BufferCount			= static_cast<UINT>( this->getRenderer()->getOptions().getSwapchainBufferCount() );
 	swapchainDesc.Scaling				= DXGI_SCALING_NONE;
 	swapchainDesc.SwapEffect			= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapchainDesc.AlphaMode				= DXGI_ALPHA_MODE_IGNORE;
 	swapchainDesc.Flags					= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-	ComPtr<IDXGISwapChain1> swapchain;
+	IDXGISwapChain1 *pSwapchain = nullptr;
 	//
 	HRESULT hr = mFactory->CreateSwapChainForHwnd(
 		mGraphicsQueue->getQueue(),
@@ -170,12 +170,12 @@ void RendererImplGrfxDx12::createSwapchain()
 		&swapchainDesc,
 		nullptr, // @TODO: Add fullscreen support
 		nullptr,
-		&swapchain );
+		&pSwapchain );
 	if( FAILED( hr ) ) {
 		throw ci::Exception( "Failed to create DXGI swapchain" );
 	}
 
-	hr = swapchain->QueryInterface( IID_PPV_ARGS( &mSwapchain ) );
+	hr = pSwapchain->QueryInterface( IID_PPV_ARGS( &mSwapchain ) );
 	if( FAILED( hr ) ) {
 		throw ci::Exception( "QueryInterface failed required DXGI swapchain version" );
 	}
@@ -236,6 +236,27 @@ void RendererImplGrfxDx12::initialize()
 
 void RendererImplGrfxDx12::kill()
 {
+	this->waitForIdle();
+
+	mSwapchain.Reset();
+	mGraphicsQueue.reset();
+	mComputeQueue.reset();
+	mCopyQueue.reset();
+	mDevice.Reset();
+	mFactory.Reset();
+}
+
+void RendererImplGrfxDx12::waitForIdle()
+{
+	if( mGraphicsQueue ) {
+		mGraphicsQueue->waitForIdle();
+	}
+	if( mComputeQueue && ( mComputeQueue != mGraphicsQueue ) ) {
+		mComputeQueue->waitForIdle();
+	}
+	if( mCopyQueue && ( ( mCopyQueue != mGraphicsQueue ) || ( mCopyQueue != mGraphicsQueue ) ) ) {
+		mCopyQueue->waitForIdle();
+	}
 }
 
 void RendererImplGrfxDx12::startDraw()
@@ -259,18 +280,7 @@ void RendererImplGrfxDx12::swapBuffers()
 
 void RendererImplGrfxDx12::defaultResize()
 {
-	// Wait for all the queues to idle
-	{
-		if( mGraphicsQueue ) {
-			mGraphicsQueue->waitForIdle();
-		}
-		if( mComputeQueue && ( mComputeQueue != mGraphicsQueue ) ) {
-			mComputeQueue->waitForIdle();
-		}
-		if( mCopyQueue && ( ( mCopyQueue != mGraphicsQueue ) || ( mCopyQueue != mGraphicsQueue ) ) ) {
-			mCopyQueue->waitForIdle();
-		}
-	}
+	this->waitForIdle();
 
 	::RECT clientRect;
 	::GetClientRect( this->getRenderer()->getHwnd(), &clientRect );

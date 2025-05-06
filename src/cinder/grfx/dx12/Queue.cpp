@@ -39,6 +39,9 @@ Queue::~Queue()
 	if( mWaitForIdleEvent ) {
 		CloseHandle( mWaitForIdleEvent );
 	}
+
+	mWaitForIdleFence.Reset();
+	mQueue.Reset();
 }
 
 void Queue::initialize( ID3D12Device *pDevice )

@@ -72,6 +72,7 @@ void RendererGrfx::setup( WindowImplMsw *windowImpl, RendererRef sharedRenderer 
 
 void RendererGrfx::kill()
 {
+	mImpl->kill();
 }
 
 HWND RendererGrfx::getHwnd() const

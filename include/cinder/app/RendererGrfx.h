@@ -88,6 +88,10 @@ class CI_API RendererGrfx : public Renderer {
 		bool				getCopyQueue() const { return mCopyQueueEnabled; }
 		void				setCopyQueue( bool enable = true ) { mCopyQueueEnabled = enable; }
 
+		Options&			swapchainBufferCount( uint32_t count ) { mSwapchainBufferCount = std::max<uint32_t>(count, 1); return *this; }
+		uint32_t			getSwapchainBufferCount() const { return mSwapchainBufferCount; }
+		void				setSwapchainBufferCount( uint32_t count ) { mSwapchainBufferCount = std::max<uint32_t>(count, 1); }
+
 #if defined( CINDER_DX12 )
 		Options&			featureLevel( D3D_FEATURE_LEVEL featureLevel ) { mFeatureLevel = featureLevel; return *this; }
 		D3D_FEATURE_LEVEL	getFeatureLevel() const { return mFeatureLevel; }
@@ -109,6 +113,7 @@ class CI_API RendererGrfx : public Renderer {
 		bool		  mGraphicsQueueEnabled = true;
 		bool		  mComputeQueueEnabled	= false;
 		bool		  mCopyQueueEnabled		= false;
+		uint32_t	  mSwapchainBufferCount = 2;
 
 #if defined( CINDER_DX12 )
 		D3D_FEATURE_LEVEL mFeatureLevel = D3D_FEATURE_LEVEL_12_2;

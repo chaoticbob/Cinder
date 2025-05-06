@@ -318,6 +318,7 @@ list( APPEND HDR_SET_CINDER_GRFX
 	${CINDER_INC_DIR}/cinder/grfx/platform.h
 	${CINDER_INC_DIR}/cinder/grfx/Buffer.h
 	${CINDER_INC_DIR}/cinder/grfx/Device.h
+	${CINDER_INC_DIR}/cinder/grfx/Format.h
 	${CINDER_INC_DIR}/cinder/grfx/RenderTarget.h
 	${CINDER_INC_DIR}/cinder/grfx/Swapchain.h
 	${CINDER_INC_DIR}/cinder/grfx/Texture.h

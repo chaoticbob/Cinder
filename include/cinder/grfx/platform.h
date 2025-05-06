@@ -23,6 +23,10 @@
 
 #pragma once
 
+#include "cinder/grfx/Format.h"
+
+#include <memory>
+
 namespace cinder::grfx {
 
 enum class Api

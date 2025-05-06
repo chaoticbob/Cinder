@@ -25,6 +25,7 @@
 
 #include "cinder/app/RendererGrfx.h"
 #include "cinder/grfx/dx12/Queue.h"
+#include "cinder/grfx/dx12/RenderTarget.h"
 
 namespace cinder::app {
 
@@ -47,18 +48,22 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	virtual void initialize() override;
 	virtual void kill() override;
 
+	void waitForIdle();
+
 	virtual void startDraw() override;
 	virtual void finishDraw() override;
 	virtual void swapBuffers() override;
 	virtual void defaultResize() override;
 
   private:
-	ComPtr<IDXGIFactory2>		 mFactory		= nullptr;
-	ComPtr<ID3D12Device9>		 mDevice		= nullptr;
-	cinder::grfx::dx12::QueueRef mGraphicsQueue = nullptr;
-	cinder::grfx::dx12::QueueRef mComputeQueue	= nullptr;
-	cinder::grfx::dx12::QueueRef mCopyQueue		= nullptr;
-	ComPtr<IDXGISwapChain4>		 mSwapchain		= nullptr;
+	ComPtr<IDXGIFactory2>							 mFactory		= nullptr;
+	ComPtr<ID3D12Device9>							 mDevice		= nullptr;
+	cinder::grfx::dx12::QueueRef					 mGraphicsQueue = nullptr;
+	cinder::grfx::dx12::QueueRef					 mComputeQueue	= nullptr;
+	cinder::grfx::dx12::QueueRef					 mCopyQueue		= nullptr;
+	ComPtr<IDXGISwapChain4>							 mSwapchain		= nullptr;
+	std::vector<cinder::grfx::dx12::RenderTargetRef> mRenderTargets = {};
+	std::vector<cinder::grfx::dx12::DepthStencilRef> mDepthStencils = {};
 };
 
 } // namespace cinder::app
