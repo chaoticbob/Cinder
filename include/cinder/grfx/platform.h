@@ -26,6 +26,7 @@
 #include "cinder/grfx/Format.h"
 
 #include <memory>
+#include <vector>
 
 namespace cinder::grfx {
 

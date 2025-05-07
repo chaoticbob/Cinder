@@ -24,50 +24,29 @@
 #pragma once
 
 #include "cinder/grfx/platform.h"
-#include "cinder/grfx/Texture.h"
 
 namespace cinder::grfx {
 
-class RenderTarget;
-class DepthStencil;
+class GraphicsCommandBuffer;
+class ComputeCommandBuffer;
+class CopyCommandBuffer;
+class Queue;
 
-using RenderTargetRef = std::shared_ptr<grfx::RenderTarget>;
-using DepthStencilRef = std::shared_ptr<grfx::DepthStencil>;
+using GraphicsCommandBufferRef = std::shared_ptr<grfx::GraphicsCommandBuffer>;
+using ComputeCommandBufferRef  = std::shared_ptr<grfx::ComputeCommandBuffer>;
+using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
+using QueueRef				   = std::shared_ptr<grfx::Queue>;
 
-class RenderTarget {
+class Queue {
   public:
-	RenderTarget() {}
+	Queue() {}
+	virtual ~Queue() {}
 
-	RenderTarget( const grfx::Texture2DRef &texture );
+	virtual void waitForIdle() = 0;
 
-	virtual ~RenderTarget() {}
-
-	uint32_t		   getWidth() const { return mTexture->getWidth(); }
-	uint32_t		   getHeight() const { return mTexture->getHeight(); }
-	grfx::Format	   getFormat() const { return mFormat; }
-	grfx::Texture2DRef getTexture() const { return mTexture; }
-
-  protected:
-	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;
-	grfx::Texture2DRef mTexture = nullptr;
-};
-
-class DepthStencil {
-  public:
-	DepthStencil() {}
-
-	DepthStencil( const grfx::Texture2DRef &texture );
-
-	virtual ~DepthStencil() {}
-
-	uint32_t		   getWidth() const { return mTexture->getWidth(); }
-	uint32_t		   getHeight() const { return mTexture->getHeight(); }
-	grfx::Format	   getFormat() const { return mFormat; }
-	grfx::Texture2DRef getTexture() const { return mTexture; }
-
-  protected:
-	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;
-	grfx::Texture2DRef mTexture = nullptr;
+	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() = 0;
+	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer()	 = 0;
+	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer()	 = 0;
 };
 
 } // namespace cinder::grfx

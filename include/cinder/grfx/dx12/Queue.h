@@ -24,14 +24,17 @@
 #pragma once
 
 #include "cinder/grfx/dx12/platform.h"
+#include "cinder/grfx/Queue.h"
 
 #include <mutex>
 
 namespace cinder::grfx::dx12 {
 
-using QueueRef = std::shared_ptr<class Queue>;
+class Queue;
 
-class Queue {
+using QueueRef = std::shared_ptr<dx12::Queue>;
+
+class Queue : public cinder::grfx::Queue {
   public:
 	Queue( const ComPtr<ID3D12CommandQueue> &queue );
 	virtual ~Queue();
@@ -40,7 +43,7 @@ class Queue {
 
 	ID3D12CommandQueue *getQueue() const { return mQueue.Get(); }
 
-	void waitForIdle();
+	virtual void waitForIdle() override;
 
   private:
 	void initialize( ID3D12Device *pDevice );

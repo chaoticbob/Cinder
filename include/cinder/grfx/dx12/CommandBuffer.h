@@ -23,7 +23,73 @@
 
 #pragma once
 
-namespace cinder::grfx {
+#include "cinder/grfx/dx12/platform.h"
+#include "cinder/grfx/CommandBuffer.h"
 
-} // namespace cinder::grfx
+namespace cinder::grfx::dx12 {
+
+class Queue;
+
+// ----------------------------------------------------------------------------------------------------
+// CommandBufferShim
+// ----------------------------------------------------------------------------------------------------
+template <typename BaseT>
+class CommandBufferShim : public BaseT {
+  public:
+	CommandBufferShim( dx12::Queue *pQueue )
+		: BaseT( pQueue ) {}
+
+	virtual ~CommandBufferShim() {}
+
+	ID3D12CommandAllocator	  *getCommandAllocator() const { return mCommandAllocator.Get(); }
+	ID3D12GraphicsCommandList *getCommandList() const { return mCommandList.Get(); }
+
+  protected:
+	ComPtr<ID3D12CommandAllocator>	  mCommandAllocator;
+	ComPtr<ID3D12GraphicsCommandList> mCommandList;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// GraphicsCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsCommandBuffer> {
+  public:
+	GraphicsCommandBuffer( dx12::Queue *pQueue )
+		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pQueue ) {}
+
+	virtual ~GraphicsCommandBuffer() {}
+
+	virtual void submit() override;
+	virtual void flush() override;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// ComputeCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class ComputeCommandBuffer : public dx12::CommandBufferShim<grfx::ComputeCommandBuffer> {
+  public:
+	ComputeCommandBuffer( dx12::Queue *pQueue )
+		: dx12::CommandBufferShim<grfx::ComputeCommandBuffer>( pQueue ) {}
+
+	virtual ~ComputeCommandBuffer() {}
+
+	virtual void submit() override;
+	virtual void flush() override;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// CopyCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class CopyCommandBuffer : public dx12::CommandBufferShim<grfx::CopyCommandBuffer> {
+  public:
+	CopyCommandBuffer( dx12::Queue *pQueue )
+		: dx12::CommandBufferShim<grfx::CopyCommandBuffer>( pQueue ) {}
+
+	virtual ~CopyCommandBuffer() {}
+
+	virtual void submit() override;
+	virtual void flush() override;
+};
+
+} // namespace cinder::grfx::dx12
 

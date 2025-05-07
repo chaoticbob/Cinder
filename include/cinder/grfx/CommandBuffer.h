@@ -23,12 +23,63 @@
 
 #pragma once
 
+#include "cinder/grfx/platform.h"
+#include "cinder/grfx/RenderTarget.h"
+
 namespace cinder::grfx {
 
+class GraphicsCommandBuffer;
+class ComputeCommandBuffer;
+class CopyCommandBuffer;
 class Queue;
 
-class CommandBuffer {
+using GraphicsCommandBufferRef = std::shared_ptr<grfx::GraphicsCommandBuffer>;
+using ComputeCommandBufferRef  = std::shared_ptr<grfx::ComputeCommandBuffer>;
+using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
+
+// ----------------------------------------------------------------------------------------------------
+// CommandBufferBase
+// ----------------------------------------------------------------------------------------------------
+class CommandBufferBase {
   public:
+	CommandBufferBase() {}
+	virtual ~CommandBufferBase() {}
+
+	virtual grfx::Queue *getQueue() const = 0;
+	virtual void		 submit()		  = 0;
+	virtual void		 flush()		  = 0;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// GraphicsCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class GraphicsCommandBuffer : public grfx::CommandBufferBase {
+  public:
+	GraphicsCommandBuffer() {}
+	virtual ~GraphicsCommandBuffer() {}
+
+	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) = 0;
+	virtual void EndRendering()																															  = 0;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// ComputeCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class ComputeCommandBuffer : public grfx::CommandBufferBase {
+  public:
+	ComputeCommandBuffer() {}
+	virtual ~ComputeCommandBuffer() {}
+
+	virtual ~ComputeCommandBuffer() {}
+};
+
+// ----------------------------------------------------------------------------------------------------
+// CopyCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class CopyCommandBuffer : public grfx::CommandBufferBase {
+  public:
+	CopyCommandBuffer() {}
+	virtual ~CopyCommandBuffer() {}
 };
 
 } // namespace cinder::grfx
