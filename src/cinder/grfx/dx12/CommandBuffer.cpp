@@ -22,8 +22,21 @@
 */
 
 #include "cinder/grfx/dx12/CommandBuffer.h"
+#include "cinder/grfx/dx12/Queue.h"
 
 namespace cinder::grfx::dx12 {
+
+// ----------------------------------------------------------------------------------------------------
+// DepthStencil
+// ----------------------------------------------------------------------------------------------------
+CommandBufferBaseImpl::CommandBufferBaseImpl( dx12::Queue *pQueue )
+	: mQueue( pQueue )
+{
+}
+
+CommandBufferBaseImpl::~CommandBufferBaseImpl()
+{
+}
 
 } // namespace cinder::grfx::dx12
 

@@ -36,4 +36,18 @@ namespace cinder::grfx::dx12 {
 
 using Microsoft::WRL::ComPtr;
 
+class Device;
+
+template <typename BaseT>
+class DeviceChildShim : public BaseT {
+  public:
+	template <typename... ArgsT>
+	DeviceChildShim( ArgsT &&...args )
+		: BaseT( std::forward<ArgsT>( args )... ) {}
+
+	virtual ~DeviceChildShim() {}
+
+	dx12::Device *getDevice() const { return static_cast<dx12::Device *>( BaseT::getDevice() ); }
+};
+
 } // namespace cinder::grfx::dx12

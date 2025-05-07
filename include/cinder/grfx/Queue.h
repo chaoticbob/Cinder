@@ -37,16 +37,23 @@ using ComputeCommandBufferRef  = std::shared_ptr<grfx::ComputeCommandBuffer>;
 using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
 using QueueRef				   = std::shared_ptr<grfx::Queue>;
 
-class Queue {
+class Queue : public grfx::DeviceChild {
   public:
-	Queue() {}
+	Queue( grfx::Device *pParentDevice, grfx::CommandType commandType )
+		: grfx::DeviceChild( pParentDevice ), mCommandType( commandType ) {}
+
 	virtual ~Queue() {}
+
+	grfx::CommandType getCommandType() const { return mCommandType; }
 
 	virtual void waitForIdle() = 0;
 
 	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() = 0;
 	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer()	 = 0;
 	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer()	 = 0;
+
+  private:
+	grfx::CommandType mCommandType = grfx::CommandType::GRAPHICS;
 };
 
 } // namespace cinder::grfx

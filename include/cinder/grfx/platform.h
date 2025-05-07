@@ -37,4 +37,25 @@ enum class Api
 	METAL  = 2,
 };
 
+enum class CommandType
+{
+	GRAPHICS = 0,
+	COMPUTE	 = 1,
+	COPY	 = 2,
+};
+
+class Device;
+
+class DeviceChild {
+  public:
+	DeviceChild( grfx::Device *pParentDevice )
+		: mDevice( pParentDevice ) {}
+	virtual ~DeviceChild() {}
+
+	grfx::Device *getDevice() const { return mDevice; }
+
+  private:
+	grfx::Device *mDevice = nullptr;
+};
+
 } // namespace cinder::grfx

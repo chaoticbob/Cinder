@@ -23,13 +23,44 @@
 */
 
 #include "cinder/grfx/dx12/Queue.h"
+#include "cinder/grfx/dx12/Device.h"
 
 namespace cinder::grfx::dx12 {
 
-Queue::Queue( const ComPtr<ID3D12CommandQueue> &queue )
-	: mQueue( queue ),
+Queue::Queue( dx12::Device *pParentDevice, grfx::CommandType commandType )
+	: dx12::DeviceChildShim<cinder::grfx::Queue>( pParentDevice, commandType ),
 	  mWaitForIdleEvent( CreateEvent( nullptr, FALSE, FALSE, nullptr ) )
 {
+	// D3D12 queue
+	{
+		D3D12_COMMAND_QUEUE_DESC desc = {};
+		desc.Type					  = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		desc.Priority				  = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+		desc.Flags					  = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		desc.NodeMask				  = 0;
+
+		if( commandType == grfx::CommandType::COMPUTE ) {
+			desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		}
+		else if( commandType == grfx::CommandType::COPY ) {
+			desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+		}
+
+		ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
+		//
+		HRESULT hr = pParentDevice->getDevice()->CreateCommandQueue( &desc, IID_PPV_ARGS( &commandQueue ) );
+		if( FAILED( hr ) ) {
+			throw cinder::Exception( "Failed to create D3D12 command queue" );
+		}
+	}
+
+	// Wait for idle fence
+	{
+		HRESULT hr = pParentDevice->getDevice()->CreateFence( mWaitForIdleValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &mWaitForIdleFence ) );
+		if( FAILED( hr ) ) {
+			throw cinder::Exception( "Failed to create fence DX12 queue" );
+		}
+	}
 }
 
 Queue::~Queue()
@@ -44,34 +75,27 @@ Queue::~Queue()
 	mQueue.Reset();
 }
 
-void Queue::initialize( ID3D12Device *pDevice )
-{
-	HRESULT hr = pDevice->CreateFence( mWaitForIdleValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &mWaitForIdleFence ) );
-	if( FAILED( hr ) ) {
-		throw cinder::Exception( "Failed to create fence DX12 queue" );
-	}
-}
 
-QueueRef Queue::create( ID3D12Device *pDevice, D3D12_COMMAND_LIST_TYPE commandType )
-{
-	D3D12_COMMAND_QUEUE_DESC desc = {};
-	desc.Type					  = commandType;
-	desc.Priority				  = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-	desc.Flags					  = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	desc.NodeMask				  = 0;
-
-	ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-	//
-	HRESULT hr = pDevice->CreateCommandQueue( &desc, IID_PPV_ARGS( &commandQueue ) );
-	if( FAILED( hr ) ) {
-		throw cinder::Exception( "Failed to create D3D12 command queue" );
-	}
-
-	QueueRef queue = QueueRef( new Queue( commandQueue ) );
-	queue->initialize( pDevice );
-
-	return queue;
-}
+// QueueRef Queue::create( ID3D12Device *pDevice, D3D12_COMMAND_LIST_TYPE commandType )
+//{
+//	D3D12_COMMAND_QUEUE_DESC desc = {};
+//	desc.Type					  = commandType;
+//	desc.Priority				  = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+//	desc.Flags					  = D3D12_COMMAND_QUEUE_FLAG_NONE;
+//	desc.NodeMask				  = 0;
+//
+//	ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
+//	//
+//	HRESULT hr = pDevice->CreateCommandQueue( &desc, IID_PPV_ARGS( &commandQueue ) );
+//	if( FAILED( hr ) ) {
+//		throw cinder::Exception( "Failed to create D3D12 command queue" );
+//	}
+//
+//	QueueRef queue = QueueRef( new Queue( commandQueue ) );
+//	queue->initialize( pDevice );
+//
+//	return queue;
+// }
 
 void Queue::waitForIdle()
 {
@@ -89,6 +113,21 @@ void Queue::waitForIdle()
 		mWaitForIdleFence->SetEventOnCompletion( mWaitForIdleValue, mWaitForIdleEvent );
 		WaitForSingleObject( mWaitForIdleEvent, INFINITE );
 	}
+}
+
+grfx::GraphicsCommandBufferRef Queue::createGraphicsCommandBuffer()
+{
+	return nullptr;
+}
+
+grfx::ComputeCommandBufferRef  Queue::createComputeCommandBuffer()
+{
+	return nullptr;
+}
+
+grfx::CopyCommandBufferRef	   Queue::createCopyCommandBuffer()
+{
+	return nullptr;
 }
 
 } // namespace cinder::grfx::dx12

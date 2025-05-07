@@ -21,38 +21,8 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+#include "cinder/grfx/Device.h"
 
-#include "cinder/grfx/dx12/platform.h"
-#include "cinder/grfx/Queue.h"
+namespace cinder::grfx {
 
-#include <mutex>
-
-namespace cinder::grfx::dx12 {
-
-class Queue;
-
-using QueueRef = std::shared_ptr<dx12::Queue>;
-
-class Queue : public dx12::DeviceChildShim<cinder::grfx::Queue> {
-  public:
-	Queue( dx12::Device *pDevice, grfx::CommandType commandType );
-	virtual ~Queue();
-
-	ID3D12CommandQueue *getD3D12Queue() const { return mQueue.Get(); }
-
-	virtual void waitForIdle() override;
-
-	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() override;
-	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer() override;
-	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer() override;
-
-  private:
-	ComPtr<ID3D12CommandQueue> mQueue;
-	std::mutex				   mWaitForIdleMutex;
-	ComPtr<ID3D12Fence>		   mWaitForIdleFence;
-	uint64_t				   mWaitForIdleValue = 0;
-	HANDLE					   mWaitForIdleEvent = nullptr;
-};
-
-} // namespace cinder::grfx::dx12
+} // namespace cinder::grfx

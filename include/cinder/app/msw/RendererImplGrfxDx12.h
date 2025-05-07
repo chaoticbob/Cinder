@@ -24,6 +24,7 @@
 #pragma once
 
 #include "cinder/app/RendererGrfx.h"
+#include "cinder/grfx/dx12/Device.h"
 #include "cinder/grfx/dx12/Queue.h"
 #include "cinder/grfx/dx12/RenderTarget.h"
 
@@ -38,19 +39,18 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	RendererImplGrfxDx12( RendererGrfx *pRenderer );
 	virtual ~RendererImplGrfxDx12();
 
+	cinder::grfx::dx12::Device *getDevice() const { return mDevice.get(); }
+
   private:
 	static std::vector<ComPtr<IDXGIAdapter4>> enumerateAdapters( IDXGIFactory2 *pFactory, bool includeSoftwareAdapters = false );
 
 	void createDevice();
-	void createQueues();
 	void createSwapchain();
 	void createSwapchainBuffers();
 	void createRenderTargets();
 
 	virtual void initialize() override;
 	virtual void kill() override;
-
-	void waitForIdle();
 
 	virtual void startDraw() override;
 	virtual void finishDraw() override;
@@ -59,10 +59,7 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 
   private:
 	ComPtr<IDXGIFactory2>							 mFactory		   = nullptr;
-	ComPtr<ID3D12Device9>							 mDevice		   = nullptr;
-	cinder::grfx::dx12::QueueRef					 mGraphicsQueue	   = nullptr;
-	cinder::grfx::dx12::QueueRef					 mComputeQueue	   = nullptr;
-	cinder::grfx::dx12::QueueRef					 mCopyQueue		   = nullptr;
+	cinder::grfx::dx12::DeviceRef					 mDevice		   = nullptr;
 	ComPtr<IDXGISwapChain4>							 mSwapchain		   = nullptr;
 	std::vector<cinder::grfx::dx12::RenderTargetRef> mSwapchainBuffers = {};
 	std::vector<cinder::grfx::dx12::RenderTargetRef> mRenderTargets	   = {};

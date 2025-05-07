@@ -31,22 +31,39 @@ namespace cinder::grfx::dx12 {
 class Queue;
 
 // ----------------------------------------------------------------------------------------------------
-// CommandBufferShim
+// CommandBufferBase
 // ----------------------------------------------------------------------------------------------------
-template <typename BaseT>
-class CommandBufferShim : public BaseT {
+class CommandBufferBaseImpl {
   public:
-	CommandBufferShim( dx12::Queue *pQueue )
-		: BaseT( pQueue ) {}
-
-	virtual ~CommandBufferShim() {}
+	CommandBufferBaseImpl( dx12::Queue *pQueue );
+	virtual ~CommandBufferBaseImpl();
 
 	ID3D12CommandAllocator	  *getCommandAllocator() const { return mCommandAllocator.Get(); }
 	ID3D12GraphicsCommandList *getCommandList() const { return mCommandList.Get(); }
 
   protected:
-	ComPtr<ID3D12CommandAllocator>	  mCommandAllocator;
-	ComPtr<ID3D12GraphicsCommandList> mCommandList;
+	void submitImpl();
+	void flushImpl();
+
+  private:
+	dx12::Queue						 *mQueue			= nullptr;
+	ComPtr<ID3D12CommandAllocator>	  mCommandAllocator = nullptr;
+	ComPtr<ID3D12GraphicsCommandList> mCommandList		= nullptr;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// CommandBufferShim
+// ----------------------------------------------------------------------------------------------------
+template <typename BaseT>
+class CommandBufferShim : public BaseT, dx12::CommandBufferBaseImpl {
+  public:
+	CommandBufferShim( dx12::Queue *pQueue )
+		: BaseT(), dx12::CommandBufferBaseImpl( pQueue ) {}
+
+	virtual ~CommandBufferShim() {}
+
+	virtual void submit() override { dx12::CommandBufferBaseImpl::submitImpl(); }
+	virtual void flush() override { dx12::CommandBufferBaseImpl::flushImpl(); }
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -58,9 +75,6 @@ class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsComma
 		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pQueue ) {}
 
 	virtual ~GraphicsCommandBuffer() {}
-
-	virtual void submit() override;
-	virtual void flush() override;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -72,9 +86,6 @@ class ComputeCommandBuffer : public dx12::CommandBufferShim<grfx::ComputeCommand
 		: dx12::CommandBufferShim<grfx::ComputeCommandBuffer>( pQueue ) {}
 
 	virtual ~ComputeCommandBuffer() {}
-
-	virtual void submit() override;
-	virtual void flush() override;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -86,9 +97,6 @@ class CopyCommandBuffer : public dx12::CommandBufferShim<grfx::CopyCommandBuffer
 		: dx12::CommandBufferShim<grfx::CopyCommandBuffer>( pQueue ) {}
 
 	virtual ~CopyCommandBuffer() {}
-
-	virtual void submit() override;
-	virtual void flush() override;
 };
 
 } // namespace cinder::grfx::dx12

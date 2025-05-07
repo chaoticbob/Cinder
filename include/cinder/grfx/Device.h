@@ -23,36 +23,29 @@
 
 #pragma once
 
-#include "cinder/grfx/dx12/platform.h"
-#include "cinder/grfx/Queue.h"
+#include "cinder/grfx/platform.h"
+#include "cinder/Noncopyable.h"
 
-#include <mutex>
-
-namespace cinder::grfx::dx12 {
+namespace cinder::grfx {
 
 class Queue;
+using QueueRef = std::shared_ptr<grfx::Queue>;
 
-using QueueRef = std::shared_ptr<dx12::Queue>;
-
-class Queue : public dx12::DeviceChildShim<cinder::grfx::Queue> {
+class Device : public cinder::Noncopyable {
   public:
-	Queue( dx12::Device *pDevice, grfx::CommandType commandType );
-	virtual ~Queue();
+	Device() {}
+	virtual ~Device() {}
 
-	ID3D12CommandQueue *getD3D12Queue() const { return mQueue.Get(); }
+	virtual void waitForIdle() = 0;
 
-	virtual void waitForIdle() override;
+	grfx::Queue *getGraphicsQueue() const { return mGraphicsQueue.get(); }
+	grfx::Queue *getComputeQueue() const { return mComputeQueue.get(); }
+	grfx::Queue *getCopyQueue() const { return mCopyQueue.get(); }
 
-	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() override;
-	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer() override;
-	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer() override;
-
-  private:
-	ComPtr<ID3D12CommandQueue> mQueue;
-	std::mutex				   mWaitForIdleMutex;
-	ComPtr<ID3D12Fence>		   mWaitForIdleFence;
-	uint64_t				   mWaitForIdleValue = 0;
-	HANDLE					   mWaitForIdleEvent = nullptr;
+  protected:
+	grfx::QueueRef mGraphicsQueue = nullptr;
+	grfx::QueueRef mComputeQueue  = nullptr;
+	grfx::QueueRef mCopyQueue	  = nullptr;
 };
 
-} // namespace cinder::grfx::dx12
+} // namespace cinder::grfx

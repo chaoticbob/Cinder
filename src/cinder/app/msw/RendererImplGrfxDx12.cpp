@@ -79,10 +79,12 @@ std::vector<ComPtr<IDXGIAdapter4>> RendererImplGrfxDx12::enumerateAdapters( IDXG
 
 void RendererImplGrfxDx12::createDevice()
 {
+	const auto &options = this->getRenderer()->getOptions();
+
 	auto adapters = enumerateAdapters( mFactory.Get() );
 
 	for( const auto &adapter : adapters ) {
-		const auto featureLevel = this->getRenderer()->getOptions().getFeatureLevel();
+		const auto featureLevel = options.getFeatureLevel();
 
 		ComPtr<ID3D12Device9> targetDevice;
 		//
@@ -117,7 +119,11 @@ void RendererImplGrfxDx12::createDevice()
 			}
 		}
 
-		mDevice = targetDevice;
+		mDevice = std::make_shared<cinder::grfx::dx12::Device>(
+			targetDevice,
+			options.getGraphicsQueue(),
+			options.getComputeQueue(),
+			options.getCopyQueue() );
 		break;
 	}
 
@@ -126,23 +132,23 @@ void RendererImplGrfxDx12::createDevice()
 	}
 }
 
-void RendererImplGrfxDx12::createQueues()
-{
-	if( this->getRenderer()->getOptions().getGraphicsQueue() ) {
-		mGraphicsQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT );
-		mComputeQueue  = mGraphicsQueue;
-		mCopyQueue	   = mGraphicsQueue;
-	}
-
-	if( this->getRenderer()->getOptions().getComputeQueue() ) {
-		mComputeQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE );
-		mCopyQueue	  = mComputeQueue;
-	}
-
-	if( this->getRenderer()->getOptions().getCopyQueue() ) {
-		mCopyQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COPY );
-	}
-}
+// void RendererImplGrfxDx12::createQueues()
+//{
+//	if( this->getRenderer()->getOptions().getGraphicsQueue() ) {
+//		mGraphicsQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT );
+//		mComputeQueue  = mGraphicsQueue;
+//		mCopyQueue	   = mGraphicsQueue;
+//	}
+//
+//	if( this->getRenderer()->getOptions().getComputeQueue() ) {
+//		mComputeQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE );
+//		mCopyQueue	  = mComputeQueue;
+//	}
+//
+//	if( this->getRenderer()->getOptions().getCopyQueue() ) {
+//		mCopyQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COPY );
+//	}
+// }
 
 void RendererImplGrfxDx12::createSwapchain()
 {
@@ -169,7 +175,7 @@ void RendererImplGrfxDx12::createSwapchain()
 	IDXGISwapChain1 *pSwapchain = nullptr;
 	//
 	HRESULT hr = mFactory->CreateSwapChainForHwnd(
-		mGraphicsQueue->getQueue(),
+		mDevice->getGraphicsQueue()->getD3D12Queue(),
 		this->getRenderer()->getHwnd(),
 		&swapchainDesc,
 		nullptr, // @TODO: Add fullscreen support
@@ -225,7 +231,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Render target
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createRenderTarget(
-				mDevice.Get(),
+				mDevice->getDevice(),
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::B8G8R8A8_UNORM,	  // format
@@ -241,7 +247,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Depth stencil
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createDepthStencil(
-				mDevice.Get(),
+				mDevice->getDevice(),
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::D32_FLOAT,		  // format
@@ -302,9 +308,6 @@ void RendererImplGrfxDx12::initialize()
 	// Create device
 	createDevice();
 
-	// Create queues
-	createQueues();
-
 	// Create swapchain
 	createSwapchain();
 
@@ -315,27 +318,11 @@ void RendererImplGrfxDx12::initialize()
 
 void RendererImplGrfxDx12::kill()
 {
-	this->waitForIdle();
+	mDevice->waitForIdle();
 
 	mSwapchain.Reset();
-	mGraphicsQueue.reset();
-	mComputeQueue.reset();
-	mCopyQueue.reset();
-	mDevice.Reset();
+	mDevice.reset();
 	mFactory.Reset();
-}
-
-void RendererImplGrfxDx12::waitForIdle()
-{
-	if( mGraphicsQueue ) {
-		mGraphicsQueue->waitForIdle();
-	}
-	if( mComputeQueue && ( mComputeQueue != mGraphicsQueue ) ) {
-		mComputeQueue->waitForIdle();
-	}
-	if( mCopyQueue && ( ( mCopyQueue != mGraphicsQueue ) || ( mCopyQueue != mGraphicsQueue ) ) ) {
-		mCopyQueue->waitForIdle();
-	}
 }
 
 void RendererImplGrfxDx12::startDraw()
@@ -359,7 +346,7 @@ void RendererImplGrfxDx12::swapBuffers()
 
 void RendererImplGrfxDx12::defaultResize()
 {
-	this->waitForIdle();
+	mDevice->getGraphicsQueue()->waitForIdle();
 
 	// Release swapchain buffers and render targets
 	mSwapchainBuffers.clear();

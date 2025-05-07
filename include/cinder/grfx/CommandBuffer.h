@@ -69,8 +69,6 @@ class ComputeCommandBuffer : public grfx::CommandBufferBase {
   public:
 	ComputeCommandBuffer() {}
 	virtual ~ComputeCommandBuffer() {}
-
-	virtual ~ComputeCommandBuffer() {}
 };
 
 // ----------------------------------------------------------------------------------------------------
