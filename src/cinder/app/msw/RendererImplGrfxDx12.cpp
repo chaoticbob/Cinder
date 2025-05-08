@@ -235,7 +235,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::B8G8R8A8_UNORM,	  // format
-				1,									  // sampleCount
+				sampleCount,						  // sampleCount
 				1,									  // mipLevelCount
 				1 );								  // arrayLayerCount
 
@@ -251,7 +251,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::D32_FLOAT,		  // format
-				1,									  // sampleCount
+				sampleCount,						  // sampleCount
 				1,									  // mipLevelCount
 				1 );								  // arrayLayerCount
 
