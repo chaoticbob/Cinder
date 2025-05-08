@@ -22,19 +22,77 @@
 */
 
 #include "cinder/grfx/dx12/CommandBuffer.h"
+#include "cinder/grfx/dx12/Device.h"
 #include "cinder/grfx/dx12/Queue.h"
 
 namespace cinder::grfx::dx12 {
 
 // ----------------------------------------------------------------------------------------------------
-// DepthStencil
+// CommandBufferBaseImpl
 // ----------------------------------------------------------------------------------------------------
-CommandBufferBaseImpl::CommandBufferBaseImpl( dx12::Queue *pQueue )
-	: mQueue( pQueue )
+CommandBufferBaseImpl::CommandBufferBaseImpl( dx12::Queue *pParentQueue )
 {
+	D3D12_COMMAND_LIST_TYPE commandType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	if( pParentQueue->getCommandType() == cinder::grfx::CommandType::COMPUTE ) {
+		commandType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+	}
+	else if( pParentQueue->getCommandType() == cinder::grfx::CommandType::COPY ) {
+		commandType = D3D12_COMMAND_LIST_TYPE_COPY;
+	}
+
+	HRESULT hr = pParentQueue->getDevice()->getD3D12Device()->CreateCommandAllocator( commandType, IID_PPV_ARGS( &mCommandAllocator ) );
+	if( FAILED( hr ) ) {
+		throw cinder::Exception( "Failed to create D3D12 command allocator" );
+	}
+
+	hr = pParentQueue->getDevice()->getD3D12Device()->CreateCommandList( 0, commandType, nullptr, nullptr, IID_PPV_ARGS( &mCommandList ) );
+	if( FAILED( hr ) ) {
+		throw cinder::Exception( "Failed to create D3D12 command list" );
+	}
 }
 
 CommandBufferBaseImpl::~CommandBufferBaseImpl()
+{
+	mCommandList.Reset();
+	mCommandAllocator.Reset();
+}
+
+void CommandBufferBaseImpl::submitCommands()
+{
+}
+
+void CommandBufferBaseImpl::flushCommands()
+{
+}
+
+// ----------------------------------------------------------------------------------------------------
+// GraphicsCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+void GraphicsCommandBuffer::BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil )
+{
+	std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> renderTargetDescs = {};
+
+	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc = {};
+
+	D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
+
+	this->getCommandList()->BeginRenderPass(
+		static_cast<UINT>( renderTargetDescs.size() ),
+		renderTargetDescs.empty() ? nullptr : renderTargetDescs.data(),
+		depthStencil ? &depthStencilDesc : nullptr,
+		flags );
+}
+
+void GraphicsCommandBuffer::EndRendering()
+{
+	this->getCommandList()->EndRenderPass();
+}
+
+void GraphicsCommandBuffer::ClearRenderTarget( uint32_t renderTargetIndex, float r, float g, float b, float a )
+{
+}
+
+void GraphicsCommandBuffer::ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex )
 {
 }
 

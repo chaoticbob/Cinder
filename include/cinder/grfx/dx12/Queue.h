@@ -39,7 +39,7 @@ class Queue : public dx12::DeviceChildShim<cinder::grfx::Queue> {
 	Queue( dx12::Device *pDevice, grfx::CommandType commandType );
 	virtual ~Queue();
 
-	ID3D12CommandQueue *getD3D12Queue() const { return mQueue.Get(); }
+	ID3D12CommandQueue *getD3D12CommandQueue() const { return mCommandQueue.Get(); }
 
 	virtual void waitForIdle() override;
 
@@ -48,7 +48,7 @@ class Queue : public dx12::DeviceChildShim<cinder::grfx::Queue> {
 	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer() override;
 
   private:
-	ComPtr<ID3D12CommandQueue> mQueue;
+	ComPtr<ID3D12CommandQueue> mCommandQueue;
 	std::mutex				   mWaitForIdleMutex;
 	ComPtr<ID3D12Fence>		   mWaitForIdleFence;
 	uint64_t				   mWaitForIdleValue = 0;

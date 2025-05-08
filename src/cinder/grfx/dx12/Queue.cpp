@@ -23,6 +23,7 @@
 */
 
 #include "cinder/grfx/dx12/Queue.h"
+#include "cinder/grfx/dx12/CommandBuffer.h"
 #include "cinder/grfx/dx12/Device.h"
 
 namespace cinder::grfx::dx12 {
@@ -46,9 +47,7 @@ Queue::Queue( dx12::Device *pParentDevice, grfx::CommandType commandType )
 			desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
 		}
 
-		ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-		//
-		HRESULT hr = pParentDevice->getDevice()->CreateCommandQueue( &desc, IID_PPV_ARGS( &commandQueue ) );
+		HRESULT hr = pParentDevice->getD3D12Device()->CreateCommandQueue( &desc, IID_PPV_ARGS( &mCommandQueue ) );
 		if( FAILED( hr ) ) {
 			throw cinder::Exception( "Failed to create D3D12 command queue" );
 		}
@@ -56,7 +55,7 @@ Queue::Queue( dx12::Device *pParentDevice, grfx::CommandType commandType )
 
 	// Wait for idle fence
 	{
-		HRESULT hr = pParentDevice->getDevice()->CreateFence( mWaitForIdleValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &mWaitForIdleFence ) );
+		HRESULT hr = pParentDevice->getD3D12Device()->CreateFence( mWaitForIdleValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &mWaitForIdleFence ) );
 		if( FAILED( hr ) ) {
 			throw cinder::Exception( "Failed to create fence DX12 queue" );
 		}
@@ -72,30 +71,8 @@ Queue::~Queue()
 	}
 
 	mWaitForIdleFence.Reset();
-	mQueue.Reset();
+	mCommandQueue.Reset();
 }
-
-
-// QueueRef Queue::create( ID3D12Device *pDevice, D3D12_COMMAND_LIST_TYPE commandType )
-//{
-//	D3D12_COMMAND_QUEUE_DESC desc = {};
-//	desc.Type					  = commandType;
-//	desc.Priority				  = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-//	desc.Flags					  = D3D12_COMMAND_QUEUE_FLAG_NONE;
-//	desc.NodeMask				  = 0;
-//
-//	ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-//	//
-//	HRESULT hr = pDevice->CreateCommandQueue( &desc, IID_PPV_ARGS( &commandQueue ) );
-//	if( FAILED( hr ) ) {
-//		throw cinder::Exception( "Failed to create D3D12 command queue" );
-//	}
-//
-//	QueueRef queue = QueueRef( new Queue( commandQueue ) );
-//	queue->initialize( pDevice );
-//
-//	return queue;
-// }
 
 void Queue::waitForIdle()
 {
@@ -103,7 +80,7 @@ void Queue::waitForIdle()
 
 	++mWaitForIdleValue;
 
-	HRESULT hr = mQueue->Signal( mWaitForIdleFence.Get(), mWaitForIdleValue );
+	HRESULT hr = mCommandQueue->Signal( mWaitForIdleFence.Get(), mWaitForIdleValue );
 	if( FAILED( hr ) ) {
 		throw cinder::Exception( "Failed to queue a sigal" );
 	}
@@ -117,17 +94,17 @@ void Queue::waitForIdle()
 
 grfx::GraphicsCommandBufferRef Queue::createGraphicsCommandBuffer()
 {
-	return nullptr;
+	return dx12::GraphicsCommandBufferRef( new dx12::GraphicsCommandBuffer(this) );
 }
 
 grfx::ComputeCommandBufferRef  Queue::createComputeCommandBuffer()
 {
-	return nullptr;
+	return dx12::ComputeCommandBufferRef( new dx12::ComputeCommandBuffer(this) );
 }
 
 grfx::CopyCommandBufferRef	   Queue::createCopyCommandBuffer()
 {
-	return nullptr;
+	return dx12::CopyCommandBufferRef( new dx12::CopyCommandBuffer(this) );
 }
 
 } // namespace cinder::grfx::dx12

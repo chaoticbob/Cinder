@@ -43,7 +43,7 @@ class Device : public grfx::Device {
 
 	virtual ~Device() {}
 
-	ID3D12Device *getDevice() const { return mDevice.Get(); }
+	ID3D12Device *getD3D12Device() const { return mDevice.Get(); }
 
 	virtual void waitForIdle() override;
 

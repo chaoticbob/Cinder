@@ -22,8 +22,26 @@
 */
 
 #include "cinder/grfx/CommandBuffer.h"
+#include "cinder/grfx/Device.h"
+#include "cinder/grfx/Queue.h"
 
 namespace cinder::grfx {
+
+// ----------------------------------------------------------------------------------------------------
+// CommandBufferBase
+// ----------------------------------------------------------------------------------------------------
+CommandBufferBase::CommandBufferBase( grfx::Queue *pParentQueue )
+	: grfx::DeviceChild( pParentQueue->getDevice() )
+{
+}
+
+// ----------------------------------------------------------------------------------------------------
+// GraphicsCommandBuffer
+// ----------------------------------------------------------------------------------------------------
+void GraphicsCommandBuffer::ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex )
+{
+	this->ResolveSubresource( pDstTexture, dstSubResourceIndex, pSrcRenderTarget->getTexture().get(), srcSubResourceIndex );
+}
 
 } // namespace cinder::grfx
 

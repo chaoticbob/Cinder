@@ -28,42 +28,56 @@
 
 namespace cinder::grfx::dx12 {
 
+class GraphicsCommandBuffer;
+class ComputeCommandBuffer;
+class CopyCommandBuffer;
 class Queue;
 
+using GraphicsCommandBufferRef = std::shared_ptr<dx12::GraphicsCommandBuffer>;
+using ComputeCommandBufferRef  = std::shared_ptr<dx12::ComputeCommandBuffer>;
+using CopyCommandBufferRef	   = std::shared_ptr<dx12::CopyCommandBuffer>;
+
 // ----------------------------------------------------------------------------------------------------
-// CommandBufferBase
+// CommandBufferBaseImpl
 // ----------------------------------------------------------------------------------------------------
 class CommandBufferBaseImpl {
   public:
-	CommandBufferBaseImpl( dx12::Queue *pQueue );
+	CommandBufferBaseImpl( dx12::Queue *pParentQueue );
 	virtual ~CommandBufferBaseImpl();
 
-	ID3D12CommandAllocator	  *getCommandAllocator() const { return mCommandAllocator.Get(); }
-	ID3D12GraphicsCommandList *getCommandList() const { return mCommandList.Get(); }
+	ID3D12CommandAllocator	   *getCommandAllocator() const { return mCommandAllocator.Get(); }
+	ID3D12GraphicsCommandList4 *getCommandList() const { return mCommandList.Get(); }
 
   protected:
-	void submitImpl();
-	void flushImpl();
+	virtual dx12::Queue *getParentQueue() = 0;
+
+	void submitCommands();
+	void flushCommands();
 
   private:
-	dx12::Queue						 *mQueue			= nullptr;
-	ComPtr<ID3D12CommandAllocator>	  mCommandAllocator = nullptr;
-	ComPtr<ID3D12GraphicsCommandList> mCommandList		= nullptr;
+	ComPtr<ID3D12CommandAllocator>	   mCommandAllocator = nullptr;
+	ComPtr<ID3D12GraphicsCommandList4> mCommandList		 = nullptr;
 };
 
 // ----------------------------------------------------------------------------------------------------
 // CommandBufferShim
 // ----------------------------------------------------------------------------------------------------
 template <typename BaseT>
-class CommandBufferShim : public BaseT, dx12::CommandBufferBaseImpl {
+class CommandBufferShim : public dx12::DeviceChildShim<BaseT>, public dx12::CommandBufferBaseImpl {
   public:
-	CommandBufferShim( dx12::Queue *pQueue )
-		: BaseT(), dx12::CommandBufferBaseImpl( pQueue ) {}
+	CommandBufferShim( dx12::Queue *pParentQueue )
+		: dx12::DeviceChildShim<BaseT>( pParentQueue ),
+		  dx12::CommandBufferBaseImpl( pParentQueue ) {}
 
 	virtual ~CommandBufferShim() {}
 
-	virtual void submit() override { dx12::CommandBufferBaseImpl::submitImpl(); }
-	virtual void flush() override { dx12::CommandBufferBaseImpl::flushImpl(); }
+	dx12::Queue *getQueue() const { return static_cast<dx12::Queue *>( BaseT::getQueue() ); }
+
+	virtual void submit() override { this->submitCommands(); }
+	virtual void flush() override { this->flushCommands(); }
+
+  protected:
+	virtual dx12::Queue *getParentQueue() override { return this->getQueue(); }
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -71,10 +85,17 @@ class CommandBufferShim : public BaseT, dx12::CommandBufferBaseImpl {
 // ----------------------------------------------------------------------------------------------------
 class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsCommandBuffer> {
   public:
-	GraphicsCommandBuffer( dx12::Queue *pQueue )
-		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pQueue ) {}
+	GraphicsCommandBuffer( dx12::Queue *pParentQueue )
+		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pParentQueue ) {}
 
 	virtual ~GraphicsCommandBuffer() {}
+
+	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) override;
+	virtual void EndRendering() override;
+
+	virtual void ClearRenderTarget( uint32_t renderTargetIndex, float r = 0, float g = 0, float b = 0, float a = 0 ) override;
+
+	virtual void ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) override;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -82,8 +103,8 @@ class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsComma
 // ----------------------------------------------------------------------------------------------------
 class ComputeCommandBuffer : public dx12::CommandBufferShim<grfx::ComputeCommandBuffer> {
   public:
-	ComputeCommandBuffer( dx12::Queue *pQueue )
-		: dx12::CommandBufferShim<grfx::ComputeCommandBuffer>( pQueue ) {}
+	ComputeCommandBuffer( dx12::Queue *pParentQueue )
+		: dx12::CommandBufferShim<grfx::ComputeCommandBuffer>( pParentQueue ) {}
 
 	virtual ~ComputeCommandBuffer() {}
 };
@@ -93,8 +114,8 @@ class ComputeCommandBuffer : public dx12::CommandBufferShim<grfx::ComputeCommand
 // ----------------------------------------------------------------------------------------------------
 class CopyCommandBuffer : public dx12::CommandBufferShim<grfx::CopyCommandBuffer> {
   public:
-	CopyCommandBuffer( dx12::Queue *pQueue )
-		: dx12::CommandBufferShim<grfx::CopyCommandBuffer>( pQueue ) {}
+	CopyCommandBuffer( dx12::Queue *pParentQueue )
+		: dx12::CommandBufferShim<grfx::CopyCommandBuffer>( pParentQueue ) {}
 
 	virtual ~CopyCommandBuffer() {}
 };

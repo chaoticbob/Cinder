@@ -175,7 +175,7 @@ void RendererImplGrfxDx12::createSwapchain()
 	IDXGISwapChain1 *pSwapchain = nullptr;
 	//
 	HRESULT hr = mFactory->CreateSwapChainForHwnd(
-		mDevice->getGraphicsQueue()->getD3D12Queue(),
+		mDevice->getGraphicsQueue()->getD3D12CommandQueue(),
 		this->getRenderer()->getHwnd(),
 		&swapchainDesc,
 		nullptr, // @TODO: Add fullscreen support
@@ -231,7 +231,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Render target
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createRenderTarget(
-				mDevice->getDevice(),
+				mDevice->getD3D12Device(),
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::B8G8R8A8_UNORM,	  // format
@@ -247,7 +247,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Depth stencil
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createDepthStencil(
-				mDevice->getDevice(),
+				mDevice->getD3D12Device(),
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::D32_FLOAT,		  // format

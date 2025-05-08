@@ -40,14 +40,18 @@ using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
 // ----------------------------------------------------------------------------------------------------
 // CommandBufferBase
 // ----------------------------------------------------------------------------------------------------
-class CommandBufferBase {
+class CommandBufferBase : public grfx::DeviceChild {
   public:
-	CommandBufferBase() {}
+	CommandBufferBase( grfx::Queue *pParentQueue );
 	virtual ~CommandBufferBase() {}
 
-	virtual grfx::Queue *getQueue() const = 0;
-	virtual void		 submit()		  = 0;
-	virtual void		 flush()		  = 0;
+	grfx::Queue *getQueue() const { return mQueue; }
+
+	virtual void submit() = 0;
+	virtual void flush()  = 0;
+
+  private:
+	grfx::Queue *mQueue = nullptr;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -55,11 +59,18 @@ class CommandBufferBase {
 // ----------------------------------------------------------------------------------------------------
 class GraphicsCommandBuffer : public grfx::CommandBufferBase {
   public:
-	GraphicsCommandBuffer() {}
+	GraphicsCommandBuffer( grfx::Queue *pParentQueue )
+		: grfx::CommandBufferBase( pParentQueue ) {}
+
 	virtual ~GraphicsCommandBuffer() {}
 
 	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) = 0;
 	virtual void EndRendering()																															  = 0;
+
+	virtual void ClearRenderTarget( uint32_t renderTargetIndex, float r = 0, float g = 0, float b = 0, float a = 0 ) = 0;
+
+	virtual void ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) = 0;
+	void		 ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex );
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -67,7 +78,9 @@ class GraphicsCommandBuffer : public grfx::CommandBufferBase {
 // ----------------------------------------------------------------------------------------------------
 class ComputeCommandBuffer : public grfx::CommandBufferBase {
   public:
-	ComputeCommandBuffer() {}
+	ComputeCommandBuffer( grfx::Queue *pParentQueuee )
+		: grfx::CommandBufferBase( pParentQueuee ) {}
+
 	virtual ~ComputeCommandBuffer() {}
 };
 
@@ -76,7 +89,9 @@ class ComputeCommandBuffer : public grfx::CommandBufferBase {
 // ----------------------------------------------------------------------------------------------------
 class CopyCommandBuffer : public grfx::CommandBufferBase {
   public:
-	CopyCommandBuffer() {}
+	CopyCommandBuffer( grfx::Queue *pParentQueue )
+		: grfx::CommandBufferBase( pParentQueue ) {}
+
 	virtual ~CopyCommandBuffer() {}
 };
 
