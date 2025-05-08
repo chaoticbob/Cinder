@@ -24,6 +24,7 @@
 #pragma once
 
 #include "cinder/app/RendererGrfx.h"
+#include "cinder/grfx/dx12/CommandBuffer.h"
 #include "cinder/grfx/dx12/Device.h"
 #include "cinder/grfx/dx12/Queue.h"
 #include "cinder/grfx/dx12/RenderTarget.h"
@@ -58,12 +59,13 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	virtual void defaultResize() override;
 
   private:
-	ComPtr<IDXGIFactory2>							 mFactory		   = nullptr;
-	cinder::grfx::dx12::DeviceRef					 mDevice		   = nullptr;
-	ComPtr<IDXGISwapChain4>							 mSwapchain		   = nullptr;
-	std::vector<cinder::grfx::dx12::RenderTargetRef> mSwapchainBuffers = {};
-	std::vector<cinder::grfx::dx12::RenderTargetRef> mRenderTargets	   = {};
-	std::vector<cinder::grfx::dx12::DepthStencilRef> mDepthStencils	   = {};
+	ComPtr<IDXGIFactory2>									  mFactory				 = nullptr;
+	cinder::grfx::dx12::DeviceRef							  mDevice				 = nullptr;
+	ComPtr<IDXGISwapChain4>									  mSwapchain			 = nullptr;
+	std::vector<cinder::grfx::dx12::RenderTargetRef>		  mSwapchainBuffers		 = {};
+	std::vector<cinder::grfx::dx12::RenderTargetRef>		  mRenderTargets		 = {};
+	std::vector<cinder::grfx::dx12::DepthStencilRef>		  mDepthStencils		 = {};
+	std::vector<cinder::grfx::dx12::GraphicsCommandBufferRef> mResolveCommandBuffers = {};
 };
 
 } // namespace cinder::app
