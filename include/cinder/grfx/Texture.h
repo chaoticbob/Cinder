@@ -63,7 +63,7 @@ class TextureBase : public grfx::DeviceChild {
 // ----------------------------------------------------------------------------------------------------
 // Texture1D
 // ----------------------------------------------------------------------------------------------------
-class Texture1D : public TextureBase {
+class Texture1D : public grfx::TextureBase {
   public:
 	virtual ~Texture1D() {}
 };
@@ -71,10 +71,10 @@ class Texture1D : public TextureBase {
 // ----------------------------------------------------------------------------------------------------
 // Texture2D
 // ----------------------------------------------------------------------------------------------------
-class Texture2D : public TextureBase {
+class Texture2D : public grfx::TextureBase {
   public:
 	Texture2D( grfx::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
-		: TextureBase( pDevice, width, height, 1, format, mipLevelCount, arrayLayerCount ),
+		: grfx::TextureBase( pDevice, width, height, 1, format, mipLevelCount, arrayLayerCount ),
 		  mSampleCount( std::max<uint32_t>( sampleCount, 1 ) ) {}
 
 	virtual ~Texture2D() {}
@@ -88,7 +88,7 @@ class Texture2D : public TextureBase {
 // ----------------------------------------------------------------------------------------------------
 // Texture3D
 // ----------------------------------------------------------------------------------------------------
-class Texture3D : public TextureBase {
+class Texture3D : public grfx::TextureBase {
   public:
 	virtual ~Texture3D() {}
 };

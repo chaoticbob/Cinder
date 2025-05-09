@@ -67,8 +67,7 @@ class FixedSizeDescriptorHeap : public dx12::DescriptorHeap {
 	void					  freeHandle( const dx12::CpuDescriptorHandle &handle );
 
   private:
-	std::bitset<kSetSize>		 mBitset = {};
-	ComPtr<ID3D12DescriptorHeap> mHeap	 = nullptr;
+	std::bitset<kSetSize> mBitset = {};
 };
 
 /*

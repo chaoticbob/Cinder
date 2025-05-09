@@ -23,23 +23,46 @@
 
 #include "cinder/grfx/dx12/RenderTarget.h"
 #include "cinder/grfx/dx12/Device.h"
+#include "cinder/grfx/dx12/Util.h"
 
 namespace cinder::grfx::dx12 {
 
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( const dx12::Texture2DRef &texture, grfx::Format format )
-	: grfx::RenderTarget( texture, format ),
+RenderTarget::RenderTarget( dx12::Device *pDevice, const dx12::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
+	: dx12::DeviceChildShim<grfx::RenderTarget>( pDevice, texture, format, mipLevel, arrayLayer ),
 	  mDescriptorHandle( texture->getDevice()->allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) )
 {
+	D3D12_RENDER_TARGET_VIEW_DESC desc = {};
+	desc.Format						   = toDxgiFormat( this->getFormat() );
+	desc.ViewDimension				   = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+	// Multisample textures can only have 1 mip level and 1 array layer
+	const bool isMultisSample = ( texture->getSampleCount() > 1 );
+	if( ! isMultisSample ) {
+		desc.Texture2D.MipSlice	  = this->getMipLevel();
+		desc.Texture2D.PlaneSlice = this->getArrayLayer();
+	}
+
+	ID3D12Resource *pResource = this->getTexture()->getD3D12Resource();
+	this->getD3D12Device()->CreateRenderTargetView(
+		pResource,
+		&desc,
+		mDescriptorHandle.getD3D12Handle() );
+}
+
+dx12::Texture2DRef RenderTarget::getTexture() const
+{
+	return std::static_pointer_cast<dx12::Texture2D>( dx12::DeviceChildShim<grfx::RenderTarget>::getTexture() );
 }
 
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( const dx12::Texture2DRef &texture, grfx::Format format )
-	: grfx::DepthStencil( texture, format )
+DepthStencil::DepthStencil( dx12::Device *pDevice, const dx12::Texture2DRef &texture, grfx::Format format )
+	: dx12::DeviceChildShim<grfx::DepthStencil>( pDevice, texture, format ),
+	  mDescriptorHandle( texture->getDevice()->allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE_DSV ) )
 {
 }
 

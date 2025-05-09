@@ -187,6 +187,7 @@ void RendererImplGrfxDx12::createSwapchainBuffers()
 		}
 
 		auto texture = ci::grfx::dx12::Texture2D::create(
+			mDevice.get(),						  // pDevice
 			static_cast<uint32_t>( desc.Width ),  // width
 			static_cast<uint32_t>( desc.Height ), // height
 			ci::grfx::Format::B8G8R8A8_UNORM,	  // format
@@ -195,7 +196,7 @@ void RendererImplGrfxDx12::createSwapchainBuffers()
 			1,									  // arrayLayerCount
 			resource );
 
-		auto swapchainBuffer = ci::grfx::dx12::RenderTarget::create( texture );
+		auto swapchainBuffer = ci::grfx::dx12::RenderTarget::create( mDevice.get(), texture );
 
 		mSwapchainBuffers.push_back( swapchainBuffer );
 	}
@@ -213,7 +214,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Render target
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createRenderTarget(
-				mDevice->getD3D12Device(),
+				mDevice.get(),						  // pDevice
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::B8G8R8A8_UNORM,	  // format
@@ -221,7 +222,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 				1,									  // mipLevelCount
 				1 );								  // arrayLayerCount
 
-			auto renderTarget = ci::grfx::dx12::RenderTarget::create( texture );
+			auto renderTarget = ci::grfx::dx12::RenderTarget::create( mDevice.get(), texture );
 
 			mRenderTargets.push_back( renderTarget );
 		}
@@ -229,7 +230,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 		// Depth stencil
 		{
 			auto texture = ci::grfx::dx12::Texture2D::createDepthStencil(
-				mDevice->getD3D12Device(),
+				mDevice.get(),						  // pDevice
 				static_cast<uint32_t>( desc.Width ),  // width
 				static_cast<uint32_t>( desc.Height ), // height
 				ci::grfx::Format::D32_FLOAT,		  // format
@@ -237,7 +238,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 				1,									  // mipLevelCount
 				1 );								  // arrayLayerCount
 
-			auto depthStencil = ci::grfx::dx12::DepthStencil::create( texture );
+			auto depthStencil = ci::grfx::dx12::DepthStencil::create( mDevice.get(), texture );
 
 			mDepthStencils.push_back( depthStencil );
 		}
@@ -296,6 +297,10 @@ void RendererImplGrfxDx12::initialize()
 	// Create swapchain buffers and render targets
 	createSwapchainBuffers();
 	createRenderTargets();
+
+	// Create command buffers
+	for( size_t i = 0; i < mSwapchainBuffers.size(); ++i ) {
+	}
 }
 
 void RendererImplGrfxDx12::kill()

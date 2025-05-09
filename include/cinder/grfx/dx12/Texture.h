@@ -42,10 +42,10 @@ template <typename BaseT>
 class TextureShim : public dx12::DeviceChildShim<BaseT> {
   public:
 	TextureShim( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
-		: dx12::DeviceChildShim<BaseT>( width, height, format, sampleCount ) {}
+		: dx12::DeviceChildShim<BaseT>( pDevice, width, height, format, sampleCount ) {}
 
 	TextureShim( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
-		: dx12::DeviceChildShim<BaseT>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount ),
+		: dx12::DeviceChildShim<BaseT>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount ),
 		  mResource( resource ) {}
 
 	virtual ~TextureShim() {}
@@ -59,7 +59,7 @@ class TextureShim : public dx12::DeviceChildShim<BaseT> {
 // ----------------------------------------------------------------------------------------------------
 // Texture1D
 // ----------------------------------------------------------------------------------------------------
-class Texture1D : public TextureShim<grfx::Texture1D> {
+class Texture1D : public  dx12::TextureShim<grfx::Texture1D> {
   public:
 	virtual ~Texture1D() {}
 };
@@ -67,23 +67,23 @@ class Texture1D : public TextureShim<grfx::Texture1D> {
 // ----------------------------------------------------------------------------------------------------
 // Texture2D
 // ----------------------------------------------------------------------------------------------------
-class Texture2D : public TextureShim<grfx::Texture2D> {
+class Texture2D : public dx12::TextureShim<grfx::Texture2D> {
   public:
 	Texture2D( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
-		: TextureShim<grfx::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource ) {}
-
-	static dx12::Texture2DRef create( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource );
-	static dx12::Texture2DRef create( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable );
-	static dx12::Texture2DRef createRenderTarget( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
-	static dx12::Texture2DRef createDepthStencil( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
+		: dx12::TextureShim<grfx::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource ) {}
 
 	virtual ~Texture2D() {}
+
+	static dx12::Texture2DRef create( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource );
+	static dx12::Texture2DRef create( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable );
+	static dx12::Texture2DRef createRenderTarget( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
+	static dx12::Texture2DRef createDepthStencil( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount );
 };
 
 // ----------------------------------------------------------------------------------------------------
 // Texture3D
 // ----------------------------------------------------------------------------------------------------
-class Texture3D : public TextureShim<grfx::Texture3D> {
+class Texture3D : public  dx12::TextureShim<grfx::Texture3D> {
   public:
 	virtual ~Texture3D() {}
 };

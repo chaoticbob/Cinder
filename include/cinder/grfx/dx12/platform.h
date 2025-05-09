@@ -52,6 +52,7 @@ class DeviceChildShim : public BaseT {
 	virtual ~DeviceChildShim() {}
 
 	dx12::Device *getDevice() const { return static_cast<dx12::Device *>( BaseT::getDevice() ); }
+	ID3D12Device *getD3D12Device() const { return this->getDevice()->getD3D12Device(); }
 };
 
 // ----------------------------------------------------------------------------------------------------

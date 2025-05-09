@@ -22,6 +22,7 @@
 */
 
 #include "cinder/grfx/dx12/Texture.h"
+#include "cinder/grfx/dx12/Device.h"
 #include "cinder/grfx/dx12/Util.h"
 
 namespace cinder::grfx::dx12 {
@@ -103,9 +104,10 @@ static ComPtr<ID3D12Resource> createTextureResource(
 // ----------------------------------------------------------------------------------------------------
 // Texture2D
 // ----------------------------------------------------------------------------------------------------
-dx12::Texture2DRef Texture2D::create( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
+dx12::Texture2DRef Texture2D::create( dx12::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
 {
 	return std::make_shared<dx12::Texture2D>(
+		pDevice,
 		width,
 		height,
 		format,
@@ -115,10 +117,10 @@ dx12::Texture2DRef Texture2D::create( uint32_t width, uint32_t height, grfx::For
 		resource );
 }
 
-dx12::Texture2DRef Texture2D::create( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable )
+dx12::Texture2DRef Texture2D::create( dx12::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable )
 {
 	auto resource = createTextureResource(
-		pDevice,
+		pDevice->getD3D12Device(),
 		width,
 		height,
 		toDxgiFormat( format ),
@@ -128,13 +130,13 @@ dx12::Texture2DRef Texture2D::create( ID3D12Device *pDevice, uint32_t width, uin
 		writeable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE,
 		writeable ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_DEST );
 
-	return std::make_shared<dx12::Texture2D>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
+	return std::make_shared<dx12::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
 }
 
-dx12::Texture2DRef Texture2D::createRenderTarget( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+dx12::Texture2DRef Texture2D::createRenderTarget( dx12::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
 {
 	auto resource = createTextureResource(
-		pDevice,
+		pDevice->getD3D12Device(),
 		width,
 		height,
 		toDxgiFormat( format ),
@@ -144,13 +146,13 @@ dx12::Texture2DRef Texture2D::createRenderTarget( ID3D12Device *pDevice, uint32_
 		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 		D3D12_RESOURCE_STATE_RENDER_TARGET );
 
-	return std::make_shared<dx12::Texture2D>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
+	return std::make_shared<dx12::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
 }
 
-dx12::Texture2DRef Texture2D::createDepthStencil( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+dx12::Texture2DRef Texture2D::createDepthStencil( dx12::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
 {
 	auto resource = createTextureResource(
-		pDevice,
+		pDevice->getD3D12Device(),
 		width,
 		height,
 		toDxgiFormat( format ),
@@ -160,7 +162,7 @@ dx12::Texture2DRef Texture2D::createDepthStencil( ID3D12Device *pDevice, uint32_
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE );
 
-	return std::make_shared<dx12::Texture2D>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
+	return std::make_shared<dx12::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource );
 }
 
 } // namespace cinder::grfx::dx12

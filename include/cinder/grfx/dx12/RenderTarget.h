@@ -39,12 +39,17 @@ using DepthStencilRef = std::shared_ptr<dx12::DepthStencil>;
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-class RenderTarget : public grfx::RenderTarget {
+class RenderTarget : public dx12::DeviceChildShim<grfx::RenderTarget> {
   public:
-	RenderTarget( const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN );
+	RenderTarget( dx12::Device *pDevice, const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN, uint32_t mipLevel = 0, uint32_t arrayLayer = 0 );
 	virtual ~RenderTarget() {}
 
-	static dx12::RenderTargetRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::RenderTarget>( texture ); }
+	static dx12::RenderTargetRef create( dx12::Device *pDevice, const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::RenderTarget>( pDevice, texture ); }
+
+	dx12::Texture2DRef getTexture() const;
+
+	const dx12::CpuDescriptorHandle &getDescriptorHandle() const { return mDescriptorHandle; }
+	D3D12_CPU_DESCRIPTOR_HANDLE		 getD3D12DescriptorHandle() const { return mDescriptorHandle.getD3D12Handle(); }
 
   private:
 	dx12::CpuDescriptorHandle mDescriptorHandle = {};
@@ -53,12 +58,12 @@ class RenderTarget : public grfx::RenderTarget {
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-class DepthStencil : public grfx::DepthStencil {
+class DepthStencil : public dx12::DeviceChildShim<grfx::DepthStencil> {
   public:
-	DepthStencil( const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN );
+	DepthStencil( dx12::Device *pDevice, const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN );
 	virtual ~DepthStencil() {}
 
-	static dx12::DepthStencilRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::DepthStencil>( texture ); }
+	static dx12::DepthStencilRef create( dx12::Device *pDevice, const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::DepthStencil>( pDevice, texture ); }
 
   private:
 	dx12::CpuDescriptorHandle mDescriptorHandle = {};

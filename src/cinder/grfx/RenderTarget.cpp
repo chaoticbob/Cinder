@@ -28,16 +28,16 @@ namespace cinder::grfx {
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( const grfx::Texture2DRef &texture, grfx::Format format )
-	: mTexture( texture )
+RenderTarget::RenderTarget( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
+	: grfx::DeviceChild( pDevice ), mTexture( texture ), mMipLevel( mipLevel ), mArrayLayer( arrayLayer )
 {
 }
 
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( const Texture2DRef &texture, grfx::Format format )
-	: mTexture( texture )
+DepthStencil::DepthStencil( grfx::Device *pDevice, const Texture2DRef &texture, grfx::Format format )
+	: grfx::DeviceChild( pDevice ), mTexture( texture )
 {
 }
 

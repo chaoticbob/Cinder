@@ -37,9 +37,9 @@ using DepthStencilRef = std::shared_ptr<grfx::DepthStencil>;
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-class RenderTarget {
+class RenderTarget : public grfx::DeviceChild {
   protected:
-	RenderTarget( const grfx::Texture2DRef &texture, grfx::Format format );
+	RenderTarget( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer );
 
   public:
 	virtual ~RenderTarget() {}
@@ -47,19 +47,23 @@ class RenderTarget {
 	uint32_t		   getWidth() const { return mTexture->getWidth(); }
 	uint32_t		   getHeight() const { return mTexture->getHeight(); }
 	grfx::Format	   getFormat() const { return mFormat; }
+	uint32_t		   getMipLevel() const { return mMipLevel; }
+	uint32_t		   getArrayLayer() const { return mArrayLayer; }
 	grfx::Texture2DRef getTexture() const { return mTexture; }
 
   protected:
-	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;
-	grfx::Texture2DRef mTexture = nullptr;
+	grfx::Format	   mFormat	   = grfx::Format::UNKNOWN;
+	uint32_t		   mMipLevel   = 0;
+	uint32_t		   mArrayLayer = 0;
+	grfx::Texture2DRef mTexture	   = nullptr;
 };
 
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-class DepthStencil {
+class DepthStencil : public grfx::DeviceChild {
   protected:
-	DepthStencil( const grfx::Texture2DRef &texture, grfx::Format format );
+	DepthStencil( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format );
 
   public:
 	virtual ~DepthStencil() {}

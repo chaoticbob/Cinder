@@ -32,6 +32,16 @@ namespace cinder::grfx::dx12 {
 DescriptorHeap::DescriptorHeap( dx12::Device *pDevice, uint32_t descriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE type )
 	: dx12::DeviceChildShim<grfx::DeviceChild>( pDevice )
 {
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Type						= type;
+	desc.NumDescriptors				= static_cast<UINT>( descriptorCount );
+	desc.Flags						= D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	desc.NodeMask					= 0;
+
+	HRESULT hr = this->getD3D12Device()->CreateDescriptorHeap( &desc, IID_PPV_ARGS( &mHeap ) );
+	if( FAILED( hr ) ) {
+		throw cinder::Exception( "Failed to create D3D12 descriptor heap" );
+	}
 }
 
 DescriptorHeap::~DescriptorHeap()
@@ -127,6 +137,8 @@ dx12::CpuDescriptorHandle FixedSizedDescriptorHeapManager::allocateHandle()
 
 	if( ! handle ) {
 		auto heap = std::shared_ptr<FixedSizeDescriptorHeap>( new dx12::FixedSizeDescriptorHeap( this->getDevice(), this->mType ) );
+		handle	  = heap->allocateHandle();
+		mHeaps.push_back( heap );
 	}
 
 	return handle;
