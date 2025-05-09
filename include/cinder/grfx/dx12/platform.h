@@ -61,17 +61,23 @@ class CpuDescriptorHandle {
   public:
 	CpuDescriptorHandle() {}
 
-	CpuDescriptorHandle( const dx12::DescriptorHeap *pHeap, D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle )
+	CpuDescriptorHandle( const dx12::DescriptorHeap *pHeap, const D3D12_CPU_DESCRIPTOR_HANDLE &descriptorHandle )
 		: mHeap( pHeap ), mDescriptorHandle( descriptorHandle ) {}
 
 	~CpuDescriptorHandle() {}
+
+	operator bool() const
+	{
+		bool res = ( mDescriptorHandle.ptr != 0 );
+		return res;
+	}
 
 	const dx12::DescriptorHeap		  *getHeap() const { return mHeap; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE &getD3D12Handle() const { return mDescriptorHandle; }
 
   private:
 	const dx12::DescriptorHeap *mHeap			  = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE mDescriptorHandle = {};
+	D3D12_CPU_DESCRIPTOR_HANDLE mDescriptorHandle = { 0 };
 };
 
 } // namespace cinder::grfx::dx12

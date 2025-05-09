@@ -38,12 +38,14 @@ using DeviceRef = std::shared_ptr<dx12::Device>;
 // ----------------------------------------------------------------------------------------------------
 // DescriptorHeap
 // ----------------------------------------------------------------------------------------------------
-class DescriptorHeap {
+class DescriptorHeap : public dx12::DeviceChildShim<grfx::DeviceChild> {
   public:
-	DescriptorHeap( uint32_t size, D3D12_DESCRIPTOR_HEAP_TYPE type );
+	DescriptorHeap( dx12::Device *pDevice, uint32_t descriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE type );
 	virtual ~DescriptorHeap();
 
-	uint32_t getSize() const;
+	uint32_t					getDescriptorCount() const;
+	D3D12_DESCRIPTOR_HEAP_TYPE	getType() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE getHeapStart() const;
 
   private:
 	ComPtr<ID3D12DescriptorHeap> mHeap = nullptr;
@@ -56,21 +58,59 @@ class FixedSizeDescriptorHeap : public dx12::DescriptorHeap {
   public:
 	static const size_t kSetSize = 128;
 
-	FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type );
-	~FixedSizeDescriptorHeap();
+	FixedSizeDescriptorHeap( dx12::Device *pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type );
+	virtual ~FixedSizeDescriptorHeap();
 
-	virtual dx12::CpuDescriptorHandle allocateHandle() override;
+	// virtual uint32_t getDescriptorHandleStride() const = 0;
+
+	dx12::CpuDescriptorHandle allocateHandle();
+	void					  freeHandle( const dx12::CpuDescriptorHandle &handle );
 
   private:
 	std::bitset<kSetSize>		 mBitset = {};
 	ComPtr<ID3D12DescriptorHeap> mHeap	 = nullptr;
 };
 
+/*
+// ----------------------------------------------------------------------------------------------------
+// RtvDescriptorHeap
+// ----------------------------------------------------------------------------------------------------
 class RtvDescriptorHeap : public FixedSizeDescriptorHeap {
   public:
-	RtvDescriptorHeap()
-		: FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) {}
-	~RtvDescriptorHeap() {}
+	RtvDescriptorHeap( dx12::Device *pDevice )
+		: FixedSizeDescriptorHeap( pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) {}
+	virtual ~RtvDescriptorHeap() {}
+
+	virtual uint32_t getDescriptorHandleStride() const override;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// DsvDescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+class DsvDescriptorHeap : public FixedSizeDescriptorHeap {
+  public:
+	DsvDescriptorHeap( dx12::Device *pDevice )
+		: FixedSizeDescriptorHeap( pDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) {}
+	virtual ~DsvDescriptorHeap() {}
+
+	virtual uint32_t getDescriptorHandleStride() const override;
+};
+*/
+
+// ----------------------------------------------------------------------------------------------------
+// FixedSizedDescriptorHeapManager
+// ----------------------------------------------------------------------------------------------------
+class FixedSizedDescriptorHeapManager : public dx12::DeviceChildShim<grfx::DeviceChild> {
+  public:
+	FixedSizedDescriptorHeapManager( dx12::Device *pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type );
+	virtual ~FixedSizedDescriptorHeapManager();
+
+	dx12::CpuDescriptorHandle allocateHandle();
+	void					  freeHandle( const dx12::CpuDescriptorHandle &handle );
+
+  private:
+	D3D12_DESCRIPTOR_HEAP_TYPE									mType = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>( ~0 );
+	std::vector<std::shared_ptr<dx12::FixedSizeDescriptorHeap>> mHeaps;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -94,8 +134,15 @@ class Device : public grfx::Device {
 	dx12::Queue *getComputeQueue() const;
 	dx12::Queue *getCopyQueue() const;
 
+	UINT getCpuDescriptorHandleStride( D3D12_DESCRIPTOR_HEAP_TYPE type ) const;
+
+	dx12::CpuDescriptorHandle allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE type );
+	void					  freeHandle( const dx12::CpuDescriptorHandle &handle );
+
   private:
-	ComPtr<ID3D12Device9> mDevice = nullptr;
+	ComPtr<ID3D12Device9>								   mDevice					 = nullptr;
+	std::shared_ptr<dx12::FixedSizedDescriptorHeapManager> mRtvDescriptorHeapManager = nullptr;
+	std::shared_ptr<dx12::FixedSizedDescriptorHeapManager> mDsvDescriptorHeapManager = nullptr;
 };
 
 } // namespace cinder::grfx::dx12

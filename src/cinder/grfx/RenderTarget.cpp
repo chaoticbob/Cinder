@@ -36,7 +36,7 @@ RenderTarget::RenderTarget( const grfx::Texture2DRef &texture, grfx::Format form
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( const Texture2DRef &texture )
+DepthStencil::DepthStencil( const Texture2DRef &texture, grfx::Format format )
 	: mTexture( texture )
 {
 }

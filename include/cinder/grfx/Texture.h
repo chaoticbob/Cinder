@@ -37,12 +37,10 @@ using Texture3DRef = std::shared_ptr<grfx::Texture3D>;
 // ----------------------------------------------------------------------------------------------------
 // TextureBase
 // ----------------------------------------------------------------------------------------------------
-class TextureBase {
+class TextureBase : public grfx::DeviceChild {
   public:
-	TextureBase() {}
-
-	TextureBase( uint32_t width, uint32_t height, uint32_t depth, grfx::Format format, uint32_t mipLevelCount, uint32_t arrayLayerCount )
-		: mWidth( width ), mHeight( height ), mDepth( depth ), mFormat( format ), mMipLevelCount( mipLevelCount ), mArrayLayerCount( arrayLayerCount ) {}
+	TextureBase( grfx::Device *pDevice, uint32_t width, uint32_t height, uint32_t depth, grfx::Format format, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: grfx::DeviceChild( pDevice ), mWidth( width ), mHeight( height ), mDepth( depth ), mFormat( format ), mMipLevelCount( mipLevelCount ), mArrayLayerCount( arrayLayerCount ) {}
 
 	virtual ~TextureBase() {}
 
@@ -67,8 +65,6 @@ class TextureBase {
 // ----------------------------------------------------------------------------------------------------
 class Texture1D : public TextureBase {
   public:
-	Texture1D() {}
-
 	virtual ~Texture1D() {}
 };
 
@@ -77,10 +73,8 @@ class Texture1D : public TextureBase {
 // ----------------------------------------------------------------------------------------------------
 class Texture2D : public TextureBase {
   public:
-	Texture2D() {}
-
-	Texture2D( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
-		: TextureBase( width, height, 1, format, mipLevelCount, arrayLayerCount ),
+	Texture2D( grfx::Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: TextureBase( pDevice, width, height, 1, format, mipLevelCount, arrayLayerCount ),
 		  mSampleCount( std::max<uint32_t>( sampleCount, 1 ) ) {}
 
 	virtual ~Texture2D() {}
@@ -96,7 +90,6 @@ class Texture2D : public TextureBase {
 // ----------------------------------------------------------------------------------------------------
 class Texture3D : public TextureBase {
   public:
-	Texture3D() {}
 	virtual ~Texture3D() {}
 };
 

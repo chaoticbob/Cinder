@@ -59,6 +59,9 @@ class DepthStencil : public grfx::DepthStencil {
 	virtual ~DepthStencil() {}
 
 	static dx12::DepthStencilRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::DepthStencil>( texture ); }
+
+  private:
+	dx12::CpuDescriptorHandle mDescriptorHandle = {};
 };
 
 } // namespace cinder::grfx::dx12

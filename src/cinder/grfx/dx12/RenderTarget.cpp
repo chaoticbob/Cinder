@@ -22,6 +22,7 @@
 */
 
 #include "cinder/grfx/dx12/RenderTarget.h"
+#include "cinder/grfx/dx12/Device.h"
 
 namespace cinder::grfx::dx12 {
 
@@ -29,7 +30,8 @@ namespace cinder::grfx::dx12 {
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
 RenderTarget::RenderTarget( const dx12::Texture2DRef &texture, grfx::Format format )
-	: grfx::RenderTarget( texture, format )
+	: grfx::RenderTarget( texture, format ),
+	  mDescriptorHandle( texture->getDevice()->allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) )
 {
 }
 

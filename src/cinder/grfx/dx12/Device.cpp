@@ -29,8 +29,37 @@ namespace cinder::grfx::dx12 {
 // ----------------------------------------------------------------------------------------------------
 // DescriptorHeap
 // ----------------------------------------------------------------------------------------------------
-FixedSizeDescriptorHeap::FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type )
-	: dx12::DescriptorHeap( dx12::FixedSizeDescriptorHeap::kSetSize, type )
+DescriptorHeap::DescriptorHeap( dx12::Device *pDevice, uint32_t descriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE type )
+	: dx12::DeviceChildShim<grfx::DeviceChild>( pDevice )
+{
+}
+
+DescriptorHeap::~DescriptorHeap()
+{
+}
+
+uint32_t DescriptorHeap::getDescriptorCount() const
+{
+	D3D12_DESCRIPTOR_HEAP_DESC desc = mHeap->GetDesc();
+	return static_cast<uint32_t>( desc.NumDescriptors );
+}
+
+D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeap::getType() const
+{
+	D3D12_DESCRIPTOR_HEAP_DESC desc = mHeap->GetDesc();
+	return desc.Type;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getHeapStart() const
+{
+	return mHeap->GetCPUDescriptorHandleForHeapStart();
+}
+
+// ----------------------------------------------------------------------------------------------------
+// FixedSizeDescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+FixedSizeDescriptorHeap::FixedSizeDescriptorHeap( dx12::Device *pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type )
+	: dx12::DescriptorHeap( pDevice, dx12::FixedSizeDescriptorHeap::kSetSize, type )
 {
 }
 
@@ -44,17 +73,80 @@ dx12::CpuDescriptorHandle FixedSizeDescriptorHeap::allocateHandle()
 
 	uint32_t index = 0;
 	for( ; index < kSetSize; ++index ) {
-		if (mBitset[index] == false) {
+		if( mBitset[index] == false ) {
 			break;
 		}
 	}
 
-	if (index < kSetSize) {
+	if( index < kSetSize ) {
 		mBitset[index] = true;
-		handle = dx12::CpuDescriptorHandle(this, )
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE heapStart		   = this->getHeapStart();
+		const uint32_t					  handleStride	   = this->getDevice()->getCpuDescriptorHandleStride( this->getType() );
+		const D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = { heapStart.ptr + static_cast<SIZE_T>( index * handleStride ) };
+		handle											   = dx12::CpuDescriptorHandle( this, descriptorHandle );
 	}
 
-	return 
+	return handle;
+}
+
+void FixedSizeDescriptorHeap::freeHandle( const dx12::CpuDescriptorHandle &handle )
+{
+	const dx12::DescriptorHeap		 *pHeap		   = handle.getHeap();
+	const D3D12_CPU_DESCRIPTOR_HANDLE heapStart	   = pHeap->getHeapStart();
+	const uint32_t					  handleStride = this->getDevice()->getCpuDescriptorHandleStride( this->getType() );
+	const SIZE_T					  offset	   = handle.getD3D12Handle().ptr - heapStart.ptr;
+	const uint32_t					  index		   = static_cast<uint32_t>( offset / handleStride );
+
+	mBitset[index] = false;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// DsvDescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+FixedSizedDescriptorHeapManager::FixedSizedDescriptorHeapManager( dx12::Device *pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type )
+	: dx12::DeviceChildShim<grfx::DeviceChild>( pDevice ),
+	  mType( type )
+{
+}
+
+FixedSizedDescriptorHeapManager::~FixedSizedDescriptorHeapManager()
+{
+}
+
+dx12::CpuDescriptorHandle FixedSizedDescriptorHeapManager::allocateHandle()
+{
+	dx12::CpuDescriptorHandle handle = {};
+
+	for( auto &heap : mHeaps ) {
+		handle = heap->allocateHandle();
+		if( handle ) {
+			break;
+		}
+	}
+
+	if( ! handle ) {
+		auto heap = std::shared_ptr<FixedSizeDescriptorHeap>( new dx12::FixedSizeDescriptorHeap( this->getDevice(), this->mType ) );
+	}
+
+	return handle;
+}
+
+void FixedSizedDescriptorHeapManager::freeHandle( const dx12::CpuDescriptorHandle &handle )
+{
+	dx12::FixedSizeDescriptorHeap *pHeap = nullptr;
+	for( auto &heap : mHeaps ) {
+		if( handle.getHeap() == heap.get() ) {
+			pHeap = heap.get();
+			break;
+		}
+	}
+
+	if( pHeap == nullptr ) {
+		throw cinder::Exception( "Descriptor handle does not belong any heap" );
+	}
+
+	pHeap->freeHandle( handle );
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -81,6 +173,9 @@ Device::Device(
 	if( enableCopyQueue ) {
 		mCopyQueue = dx12::QueueRef( new dx12::Queue( this, cinder::grfx::CommandType::COPY ) );
 	}
+
+	mRtvDescriptorHeapManager = std::make_shared<dx12::FixedSizedDescriptorHeapManager>( this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
+	mDsvDescriptorHeapManager = std::make_shared<dx12::FixedSizedDescriptorHeapManager>( this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
 }
 
 void Device::waitForIdle()
@@ -111,6 +206,37 @@ dx12::Queue *Device::getComputeQueue() const
 dx12::Queue *Device::getCopyQueue() const
 {
 	return static_cast<dx12::Queue *>( grfx::Device::getCopyQueue() );
+}
+
+UINT Device::getCpuDescriptorHandleStride( D3D12_DESCRIPTOR_HEAP_TYPE type ) const
+{
+	UINT stride = mDevice->GetDescriptorHandleIncrementSize( type );
+	return stride;
+}
+
+dx12::CpuDescriptorHandle Device::allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE type )
+{
+	dx12::CpuDescriptorHandle handle = {};
+	switch( type ) {
+		default: {
+			throw cinder::Exception( "Unsupported D3D12 descriptor heap type" );
+		} break;
+
+		case D3D12_DESCRIPTOR_HEAP_TYPE_RTV: handle = mRtvDescriptorHeapManager->allocateHandle(); break;
+		case D3D12_DESCRIPTOR_HEAP_TYPE_DSV: handle = mDsvDescriptorHeapManager->allocateHandle(); break;
+	}
+	return handle;
+}
+
+void Device::freeHandle( const dx12::CpuDescriptorHandle &handle )
+{
+	auto pBaseHeap = dynamic_cast<const dx12::FixedSizeDescriptorHeap *>( handle.getHeap() );
+	if( pBaseHeap ) {
+		throw cinder::Exception( "CPU descriptor handle was not allocated from a FixedSizedDescriptorHeap" );
+	}
+
+	auto pHeap = const_cast<dx12::FixedSizeDescriptorHeap *>( pBaseHeap );
+	pHeap->freeHandle( handle );
 }
 
 } // namespace cinder::grfx::dx12

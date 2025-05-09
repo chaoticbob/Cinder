@@ -31,29 +31,26 @@ namespace cinder::grfx::dx12 {
 class Texture1D;
 class Texture2D;
 class Texture3D;
-using Texture1DRef = std::shared_ptr<grfx::Texture1D>;
-using Texture2DRef = std::shared_ptr<grfx::Texture2D>;
-using Texture3DRef = std::shared_ptr<grfx::Texture3D>;
+using Texture1DRef = std::shared_ptr<dx12::Texture1D>;
+using Texture2DRef = std::shared_ptr<dx12::Texture2D>;
+using Texture3DRef = std::shared_ptr<dx12::Texture3D>;
 
 // ----------------------------------------------------------------------------------------------------
 // TextureBase
 // ----------------------------------------------------------------------------------------------------
 template <typename BaseT>
-class TextureShim : public BaseT {
+class TextureShim : public dx12::DeviceChildShim<BaseT> {
   public:
-	TextureShim() {}
+	TextureShim( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
+		: dx12::DeviceChildShim<BaseT>( width, height, format, sampleCount ) {}
 
-	TextureShim( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount )
-		: BaseT( width, height, format, sampleCount ),
-		  dx12::TextureResource( width, height, format, sampleCount ) {}
-
-	TextureShim( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
-		: BaseT( width, height, format, sampleCount, mipLevelCount, arrayLayerCount ),
+	TextureShim( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
+		: dx12::DeviceChildShim<BaseT>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount ),
 		  mResource( resource ) {}
 
 	virtual ~TextureShim() {}
 
-	ID3D12Resource *GetResource() const { return mResource.Get(); }
+	ID3D12Resource *getD3D12Resource() const { return mResource.Get(); }
 
   protected:
 	ComPtr<ID3D12Resource> mResource;
@@ -64,7 +61,6 @@ class TextureShim : public BaseT {
 // ----------------------------------------------------------------------------------------------------
 class Texture1D : public TextureShim<grfx::Texture1D> {
   public:
-	Texture1D() {}
 	virtual ~Texture1D() {}
 };
 
@@ -73,10 +69,8 @@ class Texture1D : public TextureShim<grfx::Texture1D> {
 // ----------------------------------------------------------------------------------------------------
 class Texture2D : public TextureShim<grfx::Texture2D> {
   public:
-	Texture2D() {}
-
-	Texture2D( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
-		: TextureShim<grfx::Texture2D>( width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource ) {}
+	Texture2D( dx12::Device* pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource )
+		: TextureShim<grfx::Texture2D>( pDevice, width, height, format, sampleCount, mipLevelCount, arrayLayerCount, resource ) {}
 
 	static dx12::Texture2DRef create( uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, const ComPtr<ID3D12Resource> &resource );
 	static dx12::Texture2DRef create( ID3D12Device *pDevice, uint32_t width, uint32_t height, grfx::Format format, uint32_t sampleCount, uint32_t mipLevelCount, uint32_t arrayLayerCount, bool writeable );
@@ -91,7 +85,6 @@ class Texture2D : public TextureShim<grfx::Texture2D> {
 // ----------------------------------------------------------------------------------------------------
 class Texture3D : public TextureShim<grfx::Texture3D> {
   public:
-	Texture3D() {}
 	virtual ~Texture3D() {}
 };
 
