@@ -64,6 +64,9 @@ class GraphicsCommandBuffer : public grfx::CommandBufferBase {
 
 	virtual ~GraphicsCommandBuffer() {}
 
+	virtual void Reset() = 0;
+	virtual void Close() = 0;
+
 	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) = 0;
 	virtual void EndRendering()																															  = 0;
 

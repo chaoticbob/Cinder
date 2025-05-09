@@ -68,15 +68,30 @@ void CommandBufferBaseImpl::flushCommands()
 // ----------------------------------------------------------------------------------------------------
 // GraphicsCommandBuffer
 // ----------------------------------------------------------------------------------------------------
+void GraphicsCommandBuffer::Reset()
+{
+	this->getD3D12CommandList()->Reset( this->getD3D12CommandAllocator(), nullptr );
+}
+
+void GraphicsCommandBuffer::Close()
+{
+	this->getD3D12CommandList()->Close();
+}
+
 void GraphicsCommandBuffer::BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil )
 {
 	std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> renderTargetDescs = {};
+	for( const auto &renderTarget : renderTargets ) {
+		D3D12_RENDER_PASS_RENDER_TARGET_DESC desc = {};
+	}
 
 	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc = {};
+	if( depthStencil ) {
+	}
 
 	D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
 
-	this->getCommandList()->BeginRenderPass(
+	this->getD3D12CommandList()->BeginRenderPass(
 		static_cast<UINT>( renderTargetDescs.size() ),
 		renderTargetDescs.empty() ? nullptr : renderTargetDescs.data(),
 		depthStencil ? &depthStencilDesc : nullptr,
@@ -85,7 +100,7 @@ void GraphicsCommandBuffer::BeginRendering( const std::vector<grfx::RenderTarget
 
 void GraphicsCommandBuffer::EndRendering()
 {
-	this->getCommandList()->EndRenderPass();
+	this->getD3D12CommandList()->EndRenderPass();
 }
 
 void GraphicsCommandBuffer::ClearRenderTarget( uint32_t renderTargetIndex, float r, float g, float b, float a )

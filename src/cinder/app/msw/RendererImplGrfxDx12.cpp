@@ -132,24 +132,6 @@ void RendererImplGrfxDx12::createDevice()
 	}
 }
 
-// void RendererImplGrfxDx12::createQueues()
-//{
-//	if( this->getRenderer()->getOptions().getGraphicsQueue() ) {
-//		mGraphicsQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT );
-//		mComputeQueue  = mGraphicsQueue;
-//		mCopyQueue	   = mGraphicsQueue;
-//	}
-//
-//	if( this->getRenderer()->getOptions().getComputeQueue() ) {
-//		mComputeQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE );
-//		mCopyQueue	  = mComputeQueue;
-//	}
-//
-//	if( this->getRenderer()->getOptions().getCopyQueue() ) {
-//		mCopyQueue = ci::grfx::dx12::Queue::create( mDevice.Get(), D3D12_COMMAND_LIST_TYPE_COPY );
-//	}
-// }
-
 void RendererImplGrfxDx12::createSwapchain()
 {
 	mRenderTargets.clear();

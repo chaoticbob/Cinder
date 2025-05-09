@@ -26,6 +26,8 @@
 #include "cinder/grfx/dx12/platform.h"
 #include "cinder/grfx/Device.h"
 
+#include <bitset>
+
 namespace cinder::grfx::dx12 {
 
 class Device;
@@ -33,6 +35,47 @@ class Queue;
 
 using DeviceRef = std::shared_ptr<dx12::Device>;
 
+// ----------------------------------------------------------------------------------------------------
+// DescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+class DescriptorHeap {
+  public:
+	DescriptorHeap( uint32_t size, D3D12_DESCRIPTOR_HEAP_TYPE type );
+	virtual ~DescriptorHeap();
+
+	uint32_t getSize() const;
+
+  private:
+	ComPtr<ID3D12DescriptorHeap> mHeap = nullptr;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// FixedSizeDescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+class FixedSizeDescriptorHeap : public dx12::DescriptorHeap {
+  public:
+	static const size_t kSetSize = 128;
+
+	FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type );
+	~FixedSizeDescriptorHeap();
+
+	virtual dx12::CpuDescriptorHandle allocateHandle() override;
+
+  private:
+	std::bitset<kSetSize>		 mBitset = {};
+	ComPtr<ID3D12DescriptorHeap> mHeap	 = nullptr;
+};
+
+class RtvDescriptorHeap : public FixedSizeDescriptorHeap {
+  public:
+	RtvDescriptorHeap()
+		: FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) {}
+	~RtvDescriptorHeap() {}
+};
+
+// ----------------------------------------------------------------------------------------------------
+// Device
+// ----------------------------------------------------------------------------------------------------
 class Device : public grfx::Device {
   public:
 	Device(

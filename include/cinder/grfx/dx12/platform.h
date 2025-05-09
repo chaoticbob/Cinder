@@ -36,8 +36,12 @@ namespace cinder::grfx::dx12 {
 
 using Microsoft::WRL::ComPtr;
 
+class DescriptorHeap;
 class Device;
 
+// ----------------------------------------------------------------------------------------------------
+// DeviceChildShim
+// ----------------------------------------------------------------------------------------------------
 template <typename BaseT>
 class DeviceChildShim : public BaseT {
   public:
@@ -48,6 +52,26 @@ class DeviceChildShim : public BaseT {
 	virtual ~DeviceChildShim() {}
 
 	dx12::Device *getDevice() const { return static_cast<dx12::Device *>( BaseT::getDevice() ); }
+};
+
+// ----------------------------------------------------------------------------------------------------
+// CpuDescriptorHandle
+// ----------------------------------------------------------------------------------------------------
+class CpuDescriptorHandle {
+  public:
+	CpuDescriptorHandle() {}
+
+	CpuDescriptorHandle( const dx12::DescriptorHeap *pHeap, D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle )
+		: mHeap( pHeap ), mDescriptorHandle( descriptorHandle ) {}
+
+	~CpuDescriptorHandle() {}
+
+	const dx12::DescriptorHeap		  *getHeap() const { return mHeap; }
+	const D3D12_CPU_DESCRIPTOR_HANDLE &getD3D12Handle() const { return mDescriptorHandle; }
+
+  private:
+	const dx12::DescriptorHeap *mHeap			  = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE mDescriptorHandle = {};
 };
 
 } // namespace cinder::grfx::dx12

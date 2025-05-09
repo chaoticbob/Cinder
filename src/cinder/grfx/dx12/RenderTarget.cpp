@@ -28,16 +28,16 @@ namespace cinder::grfx::dx12 {
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( const dx12::Texture2DRef &texture )
-	: grfx::RenderTarget( texture )
+RenderTarget::RenderTarget( const dx12::Texture2DRef &texture, grfx::Format format )
+	: grfx::RenderTarget( texture, format )
 {
 }
 
 // ----------------------------------------------------------------------------------------------------
 // DepthStencil
 // ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( const dx12::Texture2DRef &texture )
-	: grfx::DepthStencil( texture )
+DepthStencil::DepthStencil( const dx12::Texture2DRef &texture, grfx::Format format )
+	: grfx::DepthStencil( texture, format )
 {
 }
 

@@ -29,28 +29,33 @@
 
 namespace cinder::grfx::dx12 {
 
+class CpuDescriptorHandle;
+
 class RenderTarget;
 class DepthStencil;
 using RenderTargetRef = std::shared_ptr<dx12::RenderTarget>;
 using DepthStencilRef = std::shared_ptr<dx12::DepthStencil>;
 
+// ----------------------------------------------------------------------------------------------------
+// RenderTarget
+// ----------------------------------------------------------------------------------------------------
 class RenderTarget : public grfx::RenderTarget {
   public:
-	RenderTarget();
-
-	RenderTarget( const dx12::Texture2DRef &texture );
-
+	RenderTarget( const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN );
 	virtual ~RenderTarget() {}
 
 	static dx12::RenderTargetRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::RenderTarget>( texture ); }
+
+  private:
+	dx12::CpuDescriptorHandle mDescriptorHandle = {};
 };
 
+// ----------------------------------------------------------------------------------------------------
+// DepthStencil
+// ----------------------------------------------------------------------------------------------------
 class DepthStencil : public grfx::DepthStencil {
   public:
-	DepthStencil() {}
-
-	DepthStencil( const dx12::Texture2DRef &texture );
-
+	DepthStencil( const dx12::Texture2DRef &texture, grfx::Format format = grfx::Format::UNKNOWN );
 	virtual ~DepthStencil() {}
 
 	static dx12::DepthStencilRef create( const dx12::Texture2DRef &texture ) { return std::make_shared<dx12::DepthStencil>( texture ); }

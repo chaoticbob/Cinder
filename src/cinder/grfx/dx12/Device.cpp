@@ -26,6 +26,40 @@
 
 namespace cinder::grfx::dx12 {
 
+// ----------------------------------------------------------------------------------------------------
+// DescriptorHeap
+// ----------------------------------------------------------------------------------------------------
+FixedSizeDescriptorHeap::FixedSizeDescriptorHeap( D3D12_DESCRIPTOR_HEAP_TYPE type )
+	: dx12::DescriptorHeap( dx12::FixedSizeDescriptorHeap::kSetSize, type )
+{
+}
+
+FixedSizeDescriptorHeap::~FixedSizeDescriptorHeap()
+{
+}
+
+dx12::CpuDescriptorHandle FixedSizeDescriptorHeap::allocateHandle()
+{
+	dx12::CpuDescriptorHandle handle = {};
+
+	uint32_t index = 0;
+	for( ; index < kSetSize; ++index ) {
+		if (mBitset[index] == false) {
+			break;
+		}
+	}
+
+	if (index < kSetSize) {
+		mBitset[index] = true;
+		handle = dx12::CpuDescriptorHandle(this, )
+	}
+
+	return 
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Device
+// ----------------------------------------------------------------------------------------------------
 Device::Device(
 	const ComPtr<ID3D12Device9> &device,
 	bool						 enableGraphicsQueue,

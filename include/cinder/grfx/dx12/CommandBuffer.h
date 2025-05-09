@@ -45,8 +45,8 @@ class CommandBufferBaseImpl {
 	CommandBufferBaseImpl( dx12::Queue *pParentQueue );
 	virtual ~CommandBufferBaseImpl();
 
-	ID3D12CommandAllocator	   *getCommandAllocator() const { return mCommandAllocator.Get(); }
-	ID3D12GraphicsCommandList4 *getCommandList() const { return mCommandList.Get(); }
+	ID3D12CommandAllocator	   *getD3D12CommandAllocator() const { return mCommandAllocator.Get(); }
+	ID3D12GraphicsCommandList4 *getD3D12CommandList() const { return mCommandList.Get(); }
 
   protected:
 	virtual dx12::Queue *getParentQueue() = 0;
@@ -89,6 +89,9 @@ class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsComma
 		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pParentQueue ) {}
 
 	virtual ~GraphicsCommandBuffer() {}
+
+	virtual void Reset() override;
+	virtual void Close() override;
 
 	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) override;
 	virtual void EndRendering() override;

@@ -34,12 +34,14 @@ class DepthStencil;
 using RenderTargetRef = std::shared_ptr<grfx::RenderTarget>;
 using DepthStencilRef = std::shared_ptr<grfx::DepthStencil>;
 
+// ----------------------------------------------------------------------------------------------------
+// RenderTarget
+// ----------------------------------------------------------------------------------------------------
 class RenderTarget {
+  protected:
+	RenderTarget( const grfx::Texture2DRef &texture, grfx::Format format );
+
   public:
-	RenderTarget() {}
-
-	RenderTarget( const grfx::Texture2DRef &texture );
-
 	virtual ~RenderTarget() {}
 
 	uint32_t		   getWidth() const { return mTexture->getWidth(); }
@@ -52,12 +54,14 @@ class RenderTarget {
 	grfx::Texture2DRef mTexture = nullptr;
 };
 
+// ----------------------------------------------------------------------------------------------------
+// DepthStencil
+// ----------------------------------------------------------------------------------------------------
 class DepthStencil {
+  protected:
+	DepthStencil( const grfx::Texture2DRef &texture, grfx::Format format );
+
   public:
-	DepthStencil() {}
-
-	DepthStencil( const grfx::Texture2DRef &texture );
-
 	virtual ~DepthStencil() {}
 
 	uint32_t		   getWidth() const { return mTexture->getWidth(); }

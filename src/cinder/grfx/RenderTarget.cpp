@@ -28,7 +28,7 @@ namespace cinder::grfx {
 // ----------------------------------------------------------------------------------------------------
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( const Texture2DRef &texture )
+RenderTarget::RenderTarget( const grfx::Texture2DRef &texture, grfx::Format format )
 	: mTexture( texture )
 {
 }
