@@ -48,7 +48,7 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	void createDevice();
 	void createSwapchain();
 	void createSwapchainBuffers();
-	void createRenderTargets();
+	void createMsaaRenderTargets();
 
 	virtual void initialize() override;
 	virtual void kill() override;
@@ -59,13 +59,15 @@ class RendererImplGrfxDx12 : public RendererImplGrfx {
 	virtual void defaultResize() override;
 
   private:
-	ComPtr<IDXGIFactory2>									  mFactory				 = nullptr;
-	cinder::grfx::dx12::DeviceRef							  mDevice				 = nullptr;
-	ComPtr<IDXGISwapChain4>									  mSwapchain			 = nullptr;
-	std::vector<cinder::grfx::dx12::RenderTargetRef>		  mSwapchainBuffers		 = {};
-	std::vector<cinder::grfx::dx12::RenderTargetRef>		  mRenderTargets		 = {};
-	std::vector<cinder::grfx::dx12::DepthStencilRef>		  mDepthStencils		 = {};
-	std::vector<cinder::grfx::dx12::GraphicsCommandBufferRef> mResolveCommandBuffers = {};
+	ComPtr<IDXGIFactory2>							  mFactory				 = nullptr;
+	cinder::grfx::dx12::DeviceRef					  mDevice				 = nullptr;
+	ComPtr<IDXGISwapChain4>							  mSwapchain			 = nullptr;
+	std::vector<cinder::grfx::dx12::RenderTargetRef>  mSwapchainBuffers		 = {};
+	std::vector<cinder::grfx::dx12::RenderTargetRef>  mMsaaRenderTargets	 = {};
+	std::vector<cinder::grfx::dx12::DepthStencilRef>  mMsaaDepthStencils	 = {};
+	std::vector<cinder::grfx::dx12::CommandBufferRef> mResolveCommandBuffers = {};
+	uint64_t										  mPresentCount			 = 0;
+	cinder::grfx::dx12::FenceRef					  mResolveFence			 = nullptr;
 };
 
 } // namespace cinder::app

@@ -28,99 +28,37 @@
 
 namespace cinder::grfx::dx12 {
 
-class GraphicsCommandBuffer;
-class ComputeCommandBuffer;
-class CopyCommandBuffer;
+class CommandBuffer;
 class Queue;
 
-using GraphicsCommandBufferRef = std::shared_ptr<dx12::GraphicsCommandBuffer>;
-using ComputeCommandBufferRef  = std::shared_ptr<dx12::ComputeCommandBuffer>;
-using CopyCommandBufferRef	   = std::shared_ptr<dx12::CopyCommandBuffer>;
+using CommandBufferRef = std::shared_ptr<dx12::CommandBuffer>;
+using QueueRef		   = std::shared_ptr<dx12::Queue>;
 
 // ----------------------------------------------------------------------------------------------------
-// CommandBufferBaseImpl
+// CommandBuffer
 // ----------------------------------------------------------------------------------------------------
-class CommandBufferBaseImpl {
+class CommandBuffer : public dx12::DeviceChildShim<grfx::CommandBuffer> {
   public:
-	CommandBufferBaseImpl( dx12::Queue *pParentQueue );
-	virtual ~CommandBufferBaseImpl();
+	CommandBuffer( dx12::Queue *pParentQueue );
+	virtual ~CommandBuffer();
 
 	ID3D12CommandAllocator	   *getD3D12CommandAllocator() const { return mCommandAllocator.Get(); }
 	ID3D12GraphicsCommandList4 *getD3D12CommandList() const { return mCommandList.Get(); }
 
-  protected:
-	virtual dx12::Queue *getParentQueue() = 0;
+	virtual void submit() override;
+	virtual void flush() override;
 
-	void submitCommands();
-	void flushCommands();
+	virtual void reset() override;
+	virtual void close() override;
+
+	virtual void beginRenderPass( const grfx::RenderPass &renderPass ) override;
+	virtual void endRenderPass() override;
+
+	virtual void resolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) override;
 
   private:
 	ComPtr<ID3D12CommandAllocator>	   mCommandAllocator = nullptr;
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList		 = nullptr;
-};
-
-// ----------------------------------------------------------------------------------------------------
-// CommandBufferShim
-// ----------------------------------------------------------------------------------------------------
-template <typename BaseT>
-class CommandBufferShim : public dx12::DeviceChildShim<BaseT>, public dx12::CommandBufferBaseImpl {
-  public:
-	CommandBufferShim( dx12::Queue *pParentQueue )
-		: dx12::DeviceChildShim<BaseT>( pParentQueue ),
-		  dx12::CommandBufferBaseImpl( pParentQueue ) {}
-
-	virtual ~CommandBufferShim() {}
-
-	dx12::Queue *getQueue() const { return static_cast<dx12::Queue *>( BaseT::getQueue() ); }
-
-	virtual void submit() override { this->submitCommands(); }
-	virtual void flush() override { this->flushCommands(); }
-
-  protected:
-	virtual dx12::Queue *getParentQueue() override { return this->getQueue(); }
-};
-
-// ----------------------------------------------------------------------------------------------------
-// GraphicsCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class GraphicsCommandBuffer : public dx12::CommandBufferShim<grfx::GraphicsCommandBuffer> {
-  public:
-	GraphicsCommandBuffer( dx12::Queue *pParentQueue )
-		: dx12::CommandBufferShim<grfx::GraphicsCommandBuffer>( pParentQueue ) {}
-
-	virtual ~GraphicsCommandBuffer() {}
-
-	virtual void Reset() override;
-	virtual void Close() override;
-
-	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) override;
-	virtual void EndRendering() override;
-
-	virtual void ClearRenderTarget( uint32_t renderTargetIndex, float r = 0, float g = 0, float b = 0, float a = 0 ) override;
-
-	virtual void ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) override;
-};
-
-// ----------------------------------------------------------------------------------------------------
-// ComputeCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class ComputeCommandBuffer : public dx12::CommandBufferShim<grfx::ComputeCommandBuffer> {
-  public:
-	ComputeCommandBuffer( dx12::Queue *pParentQueue )
-		: dx12::CommandBufferShim<grfx::ComputeCommandBuffer>( pParentQueue ) {}
-
-	virtual ~ComputeCommandBuffer() {}
-};
-
-// ----------------------------------------------------------------------------------------------------
-// CopyCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class CopyCommandBuffer : public dx12::CommandBufferShim<grfx::CopyCommandBuffer> {
-  public:
-	CopyCommandBuffer( dx12::Queue *pParentQueue )
-		: dx12::CommandBufferShim<grfx::CopyCommandBuffer>( pParentQueue ) {}
-
-	virtual ~CopyCommandBuffer() {}
 };
 
 } // namespace cinder::grfx::dx12

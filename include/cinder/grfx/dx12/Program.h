@@ -21,28 +21,10 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cinder/grfx/RenderTarget.h"
+#pragma once
 
-namespace cinder::grfx {
+#include "cinder/grfx/dx12/platform.h"
 
-// ----------------------------------------------------------------------------------------------------
-// RenderTarget
-// ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
-	: grfx::DeviceChild( pDevice ),
-	  mTexture( texture ),
-	  mFormat( ( format == cinder::grfx::Format::UNKNOWN ) ? texture->getFormat() : format ),
-	  mMipLevel( mipLevel ),
-	  mArrayLayer( arrayLayer )
-{
-}
+namespace cinder::grfx::dx12 {
 
-// ----------------------------------------------------------------------------------------------------
-// DepthStencil
-// ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( grfx::Device *pDevice, const Texture2DRef &texture, grfx::Format format )
-	: grfx::DeviceChild( pDevice ), mTexture( texture )
-{
-}
-
-} // namespace cinder::grfx
+} // namespace cinder::grfx::dx12

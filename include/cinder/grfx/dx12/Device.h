@@ -125,9 +125,11 @@ class Device : public grfx::Device {
 
 	virtual ~Device() {}
 
-	ID3D12Device *getD3D12Device() const { return mDevice.Get(); }
+	ID3D12Device9 *getD3D12Device() const { return mDevice.Get(); }
 
 	virtual void waitForIdle() override;
+
+	virtual grfx::FenceRef createFence( uint64_t initialValue = 0 ) override;
 
 	dx12::Queue *getGraphicsQueue() const;
 	dx12::Queue *getComputeQueue() const;

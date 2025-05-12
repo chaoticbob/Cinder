@@ -92,9 +92,9 @@ class CI_API RendererGrfx : public Renderer {
 		uint32_t			getSwapchainBufferCount() const { return mSwapchainBufferCount; }
 		void				setSwapchainBufferCount( uint32_t count ) { mSwapchainBufferCount = std::max<uint32_t>(count, 1); }
 
-		Options&			msaa( uint32_t sampleCount ) { mMsaaSamples = sampleCount; return *this; }
+		Options&			msaa( uint32_t sampleCount ) { mMsaaSamples = std::min<uint32_t>(sampleCount, 8); return *this; }
 		uint32_t			getMsaa() const { return mMsaaSamples; }
-		void				setMsaa( uint32_t sampleCount ) { mMsaaSamples = sampleCount; }
+		void				setMsaa( uint32_t sampleCount ) { mMsaaSamples = std::min<uint32_t>(sampleCount, 8); }
 
 #if defined( CINDER_DX12 )
 		Options&			featureLevel( D3D_FEATURE_LEVEL featureLevel ) { mFeatureLevel = featureLevel; return *this; }

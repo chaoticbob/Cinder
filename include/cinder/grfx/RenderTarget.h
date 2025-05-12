@@ -44,12 +44,13 @@ class RenderTarget : public grfx::DeviceChild {
   public:
 	virtual ~RenderTarget() {}
 
-	uint32_t		   getWidth() const { return mTexture->getWidth(); }
-	uint32_t		   getHeight() const { return mTexture->getHeight(); }
-	grfx::Format	   getFormat() const { return mFormat; }
-	uint32_t		   getMipLevel() const { return mMipLevel; }
-	uint32_t		   getArrayLayer() const { return mArrayLayer; }
-	grfx::Texture2DRef getTexture() const { return mTexture; }
+	uint32_t				  getWidth() const { return mTexture->getWidth(); }
+	uint32_t				  getHeight() const { return mTexture->getHeight(); }
+	grfx::Format			  getFormat() const { return mFormat; }
+	uint32_t				  getSampleCount() const { return mTexture->getSampleCount(); }
+	uint32_t				  getMipLevel() const { return mMipLevel; }
+	uint32_t				  getArrayLayer() const { return mArrayLayer; }
+	const grfx::Texture2DRef &getTexture() const { return mTexture; }
 
   protected:
 	grfx::Format	   mFormat	   = grfx::Format::UNKNOWN;
@@ -68,10 +69,10 @@ class DepthStencil : public grfx::DeviceChild {
   public:
 	virtual ~DepthStencil() {}
 
-	uint32_t		   getWidth() const { return mTexture->getWidth(); }
-	uint32_t		   getHeight() const { return mTexture->getHeight(); }
-	grfx::Format	   getFormat() const { return mFormat; }
-	grfx::Texture2DRef getTexture() const { return mTexture; }
+	uint32_t				  getWidth() const { return mTexture->getWidth(); }
+	uint32_t				  getHeight() const { return mTexture->getHeight(); }
+	grfx::Format			  getFormat() const { return mFormat; }
+	const grfx::Texture2DRef &getTexture() const { return mTexture; }
 
   protected:
 	grfx::Format	   mFormat	= grfx::Format::UNKNOWN;

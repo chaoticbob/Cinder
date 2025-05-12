@@ -1,4 +1,5 @@
 /*
+/*
  Copyright (c) 2025, The Cinder Project, All rights reserved.
 
  This code is intended for use with the Cinder C++ library: http://libcinder.org
@@ -21,27 +22,25 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cinder/grfx/RenderTarget.h"
+#include "cinder/grfx/Program.h"
+
+#include "slang.h"
 
 namespace cinder::grfx {
 
-// ----------------------------------------------------------------------------------------------------
-// RenderTarget
-// ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
-	: grfx::DeviceChild( pDevice ),
-	  mTexture( texture ),
-	  mFormat( ( format == cinder::grfx::Format::UNKNOWN ) ? texture->getFormat() : format ),
-	  mMipLevel( mipLevel ),
-	  mArrayLayer( arrayLayer )
+grfx::ProgramRef createGraphicsProgramFromSource(
+	grfx::SourceLanguage sourceLanguage,
+	const std::string	&vertexSource,
+	const std::string	&vertexEntryPoint,
+	const std::string	&pixelSource,
+	const std::string	&pixelEntryPoint )
 {
 }
 
-// ----------------------------------------------------------------------------------------------------
-// DepthStencil
-// ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( grfx::Device *pDevice, const Texture2DRef &texture, grfx::Format format )
-	: grfx::DeviceChild( pDevice ), mTexture( texture )
+grfx::ProgramRef createComputeProgramFromSource(
+	grfx::SourceLanguage sourceLanguage,
+	const std::string	&source,
+	const std::string	&entryPoint )
 {
 }
 

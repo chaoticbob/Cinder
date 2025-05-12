@@ -31,20 +31,26 @@ namespace cinder::grfx::dx12 {
 // RenderTarget
 // ----------------------------------------------------------------------------------------------------
 RenderTarget::RenderTarget( dx12::Device *pDevice, const dx12::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
-	: dx12::DeviceChildShim<grfx::RenderTarget>( pDevice, texture, format, mipLevel, arrayLayer ),
+	: dx12::DeviceChildShim<grfx::RenderTarget>(
+		  pDevice,
+		  texture,
+		  ( ( format == cinder::grfx::Format::UNKNOWN ) ? texture->getFormat() : format ),
+		  mipLevel,
+		  arrayLayer ),
 	  mDescriptorHandle( texture->getDevice()->allocateHandle( D3D12_DESCRIPTOR_HEAP_TYPE_RTV ) )
 {
+	const bool isMultiSample = ( texture->getSampleCount() > 1 );
+
 	D3D12_RENDER_TARGET_VIEW_DESC desc = {};
 	desc.Format						   = toDxgiFormat( this->getFormat() );
-	desc.ViewDimension				   = D3D12_RTV_DIMENSION_TEXTURE2D;
+	desc.ViewDimension				   = isMultiSample ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
 
 	// Multisample textures can only have 1 mip level and 1 array layer
-	const bool isMultisSample = ( texture->getSampleCount() > 1 );
-	if( ! isMultisSample ) {
+	if( ! isMultiSample ) {
 		desc.Texture2D.MipSlice	  = this->getMipLevel();
 		desc.Texture2D.PlaneSlice = this->getArrayLayer();
 	}
-
+	
 	ID3D12Resource *pResource = this->getTexture()->getD3D12Resource();
 	this->getD3D12Device()->CreateRenderTargetView(
 		pResource,

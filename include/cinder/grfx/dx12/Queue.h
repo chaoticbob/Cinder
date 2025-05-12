@@ -30,29 +30,55 @@
 
 namespace cinder::grfx::dx12 {
 
+class Fence;
 class Queue;
 
+using FenceRef = std::shared_ptr<dx12::Fence>;
 using QueueRef = std::shared_ptr<dx12::Queue>;
 
+// ----------------------------------------------------------------------------------------------------
+// Fence
+// ----------------------------------------------------------------------------------------------------
+class Fence : public dx12::DeviceChildShim<grfx::Fence> {
+  public:
+	Fence( dx12::Device *pParentDevice, uint64_t initialValue = 0 );
+	virtual ~Fence();
+
+	ID3D12Fence *getD3D12Fence() const { return mFence.Get(); }
+
+	virtual void	 signal( uint64_t value ) override;
+	virtual void	 wait( uint64_t value ) override;
+	virtual uint64_t currentValuue() const override;
+
+  private:
+	ComPtr<ID3D12Fence> mFence	   = nullptr;
+	HANDLE				mWaitEvent = nullptr;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// Queue
+// ----------------------------------------------------------------------------------------------------
 class Queue : public dx12::DeviceChildShim<cinder::grfx::Queue> {
   public:
-	Queue( dx12::Device *pDevice, grfx::CommandType commandType );
+	Queue( dx12::Device *pParentDevice, grfx::CommandType commandType );
 	virtual ~Queue();
 
 	ID3D12CommandQueue *getD3D12CommandQueue() const { return mCommandQueue.Get(); }
 
+	virtual void submit( const std::vector<grfx::CommandBufferRef> &commandBuffers ) override;
+	virtual void flush( const std::vector<grfx::CommandBufferRef> &commandBuffers ) override;
+	virtual void signal( const grfx::FenceRef &fence, uint64_t value ) override;
+	virtual void wait( const grfx::FenceRef &fence, uint64_t value ) override;
 	virtual void waitForIdle() override;
 
-	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() override;
-	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer() override;
-	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer() override;
+	virtual grfx::CommandBufferRef createCommandBuffer() override;
 
   private:
 	ComPtr<ID3D12CommandQueue> mCommandQueue;
 	std::mutex				   mWaitForIdleMutex;
-	ComPtr<ID3D12Fence>		   mWaitForIdleFence;
+	dx12::FenceRef			   mWaitForIdleFence;
 	uint64_t				   mWaitForIdleValue = 0;
-	HANDLE					   mWaitForIdleEvent = nullptr;
+	uint64_t				   mFlushCounter	 = 0;
 };
 
 } // namespace cinder::grfx::dx12

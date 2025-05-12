@@ -205,6 +205,11 @@ void Device::waitForIdle()
 	}
 }
 
+grfx::FenceRef Device::createFence( uint64_t initialValue )
+{
+	return dx12::FenceRef( new dx12::Fence( this, initialValue ) );
+}
+
 dx12::Queue *Device::getGraphicsQueue() const
 {
 	return static_cast<dx12::Queue *>( grfx::Device::getGraphicsQueue() );

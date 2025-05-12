@@ -134,8 +134,6 @@ void RendererImplGrfxDx12::createDevice()
 
 void RendererImplGrfxDx12::createSwapchain()
 {
-	mRenderTargets.clear();
-
 	::RECT clientRect;
 	::GetClientRect( this->getRenderer()->getHwnd(), &clientRect );
 	uint32_t width	= ( clientRect.right - clientRect.left );
@@ -202,7 +200,7 @@ void RendererImplGrfxDx12::createSwapchainBuffers()
 	}
 }
 
-void RendererImplGrfxDx12::createRenderTargets()
+void RendererImplGrfxDx12::createMsaaRenderTargets()
 {
 	uint32_t sampleCount = this->getRenderer()->getOptions().getMsaa();
 	sampleCount			 = ( sampleCount >= 2 ? sampleCount : 1 );
@@ -224,7 +222,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 
 			auto renderTarget = ci::grfx::dx12::RenderTarget::create( mDevice.get(), texture );
 
-			mRenderTargets.push_back( renderTarget );
+			mMsaaRenderTargets.push_back( renderTarget );
 		}
 
 		// Depth stencil
@@ -240,7 +238,7 @@ void RendererImplGrfxDx12::createRenderTargets()
 
 			auto depthStencil = ci::grfx::dx12::DepthStencil::create( mDevice.get(), texture );
 
-			mDepthStencils.push_back( depthStencil );
+			mMsaaDepthStencils.push_back( depthStencil );
 		}
 	}
 }
@@ -294,13 +292,20 @@ void RendererImplGrfxDx12::initialize()
 	// Create swapchain
 	createSwapchain();
 
-	// Create swapchain buffers and render targets
+	// Create swapchain buffers
 	createSwapchainBuffers();
-	createRenderTargets();
 
-	// Create command buffers
+	// Create MSAA render targets
+	createMsaaRenderTargets();
+
+	// Create blit command buffers
 	for( size_t i = 0; i < mSwapchainBuffers.size(); ++i ) {
+		auto commandBuffer = std::static_pointer_cast<cinder::grfx::dx12::CommandBuffer>( mDevice->getGraphicsQueue()->createCommandBuffer() );
+		mResolveCommandBuffers.push_back( commandBuffer );
 	}
+
+	// Blit fence
+	mResolveFence = std::make_shared<cinder::grfx::dx12::Fence>( mDevice.get() );
 }
 
 void RendererImplGrfxDx12::kill()
@@ -323,22 +328,88 @@ void RendererImplGrfxDx12::finishDraw()
 
 void RendererImplGrfxDx12::swapBuffers()
 {
-	UINT bufferIndex = mSwapchain->GetCurrentBackBufferIndex();
+	const uint32_t frameIndex	 = static_cast<uint32_t>( mPresentCount % mSwapchainBuffers.size() );
+	auto		  &commandBuffer = mResolveCommandBuffers[frameIndex];
 
+	// Record blit command buffer
+	commandBuffer->reset();
+	{
+		const UINT bufferIndex = mSwapchain->GetCurrentBackBufferIndex();
+
+		// mSwapchain->GetBuffer()
+
+		commandBuffer->beginRenderPass( grfx::RenderPass(
+			{ grfx::ColorAttachment( mMsaaRenderTargets[bufferIndex] ).clear( ColorAf( 1, 0, 0, 1 ) ) } ) );
+		commandBuffer->endRenderPass();
+
+		auto msaaTexture	 = mMsaaRenderTargets[bufferIndex]->getTexture();
+		auto swapchainBuffer = mSwapchainBuffers[bufferIndex]->getTexture();
+		bool isMultiSample	 = ( msaaTexture->getSampleCount() > 1 );
+
+		if( isMultiSample ) {
+			D3D12_RESOURCE_BARRIER barriers[2] = {};
+
+			barriers[0] = cinder::grfx::dx12::ResourceBarrier::Transition( msaaTexture->getD3D12Resource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE );
+			barriers[1] = cinder::grfx::dx12::ResourceBarrier::Transition( swapchainBuffer->getD3D12Resource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST );
+			commandBuffer->getD3D12CommandList()->ResourceBarrier( 2, barriers );
+
+			commandBuffer->getD3D12CommandList()->ResolveSubresource(
+				swapchainBuffer->getD3D12Resource(),
+				0,
+				msaaTexture->getD3D12Resource(),
+				0,
+				cinder::grfx::dx12::toDxgiFormat( msaaTexture->getFormat() ) );
+
+			barriers[0] = cinder::grfx::dx12::ResourceBarrier::Transition( msaaTexture->getD3D12Resource(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET );
+			barriers[1] = cinder::grfx::dx12::ResourceBarrier::Transition( swapchainBuffer->getD3D12Resource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT );
+			commandBuffer->getD3D12CommandList()->ResourceBarrier( 2, barriers );
+		}
+		else {
+			D3D12_RESOURCE_BARRIER barriers[2] = {};
+
+			barriers[0] = cinder::grfx::dx12::ResourceBarrier::Transition( msaaTexture->getD3D12Resource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE );
+			barriers[1] = cinder::grfx::dx12::ResourceBarrier::Transition( swapchainBuffer->getD3D12Resource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST );
+			commandBuffer->getD3D12CommandList()->ResourceBarrier( 2, barriers );
+
+			commandBuffer->getD3D12CommandList()->CopyResource(
+				mSwapchainBuffers[bufferIndex]->getTexture()->getD3D12Resource(),
+				mMsaaRenderTargets[bufferIndex]->getTexture()->getD3D12Resource() );
+
+			barriers[0] = cinder::grfx::dx12::ResourceBarrier::Transition( msaaTexture->getD3D12Resource(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET );
+			barriers[1] = cinder::grfx::dx12::ResourceBarrier::Transition( swapchainBuffer->getD3D12Resource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT );
+			commandBuffer->getD3D12CommandList()->ResourceBarrier( 2, barriers );
+		}
+	}
+	commandBuffer->close();
+
+	// Queue blit command buffer for execution
+	mDevice->getGraphicsQueue()->submit( { commandBuffer } );
+
+	// Queue a signal for when blit command buffer is done executing
+	const uint64_t fenceValue = mPresentCount + 1;
+	mDevice->getGraphicsQueue()->signal( mResolveFence, fenceValue );
+
+	// Queue a wait for when blit command buffer is done executing
+	mDevice->getGraphicsQueue()->wait( mResolveFence, fenceValue );
+
+	// Queue present
 	HRESULT hr = mSwapchain->Present( 0, 0 );
 	if( FAILED( hr ) ) {
 		throw ci::Exception( "Present failed for DXGI swapchain" );
 	}
+
+	// Increment frame count
+	++mPresentCount;
 }
 
 void RendererImplGrfxDx12::defaultResize()
 {
 	mDevice->getGraphicsQueue()->waitForIdle();
 
-	// Release swapchain buffers and render targets
+	// Release swapchain buffers, render targets, and depth stencils
 	mSwapchainBuffers.clear();
-	mRenderTargets.clear();
-	mDepthStencils.clear();
+	mMsaaRenderTargets.clear();
+	mMsaaDepthStencils.clear();
 
 	::RECT clientRect;
 	::GetClientRect( this->getRenderer()->getHwnd(), &clientRect );
@@ -355,9 +426,11 @@ void RendererImplGrfxDx12::defaultResize()
 		throw ci::Exception( "Resize buffers failed for DXGI swapchain" );
 	}
 
-	// Recreate swapchain buffers and render targets
+	// Create swapchain buffers
 	createSwapchainBuffers();
-	createRenderTargets();
+
+	// Create MSAA render targets
+	createMsaaRenderTargets();
 }
 
 } // namespace cinder::app

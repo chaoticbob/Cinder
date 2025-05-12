@@ -1,4 +1,5 @@
 /*
+/*
  Copyright (c) 2025, The Cinder Project, All rights reserved.
 
  This code is intended for use with the Cinder C++ library: http://libcinder.org
@@ -21,28 +22,8 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cinder/grfx/RenderTarget.h"
+#include "cinder/grfx/dx12/Program.h"
 
-namespace cinder::grfx {
+namespace cinder::grfx::dx12 {
 
-// ----------------------------------------------------------------------------------------------------
-// RenderTarget
-// ----------------------------------------------------------------------------------------------------
-RenderTarget::RenderTarget( grfx::Device *pDevice, const grfx::Texture2DRef &texture, grfx::Format format, uint32_t mipLevel, uint32_t arrayLayer )
-	: grfx::DeviceChild( pDevice ),
-	  mTexture( texture ),
-	  mFormat( ( format == cinder::grfx::Format::UNKNOWN ) ? texture->getFormat() : format ),
-	  mMipLevel( mipLevel ),
-	  mArrayLayer( arrayLayer )
-{
-}
-
-// ----------------------------------------------------------------------------------------------------
-// DepthStencil
-// ----------------------------------------------------------------------------------------------------
-DepthStencil::DepthStencil( grfx::Device *pDevice, const Texture2DRef &texture, grfx::Format format )
-	: grfx::DeviceChild( pDevice ), mTexture( texture )
-{
-}
-
-} // namespace cinder::grfx
+} // namespace cinder::grfx::dx12

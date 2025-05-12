@@ -24,90 +24,106 @@
 #include "cinder/grfx/dx12/CommandBuffer.h"
 #include "cinder/grfx/dx12/Device.h"
 #include "cinder/grfx/dx12/Queue.h"
+#include "cinder/grfx/dx12/RenderTarget.h"
+#include "cinder/grfx/dx12/Util.h"
 
 namespace cinder::grfx::dx12 {
 
 // ----------------------------------------------------------------------------------------------------
-// CommandBufferBaseImpl
+// CommandBuffer
 // ----------------------------------------------------------------------------------------------------
-CommandBufferBaseImpl::CommandBufferBaseImpl( dx12::Queue *pParentQueue )
+CommandBuffer::CommandBuffer( dx12::Queue *pParentQueue )
+	: dx12::DeviceChildShim<grfx::CommandBuffer>( pParentQueue )
 {
-	D3D12_COMMAND_LIST_TYPE commandType = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	if( pParentQueue->getCommandType() == cinder::grfx::CommandType::COMPUTE ) {
-		commandType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-	}
-	else if( pParentQueue->getCommandType() == cinder::grfx::CommandType::COPY ) {
-		commandType = D3D12_COMMAND_LIST_TYPE_COPY;
-	}
-
-	HRESULT hr = pParentQueue->getDevice()->getD3D12Device()->CreateCommandAllocator( commandType, IID_PPV_ARGS( &mCommandAllocator ) );
+	HRESULT hr = getD3D12Device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &mCommandAllocator ) );
 	if( FAILED( hr ) ) {
 		throw cinder::Exception( "Failed to create D3D12 command allocator" );
 	}
 
-	hr = pParentQueue->getDevice()->getD3D12Device()->CreateCommandList( 0, commandType, nullptr, nullptr, IID_PPV_ARGS( &mCommandList ) );
+	hr = this->getD3D12Device()->CreateCommandList1( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS( &mCommandList ) );
 	if( FAILED( hr ) ) {
 		throw cinder::Exception( "Failed to create D3D12 command list" );
 	}
 }
 
-CommandBufferBaseImpl::~CommandBufferBaseImpl()
-{
-	mCommandList.Reset();
-	mCommandAllocator.Reset();
-}
-
-void CommandBufferBaseImpl::submitCommands()
+CommandBuffer::~CommandBuffer()
 {
 }
 
-void CommandBufferBaseImpl::flushCommands()
+void CommandBuffer::submit()
 {
 }
 
-// ----------------------------------------------------------------------------------------------------
-// GraphicsCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-void GraphicsCommandBuffer::Reset()
+void CommandBuffer::flush()
 {
-	this->getD3D12CommandList()->Reset( this->getD3D12CommandAllocator(), nullptr );
 }
 
-void GraphicsCommandBuffer::Close()
+void CommandBuffer::reset()
 {
-	this->getD3D12CommandList()->Close();
+	mCommandList->Reset( mCommandAllocator.Get(), nullptr );
 }
 
-void GraphicsCommandBuffer::BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil )
+void CommandBuffer::close()
 {
-	std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> renderTargetDescs = {};
-	for( const auto &renderTarget : renderTargets ) {
+	mCommandList->Close();
+}
+
+void CommandBuffer::beginRenderPass( const grfx::RenderPass &renderPass )
+{
+	std::vector<D3D12_RENDER_PASS_RENDER_TARGET_DESC> renderTargets = {};
+	//
+	for( const auto &attachment : renderPass.getColorAttachments() ) {
+		auto srcRenderTarget = std::static_pointer_cast<dx12::RenderTarget>( attachment.renderTarget() );
+		auto rtvDescriptor	 = srcRenderTarget->getDescriptorHandle().getD3D12Handle();
+
 		D3D12_RENDER_PASS_RENDER_TARGET_DESC desc = {};
-	}
+		desc.cpuDescriptor						  = rtvDescriptor;
 
-	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencilDesc = {};
-	if( depthStencil ) {
+		switch( attachment.beginOp() ) {
+			default: {
+				throw cinder::Exception( "Unsupported attachment begin op" );
+			} break;
+
+			case grfx::BeginOp::CLEAR: {
+				desc.BeginningAccess.Type					   = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+				desc.BeginningAccess.Clear.ClearValue.Format   = toDxgiFormat( srcRenderTarget->getFormat() );
+				desc.BeginningAccess.Clear.ClearValue.Color[0] = attachment.clearColor().r;
+				desc.BeginningAccess.Clear.ClearValue.Color[1] = attachment.clearColor().g;
+				desc.BeginningAccess.Clear.ClearValue.Color[2] = attachment.clearColor().b;
+				desc.BeginningAccess.Clear.ClearValue.Color[3] = attachment.clearColor().a;
+			} break;
+
+			case grfx::BeginOp::LOAD: desc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE; break;
+			case grfx::BeginOp::OVERWRITE: desc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD; break;
+		}
+
+		switch( attachment.endOp() ) {
+			default: {
+				throw cinder::Exception( "Unsupported attachment end op" );
+			} break;
+
+			case grfx::EndOp::STORE: desc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE; break;
+			case grfx::EndOp::DISCARD: desc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD; break;
+		}
+
+		renderTargets.push_back( desc );
 	}
 
 	D3D12_RENDER_PASS_FLAGS flags = D3D12_RENDER_PASS_FLAG_NONE;
 
-	this->getD3D12CommandList()->BeginRenderPass(
-		static_cast<UINT>( renderTargetDescs.size() ),
-		renderTargetDescs.empty() ? nullptr : renderTargetDescs.data(),
-		depthStencil ? &depthStencilDesc : nullptr,
+	mCommandList->BeginRenderPass(
+		static_cast<UINT>( renderTargets.size() ),
+		renderTargets.empty() ? nullptr : renderTargets.data(),
+		nullptr,
 		flags );
 }
 
-void GraphicsCommandBuffer::EndRendering()
+void CommandBuffer::endRenderPass()
 {
-	this->getD3D12CommandList()->EndRenderPass();
+	mCommandList->EndRenderPass();
 }
 
-void GraphicsCommandBuffer::ClearRenderTarget( uint32_t renderTargetIndex, float r, float g, float b, float a )
-{
-}
-
-void GraphicsCommandBuffer::ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex )
+void CommandBuffer::resolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex )
 {
 }
 

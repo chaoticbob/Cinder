@@ -25,78 +25,112 @@
 
 #include "cinder/grfx/platform.h"
 #include "cinder/grfx/RenderTarget.h"
+#include "cinder/Color.h"
 
 namespace cinder::grfx {
 
-class GraphicsCommandBuffer;
-class ComputeCommandBuffer;
-class CopyCommandBuffer;
+class CommandBuffer;
 class Queue;
+class RenderTarget;
+class DepthStencil;
 
-using GraphicsCommandBufferRef = std::shared_ptr<grfx::GraphicsCommandBuffer>;
-using ComputeCommandBufferRef  = std::shared_ptr<grfx::ComputeCommandBuffer>;
-using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
+using CommandBufferRef = std::shared_ptr<grfx::CommandBuffer>;
+using QueueRef		   = std::shared_ptr<grfx::Queue>;
+using RenderTargetRef  = std::shared_ptr<grfx::RenderTarget>;
+using DepthStencilRef  = std::shared_ptr<grfx::DepthStencil>;
 
-// ----------------------------------------------------------------------------------------------------
-// CommandBufferBase
-// ----------------------------------------------------------------------------------------------------
-class CommandBufferBase : public grfx::DeviceChild {
+enum class BeginOp
+{
+	CLEAR	  = 0,
+	LOAD	  = 1,
+	OVERWRITE = 2,
+};
+
+enum class EndOp
+{
+	STORE	= 1,
+	DISCARD = 2,
+};
+
+class ColorAttachment {
   public:
-	CommandBufferBase( grfx::Queue *pParentQueue );
-	virtual ~CommandBufferBase() {}
+	ColorAttachment( const grfx::RenderTargetRef &renderTarget = nullptr )
+		: mRenderTarget( renderTarget ) {}
+	~ColorAttachment() {}
+
+	const grfx::RenderTargetRef &renderTarget() const { return mRenderTarget; }
+	grfx::BeginOp				 beginOp() const { return mBeginOp; }
+	bool						 isClear() const { return ( mBeginOp == grfx::BeginOp::CLEAR ); }
+	bool						 isLoad() const { return ( mBeginOp == grfx::BeginOp::LOAD ); }
+	bool						 isOverwrite() const { return ( mBeginOp == grfx::BeginOp::OVERWRITE ); }
+	grfx::EndOp					 endOp() const { return mEndOp; }
+	bool						 isStore() const { return ( mEndOp == grfx::EndOp::STORE ); }
+	bool						 isDiscard() const { return ( mEndOp == grfx::EndOp::DISCARD ); }
+	const ColorAf				&clearColor() const { return mClearColor; }
+
+	// clang-format off
+	grfx::ColorAttachment &renderTarget(const grfx::RenderTargetRef& renderTarget) { mRenderTarget = renderTarget; return *this; }
+
+	grfx::ColorAttachment &beginOp(grfx::BeginOp op, const ColorAf& clearColor = ColorAf()) { mBeginOp = op; mClearColor = clearColor; return *this; }
+	grfx::ColorAttachment &clear(const ColorAf& clearColor) { mBeginOp = grfx::BeginOp::CLEAR; mClearColor = clearColor; return *this; }
+	grfx::ColorAttachment &load() { mBeginOp = grfx::BeginOp::LOAD; return *this; }
+	grfx::ColorAttachment &overwrite() { mBeginOp = grfx::BeginOp::OVERWRITE; return *this; }
+	
+	grfx::ColorAttachment &endOp(grfx::EndOp op) { mEndOp = op; return *this; }
+	grfx::ColorAttachment &store() { mEndOp = grfx::EndOp::STORE; return *this; }
+	grfx::ColorAttachment &discard() { mEndOp = grfx::EndOp::DISCARD; return *this; }
+	// clang-format on
+
+  private:
+	grfx::RenderTargetRef mRenderTarget = nullptr;
+	grfx::BeginOp		  mBeginOp		= grfx::BeginOp::CLEAR;
+	grfx::EndOp			  mEndOp		= grfx::EndOp::STORE;
+	ColorAf				  mClearColor	= ColorAf();
+};
+
+class RenderPass {
+  public:
+	RenderPass() {}
+	RenderPass( const std::vector<grfx::ColorAttachment> &colorAttachments )
+		: mColorAttachments( colorAttachments ) {}
+	~RenderPass() {}
+
+	const std::vector<grfx::ColorAttachment> &getColorAttachments() const { return mColorAttachments; }
+
+	// clang-format off
+	grfx::RenderPass& addColorAttachment(const grfx::ColorAttachment& desc) { mColorAttachments.push_back(desc); return *this; }
+	// clang-format on
+
+  private:
+	std::vector<grfx::ColorAttachment> mColorAttachments = {};
+};
+
+// ----------------------------------------------------------------------------------------------------
+// CommandBuffer
+// ----------------------------------------------------------------------------------------------------
+class CommandBuffer : public grfx::DeviceChild {
+  public:
+	CommandBuffer( grfx::Queue *pParentQueue );
+	virtual ~CommandBuffer() {}
 
 	grfx::Queue *getQueue() const { return mQueue; }
 
+	// Submits command buffer to queue for execution.
 	virtual void submit() = 0;
-	virtual void flush()  = 0;
+	// Submits command buffer to queue for execution, waits until execution completes.
+	virtual void flush() = 0;
+
+	virtual void reset() = 0;
+	virtual void close() = 0;
+
+	virtual void beginRenderPass( const grfx::RenderPass &renderPass ) = 0;
+	virtual void endRenderPass()									   = 0;
+
+	virtual void resolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) = 0;
+	void		 resolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex );
 
   private:
 	grfx::Queue *mQueue = nullptr;
 };
 
-// ----------------------------------------------------------------------------------------------------
-// GraphicsCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class GraphicsCommandBuffer : public grfx::CommandBufferBase {
-  public:
-	GraphicsCommandBuffer( grfx::Queue *pParentQueue )
-		: grfx::CommandBufferBase( pParentQueue ) {}
-
-	virtual ~GraphicsCommandBuffer() {}
-
-	virtual void Reset() = 0;
-	virtual void Close() = 0;
-
-	virtual void BeginRendering( const std::vector<grfx::RenderTargetRef> &renderTargets, grfx::DepthStencilRef &depthStencil = grfx::DepthStencilRef() ) = 0;
-	virtual void EndRendering()																															  = 0;
-
-	virtual void ClearRenderTarget( uint32_t renderTargetIndex, float r = 0, float g = 0, float b = 0, float a = 0 ) = 0;
-
-	virtual void ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::Texture2D *pSrcTexture, uint32_t srcSubResourceIndex ) = 0;
-	void		 ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex );
-};
-
-// ----------------------------------------------------------------------------------------------------
-// ComputeCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class ComputeCommandBuffer : public grfx::CommandBufferBase {
-  public:
-	ComputeCommandBuffer( grfx::Queue *pParentQueuee )
-		: grfx::CommandBufferBase( pParentQueuee ) {}
-
-	virtual ~ComputeCommandBuffer() {}
-};
-
-// ----------------------------------------------------------------------------------------------------
-// CopyCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-class CopyCommandBuffer : public grfx::CommandBufferBase {
-  public:
-	CopyCommandBuffer( grfx::Queue *pParentQueue )
-		: grfx::CommandBufferBase( pParentQueue ) {}
-
-	virtual ~CopyCommandBuffer() {}
-};
-
 } // namespace cinder::grfx
-

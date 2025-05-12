@@ -91,3 +91,7 @@ if( CINDER_DISABLE_IMGUI )
 else()
 	set( CINDER_IMGUI_ENABLED TRUE )
 endif()
+
+if( CINDER_DX12 )
+	list( APPEND CINDER_LIBS_DEPENDS slang )
+endif()

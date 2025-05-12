@@ -28,7 +28,10 @@
 
 namespace cinder::grfx {
 
+class Fence;
 class Queue;
+
+using FenceRef = std::shared_ptr<grfx::Fence>;
 using QueueRef = std::shared_ptr<grfx::Queue>;
 
 class Device : public cinder::Noncopyable {
@@ -37,6 +40,8 @@ class Device : public cinder::Noncopyable {
 	virtual ~Device() {}
 
 	virtual void waitForIdle() = 0;
+
+	virtual grfx::FenceRef createFence( uint64_t initialValue = 0 ) = 0;
 
 	grfx::Queue *getGraphicsQueue() const { return mGraphicsQueue.get(); }
 	grfx::Queue *getComputeQueue() const { return mComputeQueue.get(); }

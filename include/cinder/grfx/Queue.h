@@ -27,16 +27,31 @@
 
 namespace cinder::grfx {
 
-class GraphicsCommandBuffer;
-class ComputeCommandBuffer;
-class CopyCommandBuffer;
+class CommandBuffer;
+class Fence;
 class Queue;
 
-using GraphicsCommandBufferRef = std::shared_ptr<grfx::GraphicsCommandBuffer>;
-using ComputeCommandBufferRef  = std::shared_ptr<grfx::ComputeCommandBuffer>;
-using CopyCommandBufferRef	   = std::shared_ptr<grfx::CopyCommandBuffer>;
-using QueueRef				   = std::shared_ptr<grfx::Queue>;
+using CommandBufferRef = std::shared_ptr<grfx::CommandBuffer>;
+using FenceRef		   = std::shared_ptr<grfx::Fence>;
+using QueueRef		   = std::shared_ptr<grfx::Queue>;
 
+// ----------------------------------------------------------------------------------------------------
+// Fence
+// ----------------------------------------------------------------------------------------------------
+class Fence : public grfx::DeviceChild {
+  public:
+	Fence( grfx::Device *pParentDevice )
+		: grfx::DeviceChild( pParentDevice ) {}
+	virtual ~Fence() {}
+
+	virtual void	 signal( uint64_t value ) = 0;
+	virtual void	 wait( uint64_t value )	  = 0;
+	virtual uint64_t currentValuue() const	  = 0;
+};
+
+// ----------------------------------------------------------------------------------------------------
+// Queue
+// ----------------------------------------------------------------------------------------------------
 class Queue : public grfx::DeviceChild {
   public:
 	Queue( grfx::Device *pParentDevice, grfx::CommandType commandType )
@@ -46,11 +61,13 @@ class Queue : public grfx::DeviceChild {
 
 	grfx::CommandType getCommandType() const { return mCommandType; }
 
-	virtual void waitForIdle() = 0;
+	virtual void submit( const std::vector<grfx::CommandBufferRef> &commandBuffers ) = 0;
+	virtual void flush( const std::vector<grfx::CommandBufferRef> &commandBuffers )	 = 0;
+	virtual void signal( const grfx::FenceRef &fence, uint64_t value )				 = 0;
+	virtual void wait( const grfx::FenceRef &fence, uint64_t value )				 = 0;
+	virtual void waitForIdle()														 = 0;
 
-	virtual grfx::GraphicsCommandBufferRef createGraphicsCommandBuffer() = 0;
-	virtual grfx::ComputeCommandBufferRef  createComputeCommandBuffer()	 = 0;
-	virtual grfx::CopyCommandBufferRef	   createCopyCommandBuffer()	 = 0;
+	virtual grfx::CommandBufferRef createCommandBuffer() = 0;
 
   private:
 	grfx::CommandType mCommandType = grfx::CommandType::GRAPHICS;

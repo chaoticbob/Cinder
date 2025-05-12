@@ -28,6 +28,18 @@
 
 namespace cinder::grfx::dx12 {
 
+// ----------------------------------------------------------------------------------------------------
+// ResourceBarrier
+// ----------------------------------------------------------------------------------------------------
+struct ResourceBarrier {
+	static D3D12_RESOURCE_BARRIER Transition(
+		ID3D12Resource				*pResource,
+		D3D12_RESOURCE_STATES		 stateBefore,
+		D3D12_RESOURCE_STATES		 stateAfter,
+		D3D12_RESOURCE_BARRIER_FLAGS flags		 = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+		UINT						 subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES );
+};
+
 DXGI_FORMAT toDxgiFormat( grfx::Format format );
 
 } // namespace cinder::grfx::dx12

@@ -28,20 +28,19 @@
 namespace cinder::grfx {
 
 // ----------------------------------------------------------------------------------------------------
-// CommandBufferBase
+// CommandBuffer
 // ----------------------------------------------------------------------------------------------------
-CommandBufferBase::CommandBufferBase( grfx::Queue *pParentQueue )
-	: grfx::DeviceChild( pParentQueue->getDevice() )
+CommandBuffer::CommandBuffer( grfx::Queue *pParentQueue )
+	: grfx::DeviceChild( pParentQueue->getDevice() ),
+	  mQueue( pParentQueue )
 {
 }
 
-// ----------------------------------------------------------------------------------------------------
-// GraphicsCommandBuffer
-// ----------------------------------------------------------------------------------------------------
-void GraphicsCommandBuffer::ResolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex )
+void CommandBuffer::resolveSubresource( const grfx::Texture2D *pDstTexture, uint32_t dstSubResourceIndex, const grfx::RenderTarget *pSrcRenderTarget, uint32_t srcSubResourceIndex )
 {
-	this->ResolveSubresource( pDstTexture, dstSubResourceIndex, pSrcRenderTarget->getTexture().get(), srcSubResourceIndex );
+	this->resolveSubresource( pDstTexture, dstSubResourceIndex, pSrcRenderTarget->getTexture().get(), srcSubResourceIndex );
 }
 
 } // namespace cinder::grfx
+
 

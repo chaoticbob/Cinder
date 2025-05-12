@@ -220,6 +220,7 @@ if( CINDER_MSW AND CINDER_DX12 )
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Buffer.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/CommandBuffer.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Device.h
+		${CINDER_INC_DIR}/cinder/grfx/dx12/Program.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Queue.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/RenderTarget.h
 		${CINDER_INC_DIR}/cinder/grfx/dx12/Texture.h
@@ -230,6 +231,7 @@ if( CINDER_MSW AND CINDER_DX12 )
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Buffer.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/CommandBuffer.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Device.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/dx12/Program.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Queue.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/RenderTarget.cpp
 		${CINDER_SRC_DIR}/cinder/grfx/dx12/Texture.cpp
@@ -316,30 +318,33 @@ source_group( "cinder\\gl" FILES    ${HDR_SET_CINDER_GL} ${SRC_SET_CINDER_GL} )
 # cinder::grfx
 # ----------------------------------------------------------------------------------------------------------------------
 
-list( APPEND HDR_SET_CINDER_GRFX
-	${CINDER_INC_DIR}/cinder/grfx/platform.h
-	${CINDER_INC_DIR}/cinder/grfx/Buffer.h
-	${CINDER_INC_DIR}/cinder/grfx/CommandBuffer.h
-	${CINDER_INC_DIR}/cinder/grfx/Device.h
-	${CINDER_INC_DIR}/cinder/grfx/Format.h
-	${CINDER_INC_DIR}/cinder/grfx/Queue.h
-	${CINDER_INC_DIR}/cinder/grfx/RenderTarget.h
-	${CINDER_INC_DIR}/cinder/grfx/Texture.h
-)
+if( CINDER_DX12 )
+	list( APPEND HDR_SET_CINDER_GRFX
+		${CINDER_INC_DIR}/cinder/grfx/platform.h
+		${CINDER_INC_DIR}/cinder/grfx/Buffer.h
+		${CINDER_INC_DIR}/cinder/grfx/CommandBuffer.h
+		${CINDER_INC_DIR}/cinder/grfx/Device.h
+		${CINDER_INC_DIR}/cinder/grfx/Format.h
+		${CINDER_INC_DIR}/cinder/grfx/Program.h
+		${CINDER_INC_DIR}/cinder/grfx/Queue.h
+		${CINDER_INC_DIR}/cinder/grfx/RenderTarget.h
+		${CINDER_INC_DIR}/cinder/grfx/Texture.h
+	)
 
-list( APPEND SRC_SET_CINDER_GRFX
-	${CINDER_SRC_DIR}/cinder/grfx/Buffer.cpp
-	${CINDER_SRC_DIR}/cinder/grfx/CommandBuffer.cpp
-	${CINDER_SRC_DIR}/cinder/grfx/Device.cpp
-	${CINDER_SRC_DIR}/cinder/grfx/Queue.cpp
-	${CINDER_SRC_DIR}/cinder/grfx/RenderTarget.cpp
-	${CINDER_SRC_DIR}/cinder/grfx/Texture.cpp
-)
+	list( APPEND SRC_SET_CINDER_GRFX
+		${CINDER_SRC_DIR}/cinder/grfx/Buffer.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/CommandBuffer.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/Device.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/Program.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/Queue.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/RenderTarget.cpp
+		${CINDER_SRC_DIR}/cinder/grfx/Texture.cpp
+	)
 
-list( APPEND CINDER_SRC_FILES       ${HDR_SET_CINDER_GRFX} )
-list( APPEND CINDER_SRC_FILES       ${SRC_SET_CINDER_GRFX} )
-source_group( "cinder\\grfx" FILES  ${HDR_SET_CINDER_GRFX} ${SRC_SET_CINDER_GRFX} )
-
+	list( APPEND CINDER_SRC_FILES       ${HDR_SET_CINDER_GRFX} )
+	list( APPEND CINDER_SRC_FILES       ${SRC_SET_CINDER_GRFX} )
+	source_group( "cinder\\grfx" FILES  ${HDR_SET_CINDER_GRFX} ${SRC_SET_CINDER_GRFX} )
+endif()
 # ----------------------------------------------------------------------------------------------------------------------
 # cinder::ip
 # ----------------------------------------------------------------------------------------------------------------------

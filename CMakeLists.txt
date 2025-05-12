@@ -24,6 +24,26 @@ set( CINDER_BUILD_SAMPLE "" CACHE STRING "Build a specific sample by specifying 
 set( CINDER_PATH      "${CMAKE_CURRENT_SOURCE_DIR}" )
 set( CINDER_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/proj/cmake" )
 
+
+if( MSVC )
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+endif()
+
+if( CINDER_DX12 )
+	set( SLANG_ENABLE_CUDA     OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_OPTIX    OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_NVAPI    OFF CACHE BOOL "" FORCE )
+	
+	set( SLANG_ENABLE_SLANGD   OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_SLANGC   OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_GFX      OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_TESTS    OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE )
+	set( SLANG_ENABLE_REPLAYER OFF CACHE BOOL "" FORCE )
+	add_subdirectory( ${CINDER_PATH}/deps/slang )
+endif()
+
 include( ${CINDER_CMAKE_DIR}/configure.cmake )
 include( ${CINDER_CMAKE_DIR}/libcinder_configure.cmake )
 include( ${CINDER_CMAKE_DIR}/libcinder_source_files.cmake )

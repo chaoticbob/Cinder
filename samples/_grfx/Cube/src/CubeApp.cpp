@@ -87,4 +87,4 @@ void RotatingCubeApp::draw()
 */}
 
 //CINDER_APP( RotatingCubeApp, RendererGrfx( RendererGrfx::Options().msaa( 16 ) ) )
-CINDER_APP( RotatingCubeApp, RendererGrfx( RendererGrfx::Options( ci::grfx::Api::DX12 ).validation( true ) ) )
+CINDER_APP( RotatingCubeApp, RendererGrfx( RendererGrfx::Options( ci::grfx::Api::DX12 ).msaa( 16 ).validation( true ) ) )
