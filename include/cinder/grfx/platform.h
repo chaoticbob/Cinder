@@ -58,4 +58,22 @@ class DeviceChild {
 	grfx::Device *mDevice = nullptr;
 };
 
+#define CI_GRFX_IMPLEMENT_OPERATIONS( ENUM_TYPE )                                                 \
+	constexpr ENUM_TYPE operator&( ENUM_TYPE a, ENUM_TYPE b )                                     \
+	{                                                                                             \
+		return static_cast<ENUM_TYPE>( static_cast<uint32_t>( a ) & static_cast<uint32_t>( b ) ); \
+	}                                                                                             \
+	constexpr ENUM_TYPE operator|( ENUM_TYPE a, ENUM_TYPE b )                                     \
+	{                                                                                             \
+		return static_cast<ENUM_TYPE>( static_cast<uint32_t>( a ) | static_cast<uint32_t>( b ) ); \
+	}                                                                                             \
+	constexpr ENUM_TYPE operator&=( ENUM_TYPE a, ENUM_TYPE b )                                    \
+	{                                                                                             \
+		return a & b;                                                                             \
+	}                                                                                             \
+	constexpr ENUM_TYPE operator|=( ENUM_TYPE a, ENUM_TYPE b )                                    \
+	{                                                                                             \
+		return a | b;                                                                             \
+	}
+
 } // namespace cinder::grfx

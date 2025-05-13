@@ -47,6 +47,26 @@ enum class SourceLanguage
 	METAL = 3,
 };
 
+enum class ShaderStage : uint32_t
+{
+	VERTEX_SHADER		 = 0x00000001,
+	HULL_SHADER			 = 0x00000002,
+	DOMAIN_SHADER		 = 0x00000004,
+	GEOMETRY_SHADER		 = 0x00000008,
+	PIXEL_SHADER		 = 0x00000010,
+	COMPUTE_SHADER		 = 0x00000020,
+	RAYGEN_SHADER		 = 0x00000100,
+	ANY_HIT_SHADER		 = 0x00000200,
+	CLOSEST_HIT_SHADER	 = 0x00000400,
+	MISS_SHADER			 = 0x00000800,
+	INTERSECTION_SHADER	 = 0x00001000,
+	CALLABLE_SHADER		 = 0x00002000,
+	AMPLIFICATION_SHADER = 0x00004000,
+	MESH_SHADER			 = 0x00008000,
+};
+
+CI_GRFX_IMPLEMENT_OPERATIONS( grfx::ShaderStage )
+
 // ----------------------------------------------------------------------------------------------------
 // ProgramParam
 // ----------------------------------------------------------------------------------------------------
@@ -59,7 +79,7 @@ class ProgramParam {
 		CONSTANT_BUFFER		   = 2,
 		STRUCTURED_BUFFER	   = 3,
 		STORAGE_BUFFER		   = 4,
-		TEXTURE				   = 5,
+		SAMPLE_TEXTURE		   = 5,
 		STORAGE_TEXTURE		   = 6,
 		ACCELERATION_STRUCTURE = 7,
 	};
@@ -100,8 +120,8 @@ class ProgramSig {
 // ----------------------------------------------------------------------------------------------------
 class Program {
   public:
-	Program();
-	virtual ~Program();
+	Program() {}
+	virtual ~Program() {}
 
 	const grfx::ProgramSig *sig() const { return mSig.get(); }
 
@@ -110,37 +130,18 @@ class Program {
 };
 
 // ----------------------------------------------------------------------------------------------------
-// ShaderModule
-// ----------------------------------------------------------------------------------------------------
-class ShaderModule {
-  public:
-};
-
-// ----------------------------------------------------------------------------------------------------
-// Compiler
-// ----------------------------------------------------------------------------------------------------
-class Compiler {
-  public:
-	Compiler() {}
-	virtual ~Compiler() {}
-
-	virtual bool				  supportsSourceLanguage( grfx::SourceLanguage language ) const = 0;
-	virtual grfx::ShaderModuleRef compile( grfx::SourceLanguage sourceLanguage );
-};
-
-// ----------------------------------------------------------------------------------------------------
 // Compile functions
 // ----------------------------------------------------------------------------------------------------
 grfx::ProgramRef createGraphicsProgramFromSource(
 	grfx::SourceLanguage sourceLanguage,
 	const std::string	&vertexSource,
-	const std::string	&vertexEntryPoint,
 	const std::string	&pixelSource,
-	const std::string	&pixelEntryPoint );
+	const std::string	&vertexEntryPoint = "",
+	const std::string	&pixelEntryPoint  = "" );
 
 grfx::ProgramRef createComputeProgramFromSource(
 	grfx::SourceLanguage sourceLanguage,
 	const std::string	&source,
-	const std::string	&entryPoint );
+	const std::string	&entryPoint = "" );
 
 } // namespace cinder::grfx
