@@ -125,7 +125,7 @@ class Compiler {
 	virtual ~Compiler() {}
 
 	virtual bool				  supportsSourceLanguage( grfx::SourceLanguage language ) const = 0;
-	virtual grfx::ShaderModuleRef compile(grfx::SourceLanguage sourceLanguage);
+	virtual grfx::ShaderModuleRef compile( grfx::SourceLanguage sourceLanguage );
 };
 
 // ----------------------------------------------------------------------------------------------------

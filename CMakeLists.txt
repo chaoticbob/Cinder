@@ -41,7 +41,10 @@ if( CINDER_DX12 )
 	set( SLANG_ENABLE_TESTS    OFF CACHE BOOL "" FORCE )
 	set( SLANG_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE )
 	set( SLANG_ENABLE_REPLAYER OFF CACHE BOOL "" FORCE )
+    
+    set( CMAKE_FOLDER "slang" )
 	add_subdirectory( ${CINDER_PATH}/deps/slang )
+    unset( CMAKE_FOLDER )
 endif()
 
 include( ${CINDER_CMAKE_DIR}/configure.cmake )
